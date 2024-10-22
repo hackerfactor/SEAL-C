@@ -1,0 +1,30 @@
+================================
+The different types of output:
+
+ERROR: to stderr = fatal and an abort.
+ERROR: to stdout = non-fatal, indicates skipping a file.
+WARNING: to stdout = notice to user
+
+If line begins with "[...]", then it indicates the current file processing.
+If line begins with a letter, then it's a message related to the current file.
+
+Important:
+Every "ERROR" and "WARNING" message must be unique.
+This way, if a user reports a problem, we can easily search through the code for the error message.
+
+================================
+For creating a signed file:
+There are a couple of options:
+
+(A) Compute everything then write the file once.
+    This is the "hard way" because the digest needs to be computed in parts.
+
+(B) Write and update
+    1. Write a stub to the file that includes a placeholder signature.
+    2. Compute the new signature.
+    3. Update the file with the new signature.
+    This is the "easy way" for static files.
+
+(C) Compute as you go and append the signature.
+    This is expected for live-stream signing.
+
