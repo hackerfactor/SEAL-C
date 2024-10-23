@@ -440,7 +440,7 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
       // Look for continuation blocks and skip them
       if (BlockType == PreviousBlockType) { goto NextBlock; }
 
-      // Look for special blocks
+      /***** Look for special blocks *****/
       // MPF: Starts with "MPF\0"
       if ((BlockSize > 8) && !memcmp(Mmap->mem+Offset+4,"MPF\0",4))
 	{
@@ -489,6 +489,7 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
 	  { 5, "XMTH\0" },
 	  { 6, "Adobe\0" },
 	  { 6, "Ducky\0" },
+	  { 6, "AJPEG\0" },
 	  { 7, "SCRNAIL" },
 	  { 7, "MMIMETA" },
 	  { 8, "Ocad$Rev" },
