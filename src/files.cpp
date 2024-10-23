@@ -51,7 +51,7 @@ unsigned char *	GetPassword	()
 
   fprintf(stderr,"Enter password (blank for no password): ");
   fflush(stderr);
-  Pwd = (unsigned char*)calloc(256+4,0);
+  Pwd = (unsigned char*)calloc(256+4,1);
   len=0;
   for(c=fgetc(fp); (c != '\n') && (c >= 0) && (len < 255); c=fgetc(fp))
     {

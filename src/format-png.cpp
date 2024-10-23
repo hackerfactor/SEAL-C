@@ -304,6 +304,12 @@ sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *Mmap, size_t IEND_offset)
   fname = SealGetText(Rec,"@FilenameOut");
   if (!fname) { return(Rec); } // not signing
 
+  // Is there an insertion point?
+  if (IEND_offset == 0)
+	{
+	fprintf(stderr,"ERROR: PNG is truncated; cannot sign. Aborting.\n");
+	}
+
   // Check if file is finalized (abort if it is)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
@@ -360,6 +366,7 @@ sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *Mmap, size_t IEND_offset)
 /**************************************
  Seal_PNG(): Process a PNG.
  Reads every seal signature.
+ If signing, add the signature before the IEND tag.
  **************************************/
 sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
 {
@@ -408,6 +415,7 @@ sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
 	(Offset+12+ChunkSize > Mmap->memsize))
 	{
 	fprintf(stderr,"ERROR: PNG is corrupted. Aborting.\n");
+	return(Args);
 	}
 
     //printf("PNG FourCC[%.4s]\n",FourCC); // DEBUGGING
@@ -459,6 +467,9 @@ sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
     Offset += ChunkSize + 12;
     }
 
+  /*****
+   Sign as needed
+   *****/
   Args = Seal_PNGsign(Args,Mmap,IEND_offset); // Add a signature as needed
   if (SealGetIindex(Args,"@s",2)==0) // no signatures
     {

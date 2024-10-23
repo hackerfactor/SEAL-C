@@ -486,7 +486,6 @@ sealfield *	SealValidateRevoke	(sealfield *Rec)
 sealfield *	SealValidateSig	(sealfield *Rec)
 {
   const EVP_MD* (*mdf)(void);
-  BIO *bio;
   EVP_PKEY *PubKey=NULL;
   EVP_PKEY_CTX *PubKeyCtx=NULL;
   char *keyalg, *digestalg;
@@ -547,16 +546,19 @@ sealfield *	SealValidateSig	(sealfield *Rec)
     }
 
   // Load public key into EVP_PKEY structure
+  {
   /* Use BIO to import the data */
+  BIO *bio;
   bio = BIO_new_mem_buf(pubkey->Value, pubkey->ValueLen);
   if (!bio)
-  	{
+	{
 	Rec = SealSetText(Rec,"@error","failed to load public key into memory");
 	goto Done;
 	}
   /* Convert BIO to public key */
   PubKey = d2i_PUBKEY_bio(bio, NULL);
   BIO_free(bio); // done with BIO
+  }
 
   if (!PubKey)
 	{

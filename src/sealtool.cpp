@@ -241,9 +241,7 @@ void	Usage	(const char *progname)
   printf("  -O, --options  text  :: Signing-specific options (default: none)\n");
   printf("        -O text may contain a comma-separated list of options:\n");
   printf("        append  :: This is an appending signature; not final signature.\n");
-  printf("        APP0...APP15   :: JPEG: APP segment (default: APP8)\n");
-  printf("        seAl,SEAL,...  :: PNG: chunk name to use.\n");
-  printf("        teXt,iTXt,...  :: PNG: chunk name to use.\n");
+  printf("        seAl,SEAL,teXt,tEXt,...  :: PNG: chunk name to use.\n");
   printf("  -K, --keyalg alg     :: Key algorithm  (default: rsa)\n");
   printf("  -A, --digestalg alg    :: Digest (hash) algorithm  (default: sha256)\n");
   printf("               Supports: sha224, sha256, sha384, sha512\n");
@@ -480,7 +478,8 @@ int main (int argc, char *argv[])
 	}
 
     // Identify the filename format
-    if (Seal_isPNG(Mmap)) { FileFormat='P'; }
+    if (Seal_isPNG(Mmap)) { FileFormat='P'; } // PNG
+    else if (Seal_isJPEG(Mmap)) { FileFormat='J'; } // JPEG
     else
 	{
 	fprintf(stdout,"ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
@@ -504,6 +503,7 @@ int main (int argc, char *argv[])
     switch(FileFormat)
     	{
 	case 'P': Args = Seal_PNG(Args,Mmap); break; // PNG
+	case 'J': Args = Seal_JPEG(Args,Mmap); break; // JPEG
 	default: break; // should never happen
 	}
 

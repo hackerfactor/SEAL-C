@@ -14,5 +14,8 @@
 bool		Seal_isPNG	(mmapfile *Mmap);
 sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap);
 
+bool		Seal_isJPEG	(mmapfile *Mmap);
+sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap);
+
 #endif
 

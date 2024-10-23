@@ -5,13 +5,13 @@ This code is written in C (but I compile it with g++ because it has more error m
 
 ## Requirements
 1. g++ version 9.x
-2. OpenSSL version 3.x. (If you run `openssl --version` and it says 1.x, then it won't work.) You need the developer libraries installed.
-3. libcurl (developer libraries)
+2. OpenSSL version 3.x. (If you run `openssl --version` and it says 1.x, then it won't work.) You need the developer libraries installed. (For my system, I downloaded the latest version directly from [OpenSSL](https://openssl-library.org/source/index.html) and compiled it. I did this because the default package provided by Debian and Ubuntu is far from the most recent version.))
+3. libcurl (developer libraries). On Ubuntu, I use: `apt install libcurl4-openssl-dev`
 4. `make`
 
 For debugging:
-5. Electric Fence (libefence)
-6. Valgrind
+5. Electric Fence (libefence): `apt install electric-fence`
+6. Valgrind: `apt install valgrind`
 
 ## To Build
 1. Clone this repository

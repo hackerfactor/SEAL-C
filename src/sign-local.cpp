@@ -53,6 +53,7 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h> // rsa algorithm
 #include <openssl/ec.h> // elliptic curve algorithms
+#include <openssl/x509.h>
 
 // Include ed25519? (Disabled; doesn't work yet.)
 #define INC_ED25519 0
@@ -390,10 +391,11 @@ void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf)
 void	SealGenerateKeys	(sealfield *Args)
 {
   // Get the algorithm and bits.
-  FILE *fp,*fpout;
+  FILE *fp;
   sealfield *vf;
-  OSSL_ENCODER_CTX *encoder;
+  EVP_PKEY_CTX *pctx=NULL;
   EVP_PKEY *keypair = NULL;
+  OSSL_ENCODER_CTX *encoder=NULL;
   unsigned int Bits;
   char *keyfile=NULL, *pubfile=NULL;
   unsigned char *pwd;
@@ -424,18 +426,54 @@ void	SealGenerateKeys	(sealfield *Args)
   // Generate the key
 
   vf = SealSearch(Args,"ka");
+#if 0
   if (!vf) { keypair=NULL; }
   else if (!strcmp((char*)(vf->Value),"rsa"))
     {
     keypair = EVP_RSA_gen(Bits);
     }
 #if INC_ED25519
-  else if (!strcmp((char*)(vf->Value),"ed25519")) 
+  else if (!strcmp((char*)(vf->Value),"ed25519"))
     {
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
     EVP_PKEY_keygen_init(pctx);
     EVP_PKEY_keygen(pctx, &keypair);
     EVP_PKEY_CTX_free(pctx);
+    }
+#endif
+  else if (!strcmp((char*)(vf->Value),"ec"))
+    {
+    // "ec" is a generic class. When generating, assume P-256 for now.
+    keypair = EVP_EC_gen("P-256");
+    Args = SealSetText(Args,"ka","ec");
+    }
+  else // some kind of specific elliptic curve
+    {
+    keypair = EVP_EC_gen((char*)(vf->Value));
+    Args = SealSetText(Args,"ka","ec");
+    }
+#else
+  if (!vf) { keypair=NULL; }
+  else if (!strcmp((char*)(vf->Value),"rsa"))
+    {
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
+    if (!pctx ||
+	(EVP_PKEY_keygen_init(pctx) != 1) ||
+	(EVP_PKEY_CTX_set_rsa_keygen_bits(pctx,Bits) != 1) ||
+	(EVP_PKEY_keygen(pctx, &keypair) != 1))
+	{ keypair=NULL; }
+    if (pctx) { EVP_PKEY_CTX_free(pctx); }
+    }
+#if INC_ED25519
+  else if (!strcmp((char*)(vf->Value),"ed25519")) 
+    {
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
+    if (!pctx ||
+	(EVP_PKEY_keygen_init(pctx) != 1) ||
+	(EVP_PKEY_keygen(pctx, &keypair) != 1) ||
+	(EVP_PKEY_CTX_free(pctx) != 1))
+	{ keypair=NULL; }
+    if (pctx) { EVP_PKEY_CTX_free(pctx); }
     }
 #endif
   else if (!strcmp((char*)(vf->Value),"ec")) 
@@ -449,6 +487,8 @@ void	SealGenerateKeys	(sealfield *Args)
     keypair = EVP_EC_gen((char*)(vf->Value));
     Args = SealSetText(Args,"ka","ec");
     }
+#endif
+
   if (!keypair)
     {
     fprintf(stderr,"ERROR: Unable to generate the keys.\n");
@@ -463,11 +503,14 @@ void	SealGenerateKeys	(sealfield *Args)
     exit(1);
     }
 
-  // Set password
+  // Set (optional) password
   pwd = GetPassword();
   if (pwd)
     {
-    // AES-128-CBC is good enough for protecting the private key file.
+    /*****
+     Add the password to the private key.
+     AES-128-CBC is good enough for protecting the private key file.
+     *****/
     if (OSSL_ENCODER_CTX_set_cipher(encoder, "AES-128-CBC", NULL) != 1)
 	{
 	fprintf(stderr,"ERROR: Unable to set password cipher.\n");
@@ -497,10 +540,11 @@ void	SealGenerateKeys	(sealfield *Args)
   OSSL_ENCODER_CTX_free(encoder);
   if (pwd) { free(pwd); pwd=NULL; }
 
-  // Now save public key as PEM!
+  // Save public key as DER!
   encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair,
+	EVP_PKEY_PUBLIC_KEY,
 	//OSSL_KEYMGMT_SELECT_ALL_PARAMETERS | OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
-	EVP_PKEY_KEY_PARAMETERS | EVP_PKEY_PUBLIC_KEY,
+	//EVP_PKEY_KEY_PARAMETERS | EVP_PKEY_PUBLIC_KEY,
 	"DER", NULL, NULL);
   if (!encoder)
     {
@@ -510,18 +554,24 @@ void	SealGenerateKeys	(sealfield *Args)
     }
 
   // Save binary public key to memory (I'll base64-encode it without the headers)
-  byte *pdata=NULL;
-  size_t pdata_len=0;
-  if (OSSL_ENCODER_to_data(encoder, &pdata, &pdata_len) != 1)
-    {
-    fprintf(stderr,"ERROR: Unable to encode the public key.\n");
-    exit(1);
-    }
-  // Now pdata = memory allocated by openssl and pdata_len is the size!
-
-  fp = tmpfile();
+  {
+  BIO *bio = BIO_new(BIO_s_mem());
+  i2d_PUBKEY_bio(bio, keypair);
+  size_t derlen;
+  unsigned char *derdata;
+  derlen = BIO_get_mem_data(bio, &derdata);
+  Args = SealSetBin(Args,"@pubder",derlen,derdata);
+  SealBase64Encode(SealSearch(Args,"@pubder"));
+  BIO_free(bio);
+  }
 
   // Create DNS entry!
+  fp = fopen(pubfile,"wb");
+  if (!fp)
+    {
+    fprintf(stderr,"ERROR: Unable to write to the public key file (%s).\n",pubfile);
+    exit(1);
+    }
   vf = SealSearch(Args,"seal");
   fprintf(fp,"seal=%.*s",(int)vf->ValueLen,vf->Value);
   vf = SealSearch(Args,"ka");
@@ -534,53 +584,11 @@ void	SealGenerateKeys	(sealfield *Args)
   // Store uid if it exists
   vf = SealSearch(Args,"uid");
   if (vf) { PrintDNSstring(fp,"uid",vf); }
-  fprintf(fp," p="); // value is base64 public key!
+  fprintf(fp," p=%s",SealGetText(Args,"@pubder")); // value is base64 public key!
+  Args = SealDel(Args,"@pubder");
 
   // No comments in DNS; limited space!
-
-  // Ref: https://www.openssl.org/docs/manmaster/man3/EVP_EncodeBlock.html
-  // EVP works in blocks of 48 bytes input and 64 bytes output (65 with newline)
-  byte bmem[68];
-  int bsize;
-  size_t blen;
-  EVP_ENCODE_CTX *bctx = EVP_ENCODE_CTX_new();
-  EVP_EncodeInit(bctx);
-  for(blen=0; blen < pdata_len; blen += 48)
-    {
-    bsize=65;
-    EVP_EncodeUpdate(bctx, bmem, &bsize, pdata+blen, Min(48,pdata_len - blen));
-    while((bsize > 0) && isspace(bmem[bsize-1])) { bsize--; } // ignore newline
-    if (bsize <= 0) { continue; } // should never happen
-    fprintf(fp,"%.*s",bsize,bmem); // write out the chunk of base64 data
-    }
-  bsize=65;
-  EVP_EncodeFinal(bctx, bmem, &bsize);
-  if (bsize > 0)
-    {
-    if (bmem[bsize-1]=='\n') { bsize--; } // ignore newline
-    fprintf(fp,"%.*s",bsize,bmem); // write out the chunk of base64 data
-    }
-  fprintf(fp,"\n"); // end DNS
-  EVP_ENCODE_CTX_free(bctx); // free base64 context
-  OPENSSL_free(pdata); // free raw data
-  OSSL_ENCODER_CTX_free(encoder);
-
-  // It worked??? Copy it to the file! (no partial writes)
-  fpout = fopen(pubfile,"wb");
-  if (!fpout)
-    {
-    fprintf(stderr,"ERROR: Unable to write to the public key file (%s).\n",pubfile);
-    exit(1);
-    }
-  rewind(fp);
-
-  int c,len;
-  for(c=fgetc(fp); c >= 0; c=fgetc(fp))
-    {
-    len++;
-    fputc(c,fpout);
-    }
-  fclose(fpout);
+  fprintf(fp,"\n");
   fclose(fp);
 
   printf("Private key written to: %s\n",keyfile);

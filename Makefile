@@ -32,6 +32,7 @@ clean:
 	$(RM) -f core $(EXE)
 
 bin/sealtool: src/*.hpp src/*.cpp
+	@if [ ! -d "bin" ] ; then mkdir bin ; fi
 	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) -o $@ $^ $(LIB)
 	@if [ "$(STRIP)" != "" ] ; then $(STRIP) $@ ; fi
 

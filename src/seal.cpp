@@ -807,7 +807,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
   sealfield *vf;
   uint16_t u16=0;
   char QuoteChar;
-  register unsigned int i;
+  unsigned int i;
 
   // Rename long paramters to short
   Args = SealCopy(Args,"da","digestalg");
