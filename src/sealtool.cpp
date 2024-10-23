@@ -452,7 +452,7 @@ int main (int argc, char *argv[])
     {
     Args = SealSetText(Args,"Mode","verify");
     }
-  if (Verbose > 2) { DEBUGWALK("Post-CLI Parameters",Args); } // DEBUGGING
+  if (Verbose > 3) { DEBUGWALK("Post-CLI Parameters",Args); } // DEBUGGING
 
   // Don't mess up command-line parameters
   CleanArgs = Args;

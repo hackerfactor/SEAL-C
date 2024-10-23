@@ -481,14 +481,26 @@ sealfield *	SealAddText	(sealfield *vfhead, const char *Field, const char *Value
 } /* SealAddText() */
 
 /**************************************
- SealAddC(): Append a character to the sealfield chain.
- As text, it allocates extra bytes to ensure null termination.
+ SealAddC(): Append one character to the sealfield chain.
  Returns: head of sealfield chain.
  **************************************/
 sealfield *	SealAddC	(sealfield *vfhead, const char *Field, const char Value)
 {
   return(SealAddTextLen(vfhead, Field, 1, &Value));
 } /* SealAddC() */
+
+/**************************************
+ SealAddI(): Append a size_t to the sealfield chain.
+ Returns: head of sealfield chain.
+ **************************************/
+sealfield *	SealAddI	(sealfield *vfhead, const char *Field, const size_t Value)
+{
+  sealfield *f;
+  vfhead = SealAddBin(vfhead, Field, sizeof(size_t), (const byte*)(&Value));
+  f = SealSearch(vfhead,Field);
+  if (f) { f->Type='I'; }
+  return(vfhead);
+} /* SealAddI() */
 
 /**************************************
  SealAddTextPad(): Append padding text.

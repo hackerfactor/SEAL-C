@@ -53,6 +53,7 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
  SealDigest(): Given a file, compute the digest!
  This uses 'da', 'b', 's', and 'p' arguments.
  Computes the digest and stores binary data in @digest.
+ Stores the byte range in '@digestrange'.
  Any error messages are stored in @error.
  **************************************/
 sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
@@ -68,6 +69,7 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
   // Should never happen
   if (!Rec || !Mmap) { return(Rec); }
   Rec = SealDel(Rec,"@error");
+  Rec = SealDel(Rec,"@digestrange");
 
   // Load parameters
   s = SealGetIarray(Rec,"@s"); // should always be set
@@ -223,6 +225,8 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
       // If it made it to here, then it's a valid range!
       if (sum[1] > sum[0])
 	{
+	Rec = SealAddI(Rec,"@digestrange",sum[0]);
+	Rec = SealAddI(Rec,"@digestrange",sum[1]);
 	EVP_DigestUpdate(ctx64,Mmap->mem+sum[0],sum[1]-sum[0]);
 	//DEBUGPRINT("Segment: seg=%d '%.*s', range: %u-%u (0x%x - 0x%x)",state,(int)(seg[1]-seg[0]),b+seg[0],(uint)sum[0],(uint)sum[1],(uint)sum[0],(uint)sum[1]);
 	}
@@ -240,6 +244,8 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
     if (SealSearch(Rec,"@error")) { goto Abort; }
     if (sum[1] > sum[0])
 	{
+	Rec = SealAddI(Rec,"@digestrange",sum[0]);
+	Rec = SealAddI(Rec,"@digestrange",sum[1]);
 	EVP_DigestUpdate(ctx64,Mmap->mem+sum[0],sum[1]-sum[0]);
 	//DEBUGPRINT("Segment: seg=%d '%.*s', range: %u-%u (0x%x - 0x%x)",state,(int)(seg[1]-seg[0]),b+seg[0],(uint)sum[0],(uint)sum[1],(uint)sum[0],(uint)sum[1]);
 	}
@@ -271,7 +277,7 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
   digestbin = SealSearch(Rec,"@digest");
   EVP_DigestFinal(ctx64,digestbin->Value,&mdsize); // store the digest
 
-  if (Verbose)
+  if (Verbose > 1)
     {
     unsigned int i;
     printf("DEBUG Digest: ");
@@ -368,7 +374,7 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
   digestbin->ValueLen = mdsize;
   free(digestbin->Value);
   digestbin->Value = (byte*)mdval;
-  if (Verbose)
+  if (Verbose > 1)
     {
     unsigned int i;
     printf("DEBUG Double Digest: ");

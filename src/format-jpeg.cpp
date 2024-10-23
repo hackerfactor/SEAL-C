@@ -343,7 +343,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *Mmap, size_t FFDAoff
   MmapFree(Mnew);
 
   Rec = SealRotateRecords(Rec);
-  printf("Signature record #%ld added.\n",(long)SealGetIindex(Rec,"@s",2));
+  printf(" Signature record #%ld added: %s\n",(long)SealGetIindex(Rec,"@s",2),fname);
   return(Rec);
 } /* Seal_JPEGsign() */
 

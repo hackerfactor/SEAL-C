@@ -122,9 +122,10 @@ sealfield *	SealSetU32index	(sealfield *vfhead, const char *Field, int Index, ui
 uint64_t	SealGetU64index	(sealfield *vfhead, const char *Field, int Index);
 sealfield *	SealSetU64index	(sealfield *vfhead, const char *Field, int Index, uint64_t Value);
 
-// size_t data (as an array); this is an int that matches the max memory for the machine
+// size_t data (as an array); this is an int that matches the native integer size for the machine
 size_t		SealGetIindex	(sealfield *vfhead, const char *Field, int Index);
 sealfield *	SealSetIindex	(sealfield *vfhead, const char *Field, int Index, size_t Value);
+sealfield *	SealAddI	(sealfield *vfhead, const char *Field, size_t Value);
 
 // Comparison
 

@@ -720,24 +720,65 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
   else
 	{
 	char *Txt;
-	printf("SEAL record #%ld is valid.",signum);
-	printf(" Signed");
+
+	printf("SEAL record #%ld is valid.\n",signum);
+
+	if (Verbose)
+	  {
+	  sealfield *range;
+	  const size_t *rangeval;
+	  int i,MaxRange;
+	  range = SealSearch(Rec,"@digestrange");
+	  if (range && (range->ValueLen > 0)) // better always be defined!
+	    {
+	    rangeval = (const size_t*)(range->Value);
+	    MaxRange = range->ValueLen / sizeof(size_t);
+	    printf(" Signed bytes: ");
+	    for(i=0; i < MaxRange; i++)
+	      {
+	      if (i%2) { printf("-%ld",(long)(rangeval[i])-1); } // end
+	      else // start
+	        {
+		if (i > 0) { printf(", "); }
+	        printf("%ld",(long)(rangeval[i]));
+		}
+	      }
+	    printf("\n");
+	    }
+	  }
+
 	Txt = SealGetText(Rec,"@sigdate");
 	if (Txt && Txt[0])
 	  {
+	  printf(" Signed");
 	  printf(" %.4s-%.2s-%.2s",Txt,Txt+4,Txt+6);
 	  printf(" at %.2s:%.2s:%.2s",Txt+8,Txt+10,Txt+12);
 	  if (Txt[14]=='.') { printf("%s",Txt+14); }
-	  printf(" GMT");
+	  printf(" GMT\n");
 	  }
+
 	Txt = SealGetText(Rec,"d");
+	printf(" Signed");
 	printf(" by %s",Txt);
+
 	Txt = SealGetText(Rec,"id");
 	if (Txt && Txt[0])
 	  {
 	  printf(" for %s",Txt);
 	  }
-	printf(".\n");
+	printf("\n");
+
+	Txt = SealGetText(Rec,"copyright");
+	if (Txt && Txt[0])
+	  {
+	  printf(" Copyright: %s\n",Txt);
+	  }
+
+	Txt = SealGetText(Rec,"info");
+	if (Txt && Txt[0])
+	  {
+	  printf(" Comment: %s\n",Txt);
+	  }
 	}
 
   return(Rec);

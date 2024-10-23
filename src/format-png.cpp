@@ -359,7 +359,7 @@ sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *Mmap, size_t IEND_offset)
   MmapFree(Mnew);
 
   Rec = SealRotateRecords(Rec);
-  printf("Signature record #%ld added.\n",(long)SealGetIindex(Rec,"@s",2));
+  printf(" Signature record #%ld added: %s\n",(long)SealGetIindex(Rec,"@s",2),fname);
   return(Rec);
 } /* Seal_PNGsign() */
 
