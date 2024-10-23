@@ -38,7 +38,7 @@ If you don't have DNS configured, then you can test with your public key:
 
 ## Current Status
 This is the initial release.
-- It only supports PNG right now. Other formats, like JPEG, PPM, MOV, etc. are coming very soon.
+- It only supports PNG and JPEG right now. Other formats, like PPM, MOV, etc. are coming very soon.
 - Needs an autogen for building the code. (How do I make autogen require openssl 3.x?)
 - It needs automated regression testing.
 - RSA works. I haven't tested EC very much. And some EC algorithms (e.g., P-384) are not working for some unknown reason. I need to add more crypto options.
