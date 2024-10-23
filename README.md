@@ -14,13 +14,13 @@ This code currently supports static-files only. It does not support streaming da
 
 |Image Format|Write Support|Read Support|
 |------|-------------|------------|
-|JPEG  |SEAL blocks.|All other applicaton blocks.|
-|PNG   |SEAL or text chunks.|All other text chunks.|
-|WEBP  |No, but coming soon.|No, but coming soon.|
-|HEIC  |No, but coming soon.|No, but coming soon.|
-|TIFF  |No, but coming soon.|No, but coming soon.|
-|DICOM |No, but coming soon.|No, but coming soon.|
-|EXIF  |No.|No, but coming soon.|
+|JPEG  |SEAL blocks.|All SEAL and applicaton blocks.|
+|PNG   |SEAL or text chunks.|All SEAL and text chunks.|
+|WEBP  |Coming soon.|Coming soon.|
+|HEIC  |Coming soon.|Coming soon.|
+|TIFF  |Coming soon.|Coming soon.|
+|DICOM |Coming soon.|Coming soon.|
+|EXIF  |No.|Coming soon.|
 |XMP   |No.|Reads as a text field.|
 |FAX   |No.|No. Seriously, just no.|
 |GIF   |TBD|TBD|
@@ -28,23 +28,24 @@ This code currently supports static-files only. It does not support streaming da
 
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
-|MP3   |No, but coming soon.|No, but coming soon.|
-|MKA   |No, but coming soon.|No, but coming soon.|
-|WAV   |No, but coming soon.|No, but coming soon.|
+|MP3   |Coming soon.|Coming soon.|
+|MKA   |Coming soon.|Coming soon.|
+|WAV   |Coming soon.|Coming soon.|
 
 |Video Format|Write Support|Read Support|
 |------|-------------|------------|
-|MP4  |No, but coming soon.|No, but coming soon.|
-|3GP  |No, but coming soon.|No, but coming soon.|
-|HEIF  |No, but coming soon.|No, but coming soon.|
-|Quicktime  |No, but coming soon.|No, but coming soon.|
-|AVI   |No, but coming soon.|No, but coming soon.|
-|WEBM  |No, but coming soon.|No, but coming soon.|
-|MKV   |No, but coming soon.|No, but coming soon.|
+|MP4  |Coming soon.|Coming soon.|
+|3GP  |Coming soon.|Coming soon.|
+|HEIF  |Coming soon.|Coming soon.|
+|Quicktime  |Coming soon.|Coming soon.|
+|AVI   |Coming soon.|Coming soon.|
+|WEBM  |Coming soon.|Coming soon.|
+|MKV   |Coming soon.|Coming soon.|
 
 |Documentation Format|Write Support|Read Support|
 |------|-------------|------------|
-|OpenDocument (docx, pptx, etc.)|No, but coming soon.|No, but coming soon.|
-|HTML |No, but coming soon.|No, but coming soon.|
-|Plain Text |No, but coming soon.|No, but coming soon.|
+|OpenDocument (docx, pptx, etc.)|Coming soon.|Coming soon.|
+|PDF |Coming soon.|Coming soon.|
+|HTML |Coming soon.|Coming soon.|
+|Plain Text |Coming soon.|Coming soon.|
 
