@@ -190,9 +190,9 @@ sealfield *	SealSignURL	(sealfield *Args)
   json = Json2Seal(SealSearch(Args,"@curldata"));
   if (json)
     {
-    if (Verbose)
+    if (Verbose > 1)
 	{
-	if (Verbose > 1) { DEBUGWALK("Remote results",json); }
+	if (Verbose > 2) { DEBUGWALK("Remote results",json); }
 	else
 	  {
 	  jsonv = SealSearch(json,"double-digest");

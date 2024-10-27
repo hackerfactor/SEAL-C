@@ -90,10 +90,34 @@
      If any contain a regex that matches the SEAL record, then use it.
    - When you hit the ffd9, STOP! Anything else is nested.
 
+ ====
+ Special case: MPF
+ The "Multi-Picture Format" is an APP block that references images stored
+ after the end of the JPEG. (Why? Because why should they follow the standard?)
+ This is commonly used by Apple and Samsung to store depth maps, and by some
+ cameras for storing large preview images.
+
+ The APP block points to an offset after the image.
+
+ Problem #1:
+ If SEAL inserts data, then the offset will be wrong.
+ Detect this case and fix it.
+
+ Problem #2:
+ If SEAL appeands a 2nd signature, then either the offset will be wrong,
+ *or* we correct the offset but then the previous signature will be wrong.
+ Solution: For the first signature, warn if it's not finalized.
+ Solution: Subsequent signtures, warn that the MPF pointers will be wrong.
+   - Don't try to correct the previously fixed MPF offsets!
+   - Don't exclude the MPF pointers from the signature since that can
+     permit unauthorized alterations to the file.
+ 
  ************************************************/
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+
+#include <endian.h> // for MPF endian
 
 #include "seal.hpp"
 #include "files.hpp"
@@ -138,27 +162,27 @@ sealfield *     _JPEGblockSign   (sealfield *Args, mmapfile *Mmap, size_t Offset
    *****/
   Args = SealDel(Args,"b");
   if (SealGetCindex(Args,"@sflags",0)=='F') // if exists, then append
-        {
-        // if appending, overlap signatures to prevent insertion attacks.
-        Args = SealSetText(Args,"b","P");
-        }
+	{
+	// if appending, overlap signatures to prevent insertion attacks.
+	Args = SealSetText(Args,"b","P");
+	}
   else
-        {
-        // if starting from the beginning of the file
-        Args = SealSetText(Args,"b","F");
-        }
+	{
+	// if starting from the beginning of the file
+	Args = SealSetText(Args,"b","F");
+	}
   // Range covers signature and end of record.
   Args = SealAddText(Args,"b","~S");
 
   // Check for appending
   if (!Opt || !strstr(Opt,"append")) // if not append
-        {
-        Args = SealAddText(Args,"b",",s~f");
-        }
+	{
+	Args = SealAddText(Args,"b",",s~f");
+	}
   else
-        {
-        Args = SealAddText(Args,"b",",s~s+3"); // 3 for '"/>'
-        }
+	{
+	Args = SealAddText(Args,"b",",s~s+3"); // 3 for '"/>'
+	}
 
   /*****
    create the SEAL record!
@@ -181,10 +205,7 @@ sealfield *     _JPEGblockSign   (sealfield *Args, mmapfile *Mmap, size_t Offset
      "@S" is the signature location, relative to the start of the SEAL record.
 
      Make 'S~s' relative to the start of the file.
-     The SEAL record is being built inside a PNG chunk.
-     The PNG chunk starts at Offset (absolute file location).
-     The PNG chunk has an 8 byte header (length+type).
-     A text chunk has a 5 byte field (+5).
+     The SEAL record is being built inside a JPEG block.
      So the start of the signature, relative to the file, is: @S + Offset + BlockHeader
      *****/
     Args = SealCopy(Args,"@sflags","@sflags"); // Flags may be updated
@@ -236,6 +257,191 @@ sealfield *     _JPEGblockSign   (sealfield *Args, mmapfile *Mmap, size_t Offset
   return(Args);
 } /* _JPEGblockSign() */
 
+/**************************************
+ _SealFileWriteMPF(): Update the MPF record's offsets.
+ **************************************/
+void	_SealFileWriteMPF	(FILE *Fout, size_t IncValue, size_t FFDAoffset, size_t *MPFoffset, mmapfile *Mmap)
+{
+  /*****
+   Multi-Picture Format
+   Ref: https://web.archive.org/web/20130921053834/http://www.cipa.jp/english/hyoujunka/kikaku/pdf/DC-007_E.pdf
+   (If you thought JPEG was overly complicated, wait until you see MPF!)
+
+   MPF can use big or little endian for values.
+   MPF uses a chain of image file directory (IFD) elements.
+   Each IFD contains a list of elements.
+   Some elements define the purpose, others provide pointers to data.
+
+   4 bytes: "II\0\0" or "MM\0\0" for little or big endian.
+     (II for intel/little, MM for motorola/big)
+   4 bytes: Offset to first image file directory (IFD) (relative to endian definition)
+
+   Then comes a list of 12-byte offsets for the image file directories (IFD):
+     2 byte count
+     2 byte type
+     4 byte value
+     4 byte offset to next IFD (relative to endian definition)
+   If type is 0xb001, then it's the number of entries
+   If type is 0xb002, then it's the offset to the entries
+     Now process the entries!
+     Each entry is 16 bytes.
+       4 byte: attributes (type of image)
+       4 byte: size
+       4 byte: offset relative to the endian definition
+         This needs to be incremented by IncValue.
+       2 byte: dependency
+       2 byte: dependency
+   *****/
+  int Endian=0;
+  sealfield *MPF;
+  size_t v, ifdoffset, type;
+  size_t count, co, c;
+  size_t entries, entriesoffset, eo, e, esize, eoffset;
+  bool IsError=false;
+
+  // Allocate memory
+  MPF = SealSetBin(NULL, "MPF", MPFoffset[1]-MPFoffset[0], Mmap->mem + MPFoffset[0]);
+  MPF->Type='x'; // for debugging
+
+  // Skip APP header
+  ifdoffset = 6; // uint16(APPlen) MPF \0
+
+  // Find endian
+  if (ifdoffset+4 > MPF->ValueLen) { IsError=true; goto MPFdone; }
+  if (!memcmp(MPF->Value+ifdoffset,"II*\0",4)) { Endian = 1234; }
+  else if (!memcmp(MPF->Value+ifdoffset,"MM\0*",4)) { Endian = 4321; }
+  else { IsError=true; goto MPFdone; }
+
+  // Process each IFD (stop at zero or if it tries to go backwards; no loops!
+  ifdoffset+=4;
+  while((ifdoffset > 0) && (ifdoffset+6+4 < MPF->ValueLen))
+    {
+    // Load value by endian
+    if (Endian == 1234)
+      { v = (MPF->Value[ifdoffset+3] << 24) | (MPF->Value[ifdoffset+2] << 16) | (MPF->Value[ifdoffset+1] << 8) | MPF->Value[ifdoffset+0]; }
+    else
+      { v = (MPF->Value[ifdoffset+0] << 24) | (MPF->Value[ifdoffset+1] << 16) | (MPF->Value[ifdoffset+2] << 8) | MPF->Value[ifdoffset+3]; }
+    v += 6; // relative to endian definition
+
+    // Now process the records
+    entriesoffset = entries = 0;
+    if (v == 0) { break; } // done
+    if (ifdoffset+2 > MPF->ValueLen) { IsError=true; goto MPFdone; } // overflow
+    if (v <= ifdoffset) { IsError=true; goto MPFdone; } // looping
+    ifdoffset = v;
+
+    if (Endian == 1234) { count = (MPF->Value[ifdoffset+1] << 8) | MPF->Value[ifdoffset+0]; }
+    else { count = (MPF->Value[ifdoffset+0] << 8) | MPF->Value[ifdoffset+1]; }
+    ifdoffset += 2;
+
+    for(c=0; c < count; c++)
+      {
+      co = ifdoffset; // count offset
+      ifdoffset += 12;
+
+      if (co + 12 > MPF->ValueLen) { IsError=true; goto MPFdone; } // overflow
+      if (Endian == 1234) { type = (MPF->Value[co+1] << 8) | MPF->Value[co+0]; }
+      else { type = (MPF->Value[co+0] << 8) | MPF->Value[co+1]; }
+
+      co += 8;
+      if (type == 0xb001) // number of images
+	{
+	if (Endian == 1234)
+	  { entries = (MPF->Value[co+3] << 24) | (MPF->Value[co+2] << 16) | (MPF->Value[co+1] << 8) | MPF->Value[co+0]; }
+	else
+	  { entries = (MPF->Value[co+0] << 24) | (MPF->Value[co+1] << 16) | (MPF->Value[co+2] << 8) | MPF->Value[co+3]; }
+	}
+      if (type == 0xb002) // if it's the offset to an image
+	{
+	if (Endian == 1234)
+	  { entriesoffset = (MPF->Value[co+3] << 24) | (MPF->Value[co+2] << 16) | (MPF->Value[co+1] << 8) | MPF->Value[co+0]; }
+	else
+	  { entriesoffset = (MPF->Value[co+0] << 24) | (MPF->Value[co+1] << 16) | (MPF->Value[co+2] << 8) | MPF->Value[co+3]; }
+	// Ugh. The offset is relative 
+	entriesoffset += 6; // relative to endian definition
+	}
+      } // foreach entry
+
+    // Now process each entry for the IFD
+    if (entriesoffset <= 0) { entries=0; } // not set; skip any entries
+    for(e=0; e < entries; e++)
+	{
+        /*****
+         Each entry has 16 bytes, but I only care about
+         the offset bytes 8-11.
+         These often point to:
+           0 = base image. Yes, MPF can point to the image that contains the MPF.
+	   Thumbnail in EXIF (if the EXIF comes after the MPF)
+	   Some place after the end of image (0xffd9).
+         I only need to fix points for anything after the 0xffda.
+         *****/
+        // Any overflow? Just process the next IFD.
+        eo = entriesoffset + e*16;
+        if (eo + 12 > MPF->ValueLen) { break; }
+
+	// 4-bytes: skip attribute/type
+
+	// 4-bytes: Load size
+        if (Endian == 1234) { esize = (MPF->Value[eo+7] << 24) | (MPF->Value[eo+6] << 16) | (MPF->Value[eo+5] << 8) | MPF->Value[eo+4]; }
+        else { esize = (MPF->Value[eo+4] << 24) | (MPF->Value[eo+5] << 16) | (MPF->Value[eo+6] << 8) | MPF->Value[eo+7]; }
+
+	// 4-bytes: Load offset
+        if (Endian == 1234) { eoffset = (MPF->Value[eo+11] << 24) | (MPF->Value[eo+10] << 16) | (MPF->Value[eo+9] << 8) | MPF->Value[eo+8]; }
+        else { eoffset = (MPF->Value[eo+8] << 24) | (MPF->Value[eo+9] << 16) | (MPF->Value[eo+10] << 8) | MPF->Value[eo+11]; }
+
+	// 4-bytes: Skip dependents flags
+
+	// Now: What needs to shift???
+	if ((eoffset <= FFDAoffset) && (eoffset+esize < FFDAoffset)) { ; } // no change
+
+	else if ((eoffset <= FFDAoffset) && (eoffset+esize >= FFDAoffset)) // size grows
+	  {
+	  // size is going to increase 
+	  esize += IncValue;
+	  if (Endian == 1234) { esize = htole32(esize); }
+	  else { esize = htobe32(esize); }
+	  MPF->Value[eo+7] = (esize >> 24) & 0xff;
+	  MPF->Value[eo+6] = (esize >> 16) & 0xff;
+	  MPF->Value[eo+5] = (esize >> 8) & 0xff;
+	  MPF->Value[eo+4] = esize & 0xff;
+	  }
+
+	else if (eoffset > FFDAoffset) // offset shifts
+          {
+	  eoffset += IncValue;
+	  if (Endian == 1234) { eoffset = htole32(eoffset); }
+	  else { eoffset = htobe32(eoffset); }
+	  MPF->Value[eo+11] = (eoffset >> 24) & 0xff;
+	  MPF->Value[eo+10] = (eoffset >> 16) & 0xff;
+	  MPF->Value[eo+9] = (eoffset >> 8) & 0xff;
+	  MPF->Value[eo+8] = eoffset & 0xff;
+	  }
+        } // foreach entry
+
+    // Load pointer to next IFD
+    if (Endian == 1234)
+	{ v = (MPF->Value[ifdoffset+3] << 24) | (MPF->Value[ifdoffset+2] << 16) | (MPF->Value[ifdoffset+1] << 8) | MPF->Value[ifdoffset+0]; }
+    else
+	{ v = (MPF->Value[ifdoffset+0] << 24) | (MPF->Value[ifdoffset+1] << 16) | (MPF->Value[ifdoffset+2] << 8) | MPF->Value[ifdoffset+3]; }
+    if (v < ifdoffset) { break; } // no loops
+    if (v == 0) { break; } // no next IFD
+    ifdoffset = v+6;
+    } // foreach item in the IFD
+
+  
+MPFdone:
+  if (IsError)
+    {
+    printf("ERROR: Invalid MPF metadata block; not fixing.\n");
+    SealFileWrite(Fout, MPFoffset[1]-MPFoffset[0], Mmap->mem + MPFoffset[0]);
+    }
+  else
+    {
+    SealFileWrite(Fout, MPF->ValueLen, MPF->Value);
+    }
+  SealFree(MPF);
+  return;
+} /* _SealFileWriteMPF() */
 #pragma GCC visibility pop
 
 /**************************************
@@ -291,6 +497,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *Mmap, size_t FFDAoff
   FILE *Fout;
   sealfield *block;
   mmapfile *Mnew;
+  size_t MPFoffset[2]={0,0};
   size_t OldBlockLen;
 
   fname = SealGetText(Rec,"@FilenameOut");
@@ -298,16 +505,27 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *Mmap, size_t FFDAoff
 
   // Is there an insertion point?
   if (FFDAoffset == 0)
-        {
-        fprintf(stderr,"ERROR: JPEG is truncated; cannot sign. Aborting.\n");
-        }
+	{
+	fprintf(stderr,"ERROR: JPEG is truncated; cannot sign. Aborting.\n");
+	}
 
   // Check if file is finalized (abort if it is)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
-        {
-        fprintf(stderr,"ERROR: JPEG is finalized; cannot sign. Aborting.\n");
-        exit(1);
-        }
+	{
+	fprintf(stderr,"ERROR: JPEG is finalized; cannot sign. Aborting.\n");
+	exit(1);
+	}
+
+  // Check for MPF
+  MPFoffset[0] = SealGetIindex(Rec,"@jpegmpf",0);
+  MPFoffset[1] = SealGetIindex(Rec,"@jpegmpf",1);
+  if ((MPFoffset[0] > 0) && (SealGetIindex(Rec,"@s",2) > 1))
+	{
+	fprintf(stderr,"WARNING: JPEG's MPF metadata cannot be updated for multiple signatures.\n");
+	MPFoffset[0]=0;
+	}
+
+  // Open file for writing!
   Fout = SealFileOpen(fname,"w+b"); // returns handle or aborts
 
   // Grab the new block placeholder
@@ -318,9 +536,23 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *Mmap, size_t FFDAoff
   rewind(Fout); // should not be needed
 
   // Store up to the 0xffda
-  SealFileWrite(Fout, FFDAoffset, Mmap->mem);
+  if (MPFoffset[0] == 0)
+    {
+    SealFileWrite(Fout, FFDAoffset, Mmap->mem);
+    }
+  else
+    {
+    // Write up to MPF
+    SealFileWrite(Fout, MPFoffset[0], Mmap->mem);
+    // Write updated MPF
+    _SealFileWriteMPF(Fout, block->ValueLen, FFDAoffset, MPFoffset, Mmap);
+    // Write from end-of-MPF to 0xffda
+    SealFileWrite(Fout, FFDAoffset - MPFoffset[1], Mmap->mem + MPFoffset[1]);
+    }
+
   // Append signature block
   SealFileWrite(Fout, block->ValueLen, block->Value);
+
   // Store everything else (0xffda, stream, and any trailers)
   SealFileWrite(Fout, Mmap->memsize - FFDAoffset, Mmap->mem + FFDAoffset);
   SealFileClose(Fout);
@@ -333,10 +565,10 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *Mmap, size_t FFDAoff
   block->Type = 'x';
   // Block size better not change!!!
   if (OldBlockLen != block->ValueLen)
-        {
-        fprintf(stderr,"ERROR: record size changed while writing. Aborting.\n");
-        exit(1);
-        }
+	{
+	fprintf(stderr,"ERROR: record size changed while writing. Aborting.\n");
+	exit(1);
+	}
 
   // Update file with new signature
   memcpy(Mnew->mem + FFDAoffset, block->Value, block->ValueLen);
@@ -384,6 +616,8 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
 
   Offset=2; // skip ffd8 header; it has no length.
   BlockType = 0xffd8;
+  Args = SealDel(Args,"@jpegmpf"); // make sure it's clean
+
   while((Offset+4 < Mmap->memsize) && (BlockType != 0xffd9))
     {
     /*****
@@ -447,8 +681,8 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
 	// Store the first MPF
 	if (!SealSearch(Args,"@jpegmpf"))
 	  {
-	  Args = SealSetIindex(Rec,"@jpegmpf",0,Offset+2); // start of MPF data
-	  Args = SealSetIindex(Rec,"@jpegmpf",1,Offset+2+BlockSize); // end of MPF data
+	  Args = SealSetIindex(Args,"@jpegmpf",0,Offset+2); // start of MPF data
+	  Args = SealSetIindex(Args,"@jpegmpf",1,Offset+2+BlockSize); // end of MPF data
 	  }
 	// MPF doesn't support comments, so don't scan it.
 	goto NextBlock;
@@ -468,7 +702,7 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
        *****/
       int kl;
       static struct // known block types to skip
-        {
+	{
 	int LabelLen; 
 	const char *Label; // some labels are null-terminated; "standard" /smh
 	} KnownLabel[] =
@@ -500,11 +734,11 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
 	  { 14, "Photoshop 3.0\0" },
 	  { 17, "GenaPhotoStamperd" },
 	  { 0, NULL } // end marker
-          // Permit "XMP\0" for XMP metadata
-          // Permit "http://ns.adobe.com/\0" for XMP extension
+	  // Permit "XMP\0" for XMP metadata
+	  // Permit "http://ns.adobe.com/\0" for XMP extension
 	};
       for(kl=0; KnownLabel[kl].Label && ((size_t)KnownLabel[kl].LabelLen+2 < BlockSize); kl++)
-        {
+	{
 	if (!memcmp(Mmap->mem+Offset+4, KnownLabel[kl].Label, KnownLabel[kl].LabelLen))
 	  {
 	  //DEBUGPRINT("Skipping known: %s",KnownLabel[kl].Label);
@@ -531,9 +765,9 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
 	if (!Rec) { break; } // nothing found
 
 	// Found a signature!
-        // Verify the data!
-        Rec = SealCopy2(Rec,"@pubkeyfile",Args,"@pubkeyfile");
-        Rec = SealVerify(Rec,Mmap);
+	// Verify the data!
+	Rec = SealCopy2(Rec,"@pubkeyfile",Args,"@pubkeyfile");
+	Rec = SealVerify(Rec,Mmap);
 
 	// Iterate on remainder
 	RecEnd = SealGetIindex(Rec,"@RecEnd",0);
