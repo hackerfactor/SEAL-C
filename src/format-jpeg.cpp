@@ -519,7 +519,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *Mmap, size_t FFDAoff
   // Check for MPF
   MPFoffset[0] = SealGetIindex(Rec,"@jpegmpf",0);
   MPFoffset[1] = SealGetIindex(Rec,"@jpegmpf",1);
-  if ((MPFoffset[0] > 0) && (SealGetIindex(Rec,"@s",2) > 1))
+  if ((MPFoffset[0] > 0) && (SealGetIindex(Rec,"@s",2) > 0))
 	{
 	fprintf(stderr,"WARNING: JPEG's MPF metadata cannot be updated for multiple signatures.\n");
 	MPFoffset[0]=0;
