@@ -16,30 +16,30 @@ This code currently supports static-files only. It does not support streaming da
 |------|-------------|------------|
 |JPEG  |SEAL blocks.|All SEAL and applicaton blocks.|
 |PNG   |SEAL or text chunks.|All SEAL and text chunks.|
-|WEBP  |Coming soon.|Coming soon.|
+|WEBP  |SEAL blocks|All SEAL, XMP, and informational (INFO) blocks.|
 |HEIC  |Coming soon.|Coming soon.|
 |TIFF  |Coming soon.|Coming soon.|
 |DICOM |Coming soon.|Coming soon.|
 |EXIF  |No.|Coming soon.|
 |XMP   |No.|Reads as a text field.|
-|FAX   |No.|No. Seriously, just no.|
 |GIF   |TBD|TBD|
 |BMP   |No (no metadata support)|No (no metadata support)|
+|FAX   |No.|No. Seriously, just no.|
 
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
 |MP3   |Coming soon.|Coming soon.|
 |MKA   |Coming soon.|Coming soon.|
-|WAV   |Coming soon.|Coming soon.|
+|WAV   |SEAL blocks|All SEAL, XMP, and info blocks.|
 
 |Video Format|Write Support|Read Support|
 |------|-------------|------------|
-|MP4  |Coming soon.|Coming soon.|
-|3GP  |Coming soon.|Coming soon.|
+|MP4   |Coming soon.|Coming soon.|
+|3GP   |Coming soon.|Coming soon.|
 |HEIF  |Coming soon.|Coming soon.|
 |Quicktime  |Coming soon.|Coming soon.|
-|AVI   |Coming soon.|Coming soon.|
-|WEBM  |Coming soon.|Coming soon.|
+|AVI   |SEAL blocks|All SEAL, XMP, and info blocks.|
+|WEBM  |SEAL blocks|All SEAL, XMP, and info blocks.|
 |MKV   |Coming soon.|Coming soon.|
 
 |Documentation Format|Write Support|Read Support|
