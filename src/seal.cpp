@@ -133,6 +133,16 @@ void	SealWalk	(sealfield *vf)
 } /* SealWalk() */
 
 /**************************************
+ SealSetType(): Change the type character for debugging.
+ **************************************/
+void	SealSetType	(sealfield *vfhead, const char *Field, const char Type)
+{
+  sealfield *vf;
+  vf = SealSearch(vfhead,Field);
+  if (vf) { vf->Type = Type; }
+} /* SealSetType() */
+
+/**************************************
  SealCmp(): Compare two fields.
  NOTE: There is a difference between "not defined"
  and "defined as empty".
@@ -796,6 +806,17 @@ char	SealGetCindex	(sealfield *vfhead, const char *Field, int Index)
   if (!v) { return(0); }
   return(v[0]);
 }
+
+/**************************************
+ SealIncIindex(): Find an Iindex and increment the value.
+ **************************************/
+sealfield *	SealIncIindex	(sealfield *vfhead, const char *Field, int Index, size_t IncValue)
+{
+  size_t v;
+  v = SealGetIindex(vfhead,Field,Index);
+  v += IncValue;
+  return(SealSetGindex(vfhead,Field,'I',sizeof(size_t),Index,&v));
+} /* SealIncIindex() */
 
 /**************************************
  SealGetBin(): Find a field in the chain of sealfield records.

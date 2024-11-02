@@ -19,7 +19,8 @@
  SealRecord(): Generate the record!
  Returns: '@record' with the complete record
  NOTE: The signature is likely wrong and stubbed out.
- Use @S to fix the signature.
+ Use @S and @s to identify where the signature is located
+ relative to the record.
  ********************************************************/
 sealfield *	SealRecord	(sealfield *Args)
 {
@@ -91,6 +92,7 @@ sealfield *	SealRecord	(sealfield *Args)
 
   // End record
   Args = SealAddText(Args,"@record","\"/>");
+  Args = SealCopy(Args,"@s","@S");
   return(Args);
 } /* SealRecord() */
 

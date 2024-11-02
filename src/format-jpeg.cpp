@@ -122,26 +122,21 @@
 #include "seal.hpp"
 #include "files.hpp"
 #include "seal-parse.hpp"
-#include "sign-digest.hpp"
-#include "sign-record.hpp"
-#include "sign-local.hpp"
-#include "sign-remote.hpp"
-#include "sign-verify.hpp"
+#include "sign.hpp"
 
 #pragma GCC visibility push(hidden)
 /**************************************
- _JPEGblockSign(): Generate the signature block.
- If Mmap is set, then compute checksum and set @p and @s.
- Otherwise, return a stub block.
+ _JPEGblock(): Generate the signature block.
+ Return a stub block.
  Returns record in [@record]
- Returns block in [@JPEGblock]
- Returns offset and length to the signature in [@s]
+ Returns block in [@BLOCK]
+ Returns offset and length to the signature in [@s] relative to @BLOCK
  **************************************/
-sealfield *     _JPEGblockSign   (sealfield *Args, mmapfile *Mmap, size_t Offset, uint16_t Tag)
+sealfield *     _JPEGblock   (sealfield *Args, uint16_t Tag)
 {
   char *Opt;
   size_t i;
-  sealfield *rec, *sig;
+  sealfield *rec;
 
   /*****
    Load options (if present)
@@ -149,8 +144,6 @@ sealfield *     _JPEGblockSign   (sealfield *Args, mmapfile *Mmap, size_t Offset
 
    For signing:
    If the options includes append, then append to the file.
-   If the options includes any valid PNG capitalization of
-   "seAl" or "teXt", then use that chunk name for writing.
    *****/
   Opt = SealGetText(Args,"options"); // grab options list
 
@@ -196,46 +189,14 @@ sealfield *     _JPEGblockSign   (sealfield *Args, mmapfile *Mmap, size_t Offset
     exit(1);
     }
 
-  // Compute the signature
-  if (Mmap)
-    {
-    /*****
-     The digest uses P~p and S~s (stored in @p and @s).
-     However, I only have the SEAL record.
-     "@S" is the signature location, relative to the start of the SEAL record.
-
-     Make 'S~s' relative to the start of the file.
-     The SEAL record is being built inside a JPEG block.
-     So the start of the signature, relative to the file, is: @S + Offset + BlockHeader
-     *****/
-    Args = SealCopy(Args,"@sflags","@sflags"); // Flags may be updated
-    Args = SealCopy(Args,"@p","@s"); // Rotates previous @s to @p
-    Args = SealSetIindex(Args,"@s",0, SealGetIindex(Args,"@S",0)+Offset+2+2+5);
-    Args = SealSetIindex(Args,"@s",1, SealGetIindex(Args,"@S",1)+Offset+2+2+5);
-
-    /* Compute the digest and sign it */
-    Args = SealDigest(Args, Mmap); // compute digest
-    switch(SealGetCindex(Args,"@mode",0)) // sign it
-      {
-      case 'S': Args = SealSignURL(Args); break;
-      case 's': Args = SealSignLocal(Args); break;
-      default: break; // never happens
-      }
-
-    // Signature is ready-to-go in '@signatureenc'
-    // Size is already pre-computed, so it will fit for overwriting.
-    // Copy signature into record.
-    sig = SealSearch(Args,"@signatureenc");
-    memcpy(rec->Value+SealGetIindex(Args,"@S",0), sig->Value, sig->ValueLen);
-    }
   /*****
-   Convert the signature in '@record' to a PNG chunk.
+   Convert the signature in '@record' to a JPEG chunk.
    *****/
-  Args = SealDel(Args,"@JPEGblock");
+  Args = SealDel(Args,"@BLOCK");
 
   // Insert: Block name
-  Args = SealSetCindex(Args,"@JPEGblock",0,0xff);
-  Args = SealSetCindex(Args,"@JPEGblock",1,Tag & 0xff);
+  Args = SealSetCindex(Args,"@BLOCK",0,0xff);
+  Args = SealSetCindex(Args,"@BLOCK",1,Tag & 0xff);
 
   // Insert: Block size
   // +2 for the space needed for storing the size
@@ -246,16 +207,21 @@ sealfield *     _JPEGblockSign   (sealfield *Args, mmapfile *Mmap, size_t Offset
     printf("ERROR: SEAL record is too large for JPEG. Aborting.\n");
     exit(1);
     }
-  Args = SealSetCindex(Args,"@JPEGblock",2, (i>>8) & 0xff);
-  Args = SealSetCindex(Args,"@JPEGblock",3, i & 0xff);
-  Args = SealAddBin(Args,"@JPEGblock",5,(const byte*)"SEAL\0");
+  Args = SealSetCindex(Args,"@BLOCK",2, (i>>8) & 0xff);
+  Args = SealSetCindex(Args,"@BLOCK",3, i & 0xff);
+  Args = SealAddBin(Args,"@BLOCK",5,(const byte*)"SEAL\0");
+  SealSetType(Args,"@BLOCK",'x');
+
+  // Increment 's' relative to block
+  Args = SealIncIindex(Args, "@s", 0, SealGetSize(Args,"@BLOCK"));
+  Args = SealIncIindex(Args, "@s", 1, SealGetSize(Args,"@BLOCK"));
 
   // Insert: SEAL record
-  Args = SealAddBin(Args,"@JPEGblock",rec->ValueLen, rec->Value);
-  rec->Type = 'x'; // debug with hex dump
+  Args = SealAddBin(Args,"@BLOCK",rec->ValueLen, rec->Value);
+  SealSetType(Args,"@BLOCK",'x'); // debug with hex dump
 
   return(Args);
-} /* _JPEGblockSign() */
+} /* _JPEGblock() */
 
 /**************************************
  _SealFileWriteMPF(): Update the MPF record's offsets.
@@ -317,10 +283,8 @@ void	_SealFileWriteMPF	(FILE *Fout, size_t IncValue, size_t FFDAoffset, size_t *
   while((ifdoffset > 0) && (ifdoffset+6+4 < MPF->ValueLen))
     {
     // Load value by endian
-    if (Endian == 1234)
-      { v = (MPF->Value[ifdoffset+3] << 24) | (MPF->Value[ifdoffset+2] << 16) | (MPF->Value[ifdoffset+1] << 8) | MPF->Value[ifdoffset+0]; }
-    else
-      { v = (MPF->Value[ifdoffset+0] << 24) | (MPF->Value[ifdoffset+1] << 16) | (MPF->Value[ifdoffset+2] << 8) | MPF->Value[ifdoffset+3]; }
+    if (Endian == 1234) { v = readle32(MPF->Value+ifdoffset); }
+    else { v = readbe32(MPF->Value+ifdoffset); }
     v += 6; // relative to endian definition
 
     // Now process the records
@@ -330,8 +294,8 @@ void	_SealFileWriteMPF	(FILE *Fout, size_t IncValue, size_t FFDAoffset, size_t *
     if (v <= ifdoffset) { IsError=true; goto MPFdone; } // looping
     ifdoffset = v;
 
-    if (Endian == 1234) { count = (MPF->Value[ifdoffset+1] << 8) | MPF->Value[ifdoffset+0]; }
-    else { count = (MPF->Value[ifdoffset+0] << 8) | MPF->Value[ifdoffset+1]; }
+    if (Endian == 1234) { count = readle16(MPF->Value+ifdoffset); }
+    else { count = readbe16(MPF->Value+ifdoffset); }
     ifdoffset += 2;
 
     for(c=0; c < count; c++)
@@ -340,23 +304,19 @@ void	_SealFileWriteMPF	(FILE *Fout, size_t IncValue, size_t FFDAoffset, size_t *
       ifdoffset += 12;
 
       if (co + 12 > MPF->ValueLen) { IsError=true; goto MPFdone; } // overflow
-      if (Endian == 1234) { type = (MPF->Value[co+1] << 8) | MPF->Value[co+0]; }
-      else { type = (MPF->Value[co+0] << 8) | MPF->Value[co+1]; }
+      if (Endian == 1234) { type = readle16(MPF->Value+co); }
+      else { type = readbe16(MPF->Value+co); }
 
       co += 8;
       if (type == 0xb001) // number of images
 	{
-	if (Endian == 1234)
-	  { entries = (MPF->Value[co+3] << 24) | (MPF->Value[co+2] << 16) | (MPF->Value[co+1] << 8) | MPF->Value[co+0]; }
-	else
-	  { entries = (MPF->Value[co+0] << 24) | (MPF->Value[co+1] << 16) | (MPF->Value[co+2] << 8) | MPF->Value[co+3]; }
+	if (Endian == 1234) { entries = readle32(MPF->Value+co); }
+	else { entries = readbe32(MPF->Value+co); }
 	}
       if (type == 0xb002) // if it's the offset to an image
 	{
-	if (Endian == 1234)
-	  { entriesoffset = (MPF->Value[co+3] << 24) | (MPF->Value[co+2] << 16) | (MPF->Value[co+1] << 8) | MPF->Value[co+0]; }
-	else
-	  { entriesoffset = (MPF->Value[co+0] << 24) | (MPF->Value[co+1] << 16) | (MPF->Value[co+2] << 8) | MPF->Value[co+3]; }
+	if (Endian == 1234) { entriesoffset = readle32(MPF->Value+co); }
+	else { entriesoffset = readbe32(MPF->Value+co); }
 	// Ugh. The offset is relative 
 	entriesoffset += 6; // relative to endian definition
 	}
@@ -382,12 +342,12 @@ void	_SealFileWriteMPF	(FILE *Fout, size_t IncValue, size_t FFDAoffset, size_t *
 	// 4-bytes: skip attribute/type
 
 	// 4-bytes: Load size
-        if (Endian == 1234) { esize = (MPF->Value[eo+7] << 24) | (MPF->Value[eo+6] << 16) | (MPF->Value[eo+5] << 8) | MPF->Value[eo+4]; }
-        else { esize = (MPF->Value[eo+4] << 24) | (MPF->Value[eo+5] << 16) | (MPF->Value[eo+6] << 8) | MPF->Value[eo+7]; }
+        if (Endian == 1234) { esize = readle32(MPF->Value+eo+4); }
+        else { esize = readbe32(MPF->Value+eo+4); }
 
 	// 4-bytes: Load offset
-        if (Endian == 1234) { eoffset = (MPF->Value[eo+11] << 24) | (MPF->Value[eo+10] << 16) | (MPF->Value[eo+9] << 8) | MPF->Value[eo+8]; }
-        else { eoffset = (MPF->Value[eo+8] << 24) | (MPF->Value[eo+9] << 16) | (MPF->Value[eo+10] << 8) | MPF->Value[eo+11]; }
+        if (Endian == 1234) { eoffset = readle32(MPF->Value+eo+8); }
+        else { eoffset = readbe32(MPF->Value+eo+8); }
 
 	// 4-bytes: Skip dependents flags
 
@@ -400,10 +360,7 @@ void	_SealFileWriteMPF	(FILE *Fout, size_t IncValue, size_t FFDAoffset, size_t *
 	  esize += IncValue;
 	  if (Endian == 1234) { esize = htole32(esize); }
 	  else { esize = htobe32(esize); }
-	  MPF->Value[eo+7] = (esize >> 24) & 0xff;
-	  MPF->Value[eo+6] = (esize >> 16) & 0xff;
-	  MPF->Value[eo+5] = (esize >> 8) & 0xff;
-	  MPF->Value[eo+4] = esize & 0xff;
+	  writele32(MPF->Value+eo+4,esize);
 	  }
 
 	else if (eoffset > FFDAoffset) // offset shifts
@@ -411,18 +368,13 @@ void	_SealFileWriteMPF	(FILE *Fout, size_t IncValue, size_t FFDAoffset, size_t *
 	  eoffset += IncValue;
 	  if (Endian == 1234) { eoffset = htole32(eoffset); }
 	  else { eoffset = htobe32(eoffset); }
-	  MPF->Value[eo+11] = (eoffset >> 24) & 0xff;
-	  MPF->Value[eo+10] = (eoffset >> 16) & 0xff;
-	  MPF->Value[eo+9] = (eoffset >> 8) & 0xff;
-	  MPF->Value[eo+8] = eoffset & 0xff;
+	  writele32(MPF->Value+eo+8,eoffset);
 	  }
         } // foreach entry
 
     // Load pointer to next IFD
-    if (Endian == 1234)
-	{ v = (MPF->Value[ifdoffset+3] << 24) | (MPF->Value[ifdoffset+2] << 16) | (MPF->Value[ifdoffset+1] << 8) | MPF->Value[ifdoffset+0]; }
-    else
-	{ v = (MPF->Value[ifdoffset+0] << 24) | (MPF->Value[ifdoffset+1] << 16) | (MPF->Value[ifdoffset+2] << 8) | MPF->Value[ifdoffset+3]; }
+    if (Endian == 1234) { v = readle32(MPF->Value+ifdoffset); }
+    else { v = readbe32(MPF->Value+ifdoffset); }
     if (v < ifdoffset) { break; } // no loops
     if (v == 0) { break; } // no next IFD
     ifdoffset = v+6;
@@ -460,21 +412,21 @@ bool    Seal_isJPEG      (mmapfile *Mmap)
   uint32_t u32;
   size_t u16,u16b;
 
-  u32 = (Mmap->mem[0] << 24) | (Mmap->mem[1] << 16) | (Mmap->mem[2] << 8) | Mmap->mem[3];
+  u32 = readbe32(Mmap->mem);
   if ((u32 & 0xffffffc0) != 0xffd8ffc0) { return(false); } // not a jpeg
 
   /*****
    As a double-check, make sure the next tag looks like a JPEG block that
    points to another JPEG block.
    *****/
-  u16 = (Mmap->mem[4] << 8) | Mmap->mem[5]; // should be tag length+2
+  u16 = readbe16(Mmap->mem+4); // should be tag length+2
   // 4 (current offset) + length (u16) should be another tag (4 bytes for tag+length)
   u16 += 4; // offset to the next tag
   if ((size_t)u16+4 >= Mmap->memsize) { return(false); } // overflow? not a jpeg
 
-  u32  = (Mmap->mem[u16+0] << 8) | Mmap->mem[u16+1]; // check offset
+  u32  = readbe16(Mmap->mem+u16); // check offset
   if ((u32 & 0xffc0) != 0xffc0) { return(false); } // not a jpeg
-  u16b = (Mmap->mem[u16+2] << 8) | Mmap->mem[u16+3]; // check length
+  u16b = readbe16(Mmap->mem+u16+2); // check length
   if ((size_t)u16b+4 >= Mmap->memsize) { return(false); } // overflow? not a jpeg
 
   /*****
@@ -491,14 +443,12 @@ bool    Seal_isJPEG      (mmapfile *Mmap)
  Seal_JPEGsign(): Sign a JPEG.
  Insert a JPEG signature with Tag (APP8 or APP9).
  **************************************/
-sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *Mmap, size_t FFDAoffset, uint16_t Tag)
+sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *MmapIn, size_t FFDAoffset, uint16_t Tag)
 {
   const char *fname;
   FILE *Fout;
   sealfield *block;
-  mmapfile *Mnew;
   size_t MPFoffset[2]={0,0};
-  size_t OldBlockLen;
 
   fname = SealGetText(Rec,"@FilenameOut");
   if (!fname) { return(Rec); } // not signing
@@ -527,55 +477,56 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *Mmap, size_t FFDAoff
 
   // Open file for writing!
   Fout = SealFileOpen(fname,"w+b"); // returns handle or aborts
+  if (!Fout)
+    {
+    fprintf(stderr,"ERROR: Cannot create file (%s). Aborting.\n",fname);
+    exit(1);
+    }
 
   // Grab the new block placeholder
-  Rec = _JPEGblockSign(Rec,NULL,FFDAoffset,Tag);
-  block = SealSearch(Rec,"@JPEGblock");
+  Rec = _JPEGblock(Rec,Tag); // populates "@BLOCK"
+  block = SealSearch(Rec,"@BLOCK");
 
   // Write to file!!!
+  // NOTE: Not using SealInsert() because of special case MPF
   rewind(Fout); // should not be needed
 
   // Store up to the 0xffda
   if (MPFoffset[0] == 0)
     {
-    SealFileWrite(Fout, FFDAoffset, Mmap->mem);
+    SealFileWrite(Fout, FFDAoffset, MmapIn->mem);
     }
   else
     {
     // Write up to MPF
-    SealFileWrite(Fout, MPFoffset[0], Mmap->mem);
+    SealFileWrite(Fout, MPFoffset[0], MmapIn->mem);
     // Write updated MPF
-    _SealFileWriteMPF(Fout, block->ValueLen, FFDAoffset, MPFoffset, Mmap);
+    _SealFileWriteMPF(Fout, block->ValueLen, FFDAoffset, MPFoffset, MmapIn);
     // Write from end-of-MPF to 0xffda
-    SealFileWrite(Fout, FFDAoffset - MPFoffset[1], Mmap->mem + MPFoffset[1]);
+    SealFileWrite(Fout, FFDAoffset - MPFoffset[1], MmapIn->mem + MPFoffset[1]);
     }
+
+  // Make 's' offset relative to the file
+  {
+  size_t *s;
+  s = SealGetIarray(Rec,"@s");
+  s[0] += ftell(Fout);
+  s[1] += ftell(Fout);
+  }
 
   // Append signature block
   SealFileWrite(Fout, block->ValueLen, block->Value);
 
   // Store everything else (0xffda, stream, and any trailers)
-  SealFileWrite(Fout, Mmap->memsize - FFDAoffset, Mmap->mem + FFDAoffset);
+  SealFileWrite(Fout, MmapIn->memsize - FFDAoffset, MmapIn->mem + FFDAoffset);
   SealFileClose(Fout);
 
-  // Compute new digest
-  Mnew = MmapFile(fname,PROT_WRITE);
-  Rec = _JPEGblockSign(Rec,Mnew,FFDAoffset,Tag);
-  OldBlockLen = block->ValueLen;
-  block = SealSearch(Rec,"@JPEGblock");
-  block->Type = 'x';
-  // Block size better not change!!!
-  if (OldBlockLen != block->ValueLen)
-	{
-	fprintf(stderr,"ERROR: record size changed while writing. Aborting.\n");
-	exit(1);
-	}
+  // Insert new signature
+  mmapfile *MmapOut;
+  MmapOut = MmapFile(fname,PROT_WRITE);
+  SealSign(Rec,MmapOut);
+  MmapFree(MmapOut);
 
-  // Update file with new signature
-  memcpy(Mnew->mem + FFDAoffset, block->Value, block->ValueLen);
-  MmapFree(Mnew);
-
-  Rec = SealRotateRecords(Rec);
-  printf(" Signature record #%ld added: %s\n",(long)SealGetIindex(Rec,"@s",2),fname);
   return(Rec);
 } /* Seal_JPEGsign() */
 
@@ -625,14 +576,14 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
      NOTE: This almost never happens -- unless someone is intentionally
      corrupting a JPEG.
      *****/
-    BlockType = (Mmap->mem[Offset+0] << 8) | Mmap->mem[Offset+1];
+    BlockType = readbe16(Mmap->mem+Offset);
     if ((BlockType & 0xffc0) != 0xffc0) { Offset++; continue; }
 
     // Check for SOS
     if (BlockType == 0xffda) { FFDAoffset = Offset; break; } // Done!
 
     // Get current block size
-    BlockSize = (Mmap->mem[Offset+2] << 8) | Mmap->mem[Offset+3];
+    BlockSize = readbe16(Mmap->mem+Offset+2);
     if (BlockSize < 2) // underflow
       {
       fprintf(stderr,"ERROR: JPEG is corrupted. Aborting.\n");

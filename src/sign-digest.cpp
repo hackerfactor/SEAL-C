@@ -15,7 +15,7 @@
 
 #include "seal.hpp"
 #include "files.hpp"
-#include "sign-digest.hpp"
+#include "sign.hpp"
 
 // For openssl 3.x
 #include <openssl/decoder.h>
@@ -131,6 +131,7 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 	Rec = SealAddText(Rec,"@error","' in '");
 	Rec = SealAddTextLen(Rec,"@error",(int)(i-seg[0]),b+seg[0]);
 	Rec = SealAddText(Rec,"@error","'");
+DEBUGWHERE();
 	goto Abort;
 	}
     if (b[i]=='+') // addition symbol
@@ -215,12 +216,18 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 	if (sum[0] < 0) { Rec = SealAddText(Rec,"@error","; underflow"); }
 	if (sum[1] > Mmap->memsize) { Rec = SealAddText(Rec,"@error","; overflow"); }
 	if (sum[1] < sum[0]) { Rec = SealAddText(Rec,"@error","; range begins after it ends"); }
+DEBUGPRINT("Error: sum: %ld %ld vs %ld",(long)(sum[0]), (long)(sum[1]), (long)(Mmap->memsize));
+DEBUGPRINT("Error: %s",SealGetText(Rec,"@error"));
 	goto Abort;
 	}
 
       //DEBUGPRINT("Segment: seg=%d '%.*s', range: %u-%u",state,(int)(seg[1]-seg[0]),b+seg[0],(uint)sum[0],(uint)sum[1]);
       Rec = RangeErrorCheck(Rec,sum,Mmap);
-      if (SealSearch(Rec,"@error")) { goto Abort; }
+      if (SealSearch(Rec,"@error"))
+	{
+DEBUGWHERE();
+	goto Abort;
+	}
 
       // If it made it to here, then it's a valid range!
       if (sum[1] > sum[0])
@@ -327,7 +334,7 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
   digestbin = SealSearch(Rec,"@digest"); // could be empty
   if (!digestbin) // should never happen
     {
-    Rec = SealSetText(Rec,"@error","Digest not computed");
+    if (!SealSearch(Rec,"@error")) { Rec = SealSetText(Rec,"@error","Digest not computed"); }
     return(Rec);
     }
 

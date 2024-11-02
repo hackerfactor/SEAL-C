@@ -25,7 +25,7 @@
 // for SEAL
 #include "seal.hpp"
 #include "seal-parse.hpp"
-#include "sign-digest.hpp"
+#include "sign.hpp"
 #include "files.hpp"
 
 /********************************************************

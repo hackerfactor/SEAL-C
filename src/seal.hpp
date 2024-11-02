@@ -66,11 +66,24 @@ void	DEBUGhexdump	(size_t DataLen, const byte *Data);
 // Common macros
 #define Min(x,y)  ( ((x) < (y)) ? (x) : (y) )
 
+// Reading raw bytes with a specific endian
+#define readbe32(buf)	( (((buf)[0]&0xff)<<24) | (((buf)[1]&0xff)<<16) | (((buf)[2]&0xff)<<8) | ((buf)[3]&0xff) )
+#define readle32(buf)	( (((buf)[3]&0xff)<<24) | (((buf)[2]&0xff)<<16) | (((buf)[1]&0xff)<<8) | ((buf)[0]&0xff) )
+#define readbe16(buf)	( (((buf)[0]&0xff)<<8) | ((buf)[1]&0xff) )
+#define readle16(buf)	( (((buf)[1]&0xff)<<8) | ((buf)[0]&0xff) )
+
+// Writing raw bytes with a specific endian
+#define writebe32(buf,u32) { (buf)[0]=((u32)>>24)&0xff; (buf)[1]=((u32)>>16)&0xff; (buf)[2]=((u32)>>8)&0xff; (buf)[3]=(u32)&0xff; }
+#define writele32(buf,u32) { (buf)[3]=((u32)>>24)&0xff; (buf)[2]=((u32)>>16)&0xff; (buf)[1]=((u32)>>8)&0xff; (buf)[0]=(u32)&0xff; }
+#define writebe16(buf,u16) { (buf)[0]=((u16)>>8)&0xff; (buf)[1]=(u16)&0xff; }
+#define writele16(buf,u16) { (buf)[1]=((u16)>>8)&0xff; (buf)[0]=(u16)&0xff; }
+
 // SEAL structure functions
 sealfield *	SealClone	(sealfield *src);
 
 void	SealFree	(sealfield *vf);
 void	SealWalk	(sealfield *vf);
+void	SealSetType	(sealfield *vfhead, const char *Field, const char Type);
 int	SealCmp	(sealfield *vfhead, const char *Field1, const char *Field2);
 int	SealCmp2	(sealfield *vfhead1, const char *Field1, sealfield *vfhead2, const char *Field2);
 sealfield *	SealDel		(sealfield *vf, const char *Field);
@@ -125,6 +138,7 @@ sealfield *	SealSetU64index	(sealfield *vfhead, const char *Field, int Index, ui
 // size_t data (as an array); this is an int that matches the native integer size for the machine
 size_t		SealGetIindex	(sealfield *vfhead, const char *Field, int Index);
 sealfield *	SealSetIindex	(sealfield *vfhead, const char *Field, int Index, size_t Value);
+sealfield *	SealIncIindex	(sealfield *vfhead, const char *Field, int Index, size_t IncValue);
 sealfield *	SealAddI	(sealfield *vfhead, const char *Field, size_t Value);
 
 // Comparison

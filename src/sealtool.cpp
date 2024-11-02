@@ -28,11 +28,7 @@
 #include "files.hpp"
 #include "formats.hpp"
 #include "seal-parse.hpp"
-#include "sign-digest.hpp"
-#include "sign-record.hpp"
-#include "sign-local.hpp"
-#include "sign-remote.hpp"
-#include "sign-verify.hpp"
+#include "sign.hpp"
 
 /**************************************
  ReadCfg(): Read the config file.
@@ -480,6 +476,7 @@ int main (int argc, char *argv[])
     // Identify the filename format
     if (Seal_isPNG(Mmap)) { FileFormat='P'; } // PNG
     else if (Seal_isJPEG(Mmap)) { FileFormat='J'; } // JPEG
+    else if (Seal_isRIFF(Mmap)) { FileFormat='R'; } // RIFF
     else
 	{
 	fprintf(stdout,"ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
@@ -502,8 +499,9 @@ int main (int argc, char *argv[])
     // Process based on file format
     switch(FileFormat)
     	{
-	case 'P': Args = Seal_PNG(Args,Mmap); break; // PNG
 	case 'J': Args = Seal_JPEG(Args,Mmap); break; // JPEG
+	case 'P': Args = Seal_PNG(Args,Mmap); break; // PNG
+	case 'R': Args = Seal_RIFF(Args,Mmap); break; // RIFF
 	default: break; // should never happen
 	}
 

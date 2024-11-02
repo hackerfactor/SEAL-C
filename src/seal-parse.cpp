@@ -519,7 +519,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	  if (Args)
 	    {
 	    Rec = SealCopy2(Rec,"@p",Args,"@s"); // previous '@s' is now '@p'
-	    Rec = SealSetIindex(Rec,"@s",2,SealGetIindex(Args,"@s",2)+1); // increment record number
+	    Rec = SealIncIindex(Rec,"@s",2,1); // increment record number
 	    Rec = SealCopy2(Rec,"@sflags",Args,"@sflags"); // tell verifier the sflags
 	    Rec = SealCopy2(Rec,"@dnscachelast",Args,"@dnscachelast"); // use any cached DNS
 	    Rec = SealCopy2(Rec,"@public",Args,"@public"); // use any cached DNS

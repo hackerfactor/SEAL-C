@@ -14,7 +14,7 @@
 #include <curl/curl.h>
 #include <string.h> // memset
 #include "seal.hpp"
-#include "sign-remote.hpp"
+#include "sign.hpp"
 #include "json.hpp"
 
 /********************************************************

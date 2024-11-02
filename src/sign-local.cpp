@@ -43,8 +43,7 @@
 #include "seal.hpp"
 #include "files.hpp"
 #include "seal-parse.hpp"
-#include "sign-digest.hpp"
-#include "sign-local.hpp"
+#include "sign.hpp"
 
 // For openssl 3.x
 #include <openssl/decoder.h>

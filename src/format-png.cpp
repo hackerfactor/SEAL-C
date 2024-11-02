@@ -59,11 +59,7 @@
 #include <string.h>
 #include "seal.hpp"
 #include "seal-parse.hpp"
-#include "sign-digest.hpp"
-#include "sign-local.hpp"
-#include "sign-remote.hpp"
-#include "sign-record.hpp"
-#include "sign-verify.hpp"
+#include "sign.hpp"
 #include "files.hpp"
 #include "formats.hpp"
 
@@ -110,22 +106,19 @@ uint32_t	_PNGCrc32	(uint32_t DataLen, byte *Data)
 } /* _PNGCrc32() */
 
 /**************************************
- _PNGchunkSign(): Generate the signature chunk.
+ _PNGchunk(): Generate the signature chunk.
  If Mmap is set, then compute checksum and set @p and @s.
  Otherwise, return a stub chunk.
  Returns record in [@record]
  Returns chunk in [@PNGchunk]
  Returns offset and length to the signature in [@s]
  **************************************/
-sealfield *	_PNGchunkSign	(sealfield *Args, mmapfile *Mmap, size_t Offset)
+sealfield *	_PNGchunk	(sealfield *Args)
 {
   const char *ChunkName="seAl";
   char *Opt;
-  uint32_t u32,opti;
-  size_t ChunkHeaderSize=0;
-  sealfield *rec, *sig;
-
-  ChunkHeaderSize=8; // By default: there is an 8-byte chunk header
+  uint32_t u32,opti, PNGheader;
+  sealfield *rec;
 
   /*****
    Load options (if present)
@@ -137,6 +130,7 @@ sealfield *	_PNGchunkSign	(sealfield *Args, mmapfile *Mmap, size_t Offset)
    "seAl" or "teXt", then use that chunk name for writing.
    *****/
   Opt = SealGetText(Args,"options"); // grab options list
+  PNGheader = 8;
   // Determine the new chunk name
   if (Opt)
     {
@@ -147,8 +141,8 @@ sealfield *	_PNGchunkSign	(sealfield *Args, mmapfile *Mmap, size_t Offset)
     for(opti=0; opti+4 <= u32; opti++)
       {
       if (!isupper(Opt[opti+2])) { continue; } // invalid PNG format
-      if (!strncasecmp(Opt+opti,"seal",4)) { ChunkName=Opt+opti; ChunkHeaderSize=8; break; }
-      if (!strncasecmp(Opt+opti,"text",4)) { ChunkName=Opt+opti; ChunkHeaderSize=8+5; break; }
+      if (!strncasecmp(Opt+opti,"seal",4)) { ChunkName=Opt+opti; PNGheader=8; break; }
+      if (!strncasecmp(Opt+opti,"text",4)) { ChunkName=Opt+opti; PNGheader=8+5; break; }
       }
     }
 
@@ -192,83 +186,45 @@ sealfield *	_PNGchunkSign	(sealfield *Args, mmapfile *Mmap, size_t Offset)
     exit(1);
     }
 
-  // Compute the signature
-  if (Mmap)
-    {
-    /*****
-     The digest uses P~p and S~s (stored in @p and @s).
-     However, I only have the SEAL record.
-     "@S" is the signature location, relative to the start of the SEAL record.
-
-     Make 'S~s' relative to the start of the file.
-     The SEAL record is being built inside a PNG chunk.
-     The PNG chunk starts at Offset (absolute file location).
-     The PNG chunk has an 8 byte header (length+type).
-     A text chunk has a 5 byte field (+5).
-     So the start of the signature, relative to the file, is: @S + Offset + ChunkHeader
-     *****/
-    Args = SealCopy(Args,"@sflags","@sflags"); // Flags may be updated
-    Args = SealCopy(Args,"@p","@s"); // Rotates previous @s to @p
-    Args = SealSetIindex(Args,"@s",0, SealGetIindex(Args,"@S",0)+Offset+ChunkHeaderSize);
-    Args = SealSetIindex(Args,"@s",1, SealGetIindex(Args,"@S",1)+Offset+ChunkHeaderSize);
-
-    /* Compute the digest and sign it */
-    Args = SealDigest(Args, Mmap); // compute digest
-    switch(SealGetCindex(Args,"@mode",0)) // sign it
-      {
-      case 'S': Args = SealSignURL(Args); break;
-      case 's': Args = SealSignLocal(Args); break;
-      default: break; // never happens
-      }
-
-    // Signature is ready-to-go in '@signatureenc'
-    // Size is already pre-computed, so it will fit for overwriting.
-    // Copy signature into record.
-    sig = SealSearch(Args,"@signatureenc");
-    memcpy(rec->Value+SealGetIindex(Args,"@S",0), sig->Value, sig->ValueLen);
-    }
-
   /*****
    Convert the signature in '@record' to a PNG chunk.
    *****/
-  Args = SealDel(Args,"@PNGchunk");
+  Args = SealDel(Args,"@BLOCK");
 
   // Placeholder for length
-  Args = SealAddTextPad(Args,"@PNGchunk",4," ");
+  Args = SealAddTextPad(Args,"@BLOCK",4," ");
 
   // Insert: Chunk name
-  Args = SealAddTextLen(Args,"@PNGchunk",4,ChunkName);
+  Args = SealAddTextLen(Args,"@BLOCK",4,ChunkName);
 
   // Insert: chunk-specific data
   if (!strncasecmp(ChunkName,"text",4))
     {
     // PNG text begins with a keyword and null
-    Args = SealAddBin(Args,"@PNGchunk",5,(const byte*)"seal\0");
+    Args = SealAddBin(Args,"@BLOCK",5,(const byte*)"seal\0");
     }
 
-  // Insert: SEAL record
-  Args = SealAddBin(Args,"@PNGchunk",rec->ValueLen, rec->Value);
+  // Insert: SEAL record into the chunk
+  Args = SealAddBin(Args,"@BLOCK",rec->ValueLen, rec->Value);
 
-  // Compute and insert the size
-  rec = SealSearch(Args,"@PNGchunk");
+  // Compute and insert the chunk size
+  rec = SealSearch(Args,"@BLOCK");
   u32 = rec->ValueLen - 8;
-  Args = SealSetCindex(Args,"@PNGchunk",0,(u32 >> 24)&0xff);
-  Args = SealSetCindex(Args,"@PNGchunk",1,(u32 >> 16)&0xff);
-  Args = SealSetCindex(Args,"@PNGchunk",2,(u32 >> 8)&0xff);
-  Args = SealSetCindex(Args,"@PNGchunk",3,u32 & 0xff);
+  writebe32(rec->Value,u32);
 
   // Compute and insert CRC (big endian)
-  rec = SealSearch(Args,"@PNGchunk");
-  u32 = _PNGCrc32(rec->ValueLen-4, rec->Value+4); // CRC covers type+data
-  Args = SealAddC(Args,"@PNGchunk",(u32 >> 24)&0xff);
-  Args = SealAddC(Args,"@PNGchunk",(u32 >> 16)&0xff);
-  Args = SealAddC(Args,"@PNGchunk",(u32 >> 8)&0xff);
-  Args = SealAddC(Args,"@PNGchunk",u32 & 0xff);
-
+  rec = SealSearch(Args,"@BLOCK");
   rec->Type = 'x'; // debug with hex dump
+  Args = SealAddTextLen(Args,"@BLOCK",4,"1234"); // store padding for CRC
+
+  // Update @p
+  Args = SealCopy(Args,"@p","@s"); // Rotates previous @s to @p
+  // Update @s relative to the chunk
+  Args = SealIncIindex(Args,"@s",0,PNGheader);
+  Args = SealIncIindex(Args,"@s",1,PNGheader);
 
   return(Args);
-} /* _PNGchunkSign() */
+} /* _PNGchunk() */
 
 #pragma GCC visibility pop
 
@@ -293,16 +249,14 @@ bool	Seal_isPNG	(mmapfile *Mmap)
  Seal_PNGsign(): Sign a PNG.
  Insert a PNG signature.
  **************************************/
-sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *Mmap, size_t IEND_offset)
+sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *MmapIn, size_t IEND_offset)
 {
   const char *fname;
-  FILE *Fout;
   sealfield *chunk;
-  mmapfile *Mnew;
-  size_t OldChunkLen;
+  mmapfile *MmapOut;
 
   fname = SealGetText(Rec,"@FilenameOut");
-  if (!fname) { return(Rec); } // not signing
+  if (!fname || !fname[0]) { return(Rec); } // not signing
 
   // Is there an insertion point?
   if (IEND_offset == 0)
@@ -323,43 +277,22 @@ sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *Mmap, size_t IEND_offset)
    Compute the new checksum and CRC.
    Then update the new file.
    *****/
-  Fout = SealFileOpen(fname,"w+b"); // returns handle or aborts
-
   // Grab the new chunk placeholder
-  Rec = _PNGchunkSign(Rec,NULL,IEND_offset);
-  chunk = SealSearch(Rec,"@PNGchunk");
+  Rec = _PNGchunk(Rec); // Create the chunk
+  MmapOut = SealInsert(Rec,MmapIn,IEND_offset); // Write to file!!!
+  if (MmapOut)
+    {
+    SealSign(Rec,MmapOut); // Sign it!!!
 
-  // Write to file!!!
-  rewind(Fout); // should not be needed
+    // Fix CRC after creating the signature
+    uint32_t u32;
+    chunk = SealSearch(Rec,"@BLOCK");
+    u32 = _PNGCrc32(chunk->ValueLen-8, MmapOut->mem+IEND_offset+4); // CRC covers type+data
+    // Store CRC at the end of the chunk
+    writebe32(MmapOut->mem + IEND_offset + chunk->ValueLen - 4,u32);
 
-  // Store up to the IEND
-  SealFileWrite(Fout, IEND_offset, Mmap->mem);
-  // Append signature chunk
-  SealFileWrite(Fout, chunk->ValueLen, chunk->Value);
-  // Store everything else (IEND and any trailers)
-  SealFileWrite(Fout, Mmap->memsize - IEND_offset, Mmap->mem + IEND_offset);
-  SealFileClose(Fout);
-
-  // Compute new digest
-  Mnew = MmapFile(fname,PROT_WRITE);
-  Rec = _PNGchunkSign(Rec,Mnew,IEND_offset);
-  OldChunkLen = chunk->ValueLen;
-  chunk = SealSearch(Rec,"@PNGchunk");
-  chunk->Type = 'x';
-
-  // Chunk size better not change!!!
-  if (OldChunkLen != chunk->ValueLen)
-	{
-	fprintf(stderr,"ERROR: record size changed while writing. Aborting.\n");
-	exit(1);
-	}
-
-  // Update file with new signature
-  memcpy(Mnew->mem + IEND_offset, chunk->Value, chunk->ValueLen);
-  MmapFree(Mnew);
-
-  Rec = SealRotateRecords(Rec);
-  printf(" Signature record #%ld added: %s\n",(long)SealGetIindex(Rec,"@s",2),fname);
+    MmapFree(MmapOut);
+    }
   return(Rec);
 } /* Seal_PNGsign() */
 
@@ -406,10 +339,7 @@ sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
   while(Offset+12 <= Mmap->memsize)
     {
     // Size is always big-endian
-    ChunkSize = (Mmap->mem[Offset+0] << 24) |
-		(Mmap->mem[Offset+1] << 16) |
-		(Mmap->mem[Offset+2] << 8) |
-		(Mmap->mem[Offset+3]);
+    ChunkSize = readbe32(Mmap->mem+Offset);
     FourCC = (const char*)Mmap->mem + Offset + 4;
     if ((ChunkSize > Mmap->memsize) ||
 	(Offset+12+ChunkSize > Mmap->memsize))
