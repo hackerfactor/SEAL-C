@@ -30,14 +30,6 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
 {
   // Idiot-check the range
   if (sum[0]==sum[1]) { return(Rec); } // sure, permit an empty range
-  if (sum[0] < 0)
-	{
-	Rec = SealSetText(Rec,"@error","Invalid range; start of range is negative");
-	}
-  if (sum[1] < 0)
-        {
-	Rec = SealSetText(Rec,"@error","Invalid range; end of range is negative");
-	}
   if (sum[1] > Mmap->memsize)
         {
 	Rec = SealSetText(Rec,"@error","Invalid range; end of range is beyond end of file");
@@ -208,12 +200,11 @@ DEBUGWHERE();
       else { sum[1] += acc*Addsym; }
 
       // Check the range
-      if ((sum[1] < sum[0]) || (sum[0] < 0) || (sum[1] > Mmap->memsize))
+      if ((sum[1] < sum[0]) || (sum[1] > Mmap->memsize))
 	{
 	Rec = SealSetText(Rec,"@error","Invalid range in b='");
 	Rec = SealAddText(Rec,"@error",b);
 	Rec = SealAddText(Rec,"@error","'");
-	if (sum[0] < 0) { Rec = SealAddText(Rec,"@error","; underflow"); }
 	if (sum[1] > Mmap->memsize) { Rec = SealAddText(Rec,"@error","; overflow"); }
 	if (sum[1] < sum[0]) { Rec = SealAddText(Rec,"@error","; range begins after it ends"); }
 DEBUGPRINT("Error: sum: %ld %ld vs %ld",(long)(sum[0]), (long)(sum[1]), (long)(Mmap->memsize));

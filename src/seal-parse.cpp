@@ -61,12 +61,12 @@ void	SealStrDecode	(sealfield *Data)
  **************************************/
 void	SealStrEncode	(sealfield *Data)
 {
-  size_t i,j;
+  int i,j;
 
   if (!Data || !Data->ValueLen) { return; }
 
   // Count amount of new space required
-  for(i=j=0; i < Data->ValueLen; i++,j++)
+  for(i=j=0; i < (int)Data->ValueLen; i++,j++)
     {
     if (strchr("'\"",Data->Value[i])) { j++; }
     }
