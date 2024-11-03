@@ -3,7 +3,7 @@
  See LICENSE
 
  Functions for handling RIFF files.
- RIFF includes WAV, WebP, WebM, some AVI files, etc.
+ RIFF includes WAV, WebP, some AVI files, etc.
 
  All chunks have the following format:
    4-byte: identifier (four-character code: FourCC)

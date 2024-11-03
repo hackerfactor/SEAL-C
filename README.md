@@ -39,7 +39,7 @@ This code currently supports static-files only. It does not support streaming da
 |HEIF  |Coming soon.|Coming soon.|
 |Quicktime  |Coming soon.|Coming soon.|
 |AVI   |SEAL blocks|All SEAL, XMP, and info blocks.|
-|WEBM  |SEAL blocks|All SEAL, XMP, and info blocks.|
+|WEBM  |Coming soon.|Coming soon.|
 |MKV   |Coming soon.|Coming soon.|
 
 |Documentation Format|Write Support|Read Support|
