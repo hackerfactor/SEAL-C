@@ -477,6 +477,7 @@ int main (int argc, char *argv[])
     if (Seal_isPNG(Mmap)) { FileFormat='P'; } // PNG
     else if (Seal_isJPEG(Mmap)) { FileFormat='J'; } // JPEG
     else if (Seal_isRIFF(Mmap)) { FileFormat='R'; } // RIFF
+    else if (Seal_isMatroska(Mmap)) { FileFormat='M'; } // Matroska
     else
 	{
 	fprintf(stdout,"ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
@@ -502,6 +503,7 @@ int main (int argc, char *argv[])
 	case 'J': Args = Seal_JPEG(Args,Mmap); break; // JPEG
 	case 'P': Args = Seal_PNG(Args,Mmap); break; // PNG
 	case 'R': Args = Seal_RIFF(Args,Mmap); break; // RIFF
+	case 'M': Args = Seal_Matroska(Args,Mmap); break; // Matroska
 	default: break; // should never happen
 	}
 

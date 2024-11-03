@@ -29,7 +29,7 @@ This code currently supports static-files only. It does not support streaming da
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
 |MP3   |Coming soon.|Coming soon.|
-|MKA   |Coming soon.|Coming soon.|
+|MKA   |SEAL blocks|All SEAL blocks.|
 |WAV   |SEAL blocks|All SEAL, XMP, and info blocks.|
 
 |Video Format|Write Support|Read Support|
@@ -39,8 +39,8 @@ This code currently supports static-files only. It does not support streaming da
 |HEIF  |Coming soon.|Coming soon.|
 |Quicktime  |Coming soon.|Coming soon.|
 |AVI   |SEAL blocks|All SEAL, XMP, and info blocks.|
-|WEBM  |Coming soon.|Coming soon.|
-|MKV   |Coming soon.|Coming soon.|
+|WEBM  |SEAL blocks|All SEAL blocks.|
+|MKV   |SEAL blocks|All SEAL blocks.|
 
 |Documentation Format|Write Support|Read Support|
 |------|-------------|------------|
@@ -48,4 +48,12 @@ This code currently supports static-files only. It does not support streaming da
 |PDF |Coming soon.|Coming soon.|
 |HTML |Coming soon.|Coming soon.|
 |Plain Text |Coming soon.|Coming soon.|
+
+|Container Formats|Write Support|Read Support|
+|EXIF |TBD |Coming soon.|
+|XMP |TBD |Yes, treated as text|
+|RIFF |SEAL Blocks |All SEAL, XMP, and info blocks.|
+|ISO-BMFF |Coming soon. |Coming soon.|
+|Matroska |SEAL Blocks |All SEAL.|
+|ZIP |Coming soon. |Coming soon.|
 

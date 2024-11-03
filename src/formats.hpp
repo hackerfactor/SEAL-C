@@ -20,5 +20,8 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *MmapIn);
 bool		Seal_isRIFF	(mmapfile *Mmap);
 sealfield *	Seal_RIFF	(sealfield *Args, mmapfile *MmapIn);
 
+bool		Seal_isMatroska	(mmapfile *Mmap);
+sealfield *	Seal_Matroska	(sealfield *Args, mmapfile *MmapIn);
+
 #endif
 
