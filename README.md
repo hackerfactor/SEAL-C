@@ -18,6 +18,7 @@ This code currently supports static-files only. It does not support streaming da
 |PNG   |SEAL or text chunks.|All SEAL and text chunks.|
 |WEBP  |SEAL blocks|All SEAL, XMP, and informational (INFO) blocks.|
 |HEIC  |Coming soon.|Coming soon.|
+|AVIF  |Coming soon.|Coming soon.|
 |TIFF  |Coming soon.|Coming soon.|
 |DICOM |Coming soon.|Coming soon.|
 |EXIF  |No.|Coming soon.|
@@ -28,6 +29,7 @@ This code currently supports static-files only. It does not support streaming da
 
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
+|AVIF  |Coming soon.|Coming soon.|
 |MP3   |Coming soon.|Coming soon.|
 |MKA   |SEAL blocks|All SEAL blocks.|
 |WAV   |SEAL blocks|All SEAL, XMP, and info blocks.|
@@ -37,6 +39,7 @@ This code currently supports static-files only. It does not support streaming da
 |MP4   |Coming soon.|Coming soon.|
 |3GP   |Coming soon.|Coming soon.|
 |HEIF  |Coming soon.|Coming soon.|
+|AVIF  |Coming soon.|Coming soon.|
 |Quicktime  |Coming soon.|Coming soon.|
 |AVI   |SEAL blocks|All SEAL, XMP, and info blocks.|
 |WEBM  |SEAL blocks|All SEAL blocks.|
