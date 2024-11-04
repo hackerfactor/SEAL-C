@@ -91,7 +91,6 @@ const char *_RIFFvalidate[] = {
  **************************************/
 sealfield *	_RIFFwalk	(sealfield *Args, size_t DataLen, byte *Data, size_t Pos, int Depth, mmapfile *Mmap)
 {
-  sealfield *Rec;
   size_t size;
   int r;
 
@@ -134,37 +133,7 @@ sealfield *	_RIFFwalk	(sealfield *Args, size_t DataLen, byte *Data, size_t Pos, 
 	for(r=0; _RIFFvalidate[r]; r++)
 	  {
 	  if (memcmp(_RIFFvalidate[r],Data,4)) { continue; }// Can it contain a SEAL record?
-
-	  // Process possible SEAL record.
-	  size_t ChunkOffset, RecEnd;
-	  Rec=NULL;
-	  ChunkOffset=0; // permit multiple SEAL records in one field
-	  while(ChunkOffset < DataLen)
-	    {
-	    Rec = SealParse(DataLen-8-ChunkOffset,Data+8+ChunkOffset,Pos+8+ChunkOffset,Args);
-	    if (!Rec) { break; } // no record found; stop looking in this chunk
-
-	    // Found a signature!
-	    // Verify the data!
-	    Rec = SealCopy2(Rec,"@pubkeyfile",Args,"@pubkeyfile");
-	    Rec = SealVerify(Rec,Mmap);
-
-	    // Iterate on remainder
-	    RecEnd = SealGetIindex(Rec,"@RecEnd",0);
-	    if (RecEnd <= 0) { RecEnd=1; } // should never happen, but if it does, stop infinite loops
-	    ChunkOffset += RecEnd;
-
-	    // Retain state
-	    Args = SealCopy2(Args,"@p",Rec,"@p"); // keep previous settings
-	    Args = SealCopy2(Args,"@s",Rec,"@s"); // keep previous settings
-	    Args = SealCopy2(Args,"@dnscachelast",Rec,"@dnscachelast"); // store any cached DNS
-	    Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
-	    Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
-	    Args = SealCopy2(Args,"@sflags",Rec,"@sflags"); // retain sflags
-
-	    // Clean up
-	    SealFree(Rec); Rec=NULL;
-	    }
+	  Args = SealVerifyBlock(Args, Pos+8, Pos+8+DataLen, Mmap);
 	  } // foreach possible chunk
 	}
 

@@ -800,3 +800,44 @@ bool	SealVerifyFinal	(sealfield *Rec)
   return(true);
 } /* SealVerifyFinal() */
 
+/********************************************************
+ SealVerifyBlock(): Given block of data, scan it for every
+ possible SEAL record. (There could be more than one.)
+ BlockStart and BlockEnd are relative to Mmap.
+ Returns: updated sealfield.
+ Generates output text!
+ ********************************************************/
+sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd, mmapfile *Mmap)
+{
+  size_t RecEnd;
+  sealfield *Rec=NULL;
+
+  while(BlockStart < BlockEnd) 
+    {
+    Rec = SealParse(BlockEnd-BlockStart, Mmap->mem+BlockStart, BlockStart, Args);
+    if (!Rec) { return(Args); } // Nothing found
+
+    // Found a signature!  Verify the data!
+    Rec = SealCopy2(Rec,"@pubkeyfile",Args,"@pubkeyfile");
+    Rec = SealVerify(Rec,Mmap);
+
+    // Iterate on remainder
+    RecEnd = SealGetIindex(Rec,"@RecEnd",0);
+    if (RecEnd <= 0) { RecEnd=1; } // should never happen, but if it does, stop infinite loops
+    BlockStart += RecEnd;
+ 
+    // Retain state
+    Args = SealCopy2(Args,"@p",Rec,"@p"); // keep previous settings
+    Args = SealCopy2(Args,"@s",Rec,"@s"); // keep previous settings
+    Args = SealCopy2(Args,"@dnscachelast",Rec,"@dnscachelast"); // store any cached DNS
+    Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
+    Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
+    Args = SealCopy2(Args,"@sflags",Rec,"@sflags"); // retain sflags
+
+    // Clean up
+    SealFree(Rec); Rec=NULL;
+    }
+
+  return(Args);
+} /* SealVerifyBlock() */
+

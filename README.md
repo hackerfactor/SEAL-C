@@ -17,8 +17,8 @@ This code currently supports static-files only. It does not support streaming da
 |JPEG  |SEAL blocks.|All SEAL and applicaton blocks.|
 |PNG   |SEAL or text chunks.|All SEAL and text chunks.|
 |WEBP  |SEAL blocks|All SEAL, XMP, and informational (INFO) blocks.|
-|HEIC  |Coming soon.|Coming soon.|
-|AVIF  |Coming soon.|Coming soon.|
+|HEIC  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |TIFF  |Coming soon.|Coming soon.|
 |DICOM |Coming soon.|Coming soon.|
 |EXIF  |No.|Coming soon.|
@@ -29,18 +29,18 @@ This code currently supports static-files only. It does not support streaming da
 
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
-|AVIF  |Coming soon.|Coming soon.|
+|AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |MP3   |Coming soon.|Coming soon.|
 |MKA   |SEAL blocks|All SEAL blocks.|
 |WAV   |SEAL blocks|All SEAL, XMP, and info blocks.|
 
 |Video Format|Write Support|Read Support|
 |------|-------------|------------|
-|MP4   |Coming soon.|Coming soon.|
-|3GP   |Coming soon.|Coming soon.|
-|HEIF  |Coming soon.|Coming soon.|
-|AVIF  |Coming soon.|Coming soon.|
-|Quicktime  |Coming soon.|Coming soon.|
+|MP4   |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|3GP   |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|HEIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|Quicktime |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |AVI   |SEAL blocks|All SEAL, XMP, and info blocks.|
 |WEBM  |SEAL blocks|All SEAL blocks.|
 |MKV   |SEAL blocks|All SEAL blocks.|
@@ -59,7 +59,7 @@ This code currently supports static-files only. It does not support streaming da
 |EXIF |TBD |Coming soon.|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats.
 |XMP |TBD |Yes, treated as text|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files.
 |RIFF |SEAL blocks |All SEAL, XMP, and info blocks.|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files.|
-|ISO-BMFF |Coming soon. |Coming soon.|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
+|ISP-BMFF |SEAL blocks|SEAL blocks, or any top-level XML or info.|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
 |Matroska |SEAL blocks |All SEAL blocks.|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio).|
 |ZIP |Coming soon. |Coming soon.|ZIP is an archive container that can hold multiple files. The OpenDocument formats use ZIP.|
 

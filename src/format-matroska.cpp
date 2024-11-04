@@ -104,16 +104,11 @@ sealfield *	_MaWriteData	(sealfield *Rec, const char *Field, size_t Value)
 /**************************************
  _Matroskawalk(): Given a Matroska, walk the structures.
  Evaluate any SEAL or text chunks.
- Data and Pos may change during recursion, but Mmap is always source file.
- NOTE: This is recursive!
  **************************************/
 sealfield *	_Matroskawalk	(sealfield *Args, mmapfile *Mmap)
 {
-  sealfield *Rec;
   size_t iTag,iLen;
   size_t Offset=0;
-
-  //_MaWriteData(NULL,0x05345414C);
 
   while(Offset < Mmap->memsize)
     {
@@ -126,35 +121,7 @@ sealfield *	_Matroskawalk	(sealfield *Args, mmapfile *Mmap)
     if (iTag == 0x5345414C) // if SEAL chunk
 	{
 	// Process possible SEAL record.
-	size_t ChunkOffset, RecEnd;
-	Rec=NULL;
-	ChunkOffset=0; // permit multiple SEAL records in one field
-	while(ChunkOffset < iLen)
-	  {
-	  Rec = SealParse(iLen-ChunkOffset,Mmap->mem+Offset+ChunkOffset,Offset+ChunkOffset,Args);
-	  if (!Rec) { break; } // no record found; stop looking in this chunk
-
-	  // Found a signature!
-	  // Verify the data!
-	  Rec = SealCopy2(Rec,"@pubkeyfile",Args,"@pubkeyfile");
-	  Rec = SealVerify(Rec,Mmap);
-
-	  // Iterate on remainder
-	  RecEnd = SealGetIindex(Rec,"@RecEnd",0);
-	  if (RecEnd <= 0) { RecEnd=1; } // should never happen, but if it does, stop infinite loops
-	  ChunkOffset += RecEnd;
-
-	  // Retain state
-	  Args = SealCopy2(Args,"@p",Rec,"@p"); // keep previous settings
-	  Args = SealCopy2(Args,"@s",Rec,"@s"); // keep previous settings
-	  Args = SealCopy2(Args,"@dnscachelast",Rec,"@dnscachelast"); // store any cached DNS
-	  Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
-	  Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
-	  Args = SealCopy2(Args,"@sflags",Rec,"@sflags"); // retain sflags
-
-	  // Clean up
-	  SealFree(Rec); Rec=NULL;
-	  }
+	Args = SealVerifyBlock(Args, Offset, Offset+iLen, Mmap);
 	}
 
     Offset+=iLen;

@@ -557,13 +557,10 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
    This way, the scope of all values is limited to Rec.
    When this finishes, moves the values I want to keep back into Args.
    *****/
-  sealfield *Rec;
-  size_t RecEnd=0;
   size_t Offset;
   uint16_t BlockType, PreviousBlockType=0;
   size_t BlockSize;
   size_t FFDAoffset=0; // set when 0xffda (start of stream; SOS) insertion point is found
-  size_t SearchOffset;
 
   Offset=2; // skip ffd8 header; it has no length.
   BlockType = 0xffd8;
@@ -707,35 +704,7 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
 
        And if the nested media is finalized, then this file cannot be signed.
        *****/
-      Rec=NULL;
-      SearchOffset=2; // skip size
-      //DEBUGPRINT("Scanning %04x",(int)BlockType);
-      while(SearchOffset < BlockSize)
-	{
-	Rec = SealParse(BlockSize-SearchOffset,Mmap->mem+Offset+2+SearchOffset,Offset+2+SearchOffset,Args);
-	if (!Rec) { break; } // nothing found
-
-	// Found a signature!
-	// Verify the data!
-	Rec = SealCopy2(Rec,"@pubkeyfile",Args,"@pubkeyfile");
-	Rec = SealVerify(Rec,Mmap);
-
-	// Iterate on remainder
-	RecEnd = SealGetIindex(Rec,"@RecEnd",0);
-	if (RecEnd <= 0) { RecEnd=1; } // should never happen, but if it does, stop infinite loops
-	SearchOffset += RecEnd;
-
-	// Retain state
-	Args = SealCopy2(Args,"@p",Rec,"@p"); // keep previous settings
-	Args = SealCopy2(Args,"@s",Rec,"@s"); // keep previous settings
-	Args = SealCopy2(Args,"@dnscachelast",Rec,"@dnscachelast"); // store any cached DNS
-	Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
-	Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
-	Args = SealCopy2(Args,"@sflags",Rec,"@sflags"); // retain sflags
-
-	// Clean up
-	SealFree(Rec); Rec=NULL;
-	}
+      Args = SealVerifyBlock(Args, Offset+2, Offset+2+BlockSize, Mmap);
       }
 
 NextBlock:

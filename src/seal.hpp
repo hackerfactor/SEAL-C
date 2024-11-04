@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 // Revise the version if there is any significant change
-#define SEAL_VERSION "0.0.2-beta"
+#define SEAL_VERSION "0.0.3-beta"
 
 extern int Verbose;
 
@@ -67,16 +67,20 @@ void	DEBUGhexdump	(size_t DataLen, const byte *Data);
 #define Min(x,y)  ( ((x) < (y)) ? (x) : (y) )
 
 // Reading raw bytes with a specific endian
-#define readbe32(buf)	( (((buf)[0]&0xff)<<24) | (((buf)[1]&0xff)<<16) | (((buf)[2]&0xff)<<8) | ((buf)[3]&0xff) )
-#define readle32(buf)	( (((buf)[3]&0xff)<<24) | (((buf)[2]&0xff)<<16) | (((buf)[1]&0xff)<<8) | ((buf)[0]&0xff) )
 #define readbe16(buf)	( (((buf)[0]&0xff)<<8) | ((buf)[1]&0xff) )
 #define readle16(buf)	( (((buf)[1]&0xff)<<8) | ((buf)[0]&0xff) )
+#define readbe32(buf)	( (((buf)[0]&0xff)<<24) | (((buf)[1]&0xff)<<16) | (((buf)[2]&0xff)<<8) | ((buf)[3]&0xff) )
+#define readle32(buf)	( (((buf)[3]&0xff)<<24) | (((buf)[2]&0xff)<<16) | (((buf)[1]&0xff)<<8) | ((buf)[0]&0xff) )
+#define readbe64(buf)	( ((uint64_t)(readbe32(buf))<<32) | (uint64_t)(readbe32((buf)+4)) )
+#define readle64(buf)	( ((uint64_t)(readbe32((buf)+4))<<32) | (uint64_t)(readbe32(buf)) )
 
 // Writing raw bytes with a specific endian
-#define writebe32(buf,u32) { (buf)[0]=((u32)>>24)&0xff; (buf)[1]=((u32)>>16)&0xff; (buf)[2]=((u32)>>8)&0xff; (buf)[3]=(u32)&0xff; }
-#define writele32(buf,u32) { (buf)[3]=((u32)>>24)&0xff; (buf)[2]=((u32)>>16)&0xff; (buf)[1]=((u32)>>8)&0xff; (buf)[0]=(u32)&0xff; }
 #define writebe16(buf,u16) { (buf)[0]=((u16)>>8)&0xff; (buf)[1]=(u16)&0xff; }
 #define writele16(buf,u16) { (buf)[1]=((u16)>>8)&0xff; (buf)[0]=(u16)&0xff; }
+#define writebe32(buf,u32) { (buf)[0]=((u32)>>24)&0xff; (buf)[1]=((u32)>>16)&0xff; (buf)[2]=((u32)>>8)&0xff; (buf)[3]=(u32)&0xff; }
+#define writele32(buf,u32) { (buf)[3]=((u32)>>24)&0xff; (buf)[2]=((u32)>>16)&0xff; (buf)[1]=((u32)>>8)&0xff; (buf)[0]=(u32)&0xff; }
+#define writebe64(buf,u64) { writebe32(buf,(u64)>>32); writebe32((buf)+4,u64); }
+#define writele64(buf,u64) { writele32(buf,u64); writele32((buf)+4,(u64)>>32); }
 
 // SEAL structure functions
 sealfield *	SealClone	(sealfield *src);

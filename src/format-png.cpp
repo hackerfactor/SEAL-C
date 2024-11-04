@@ -303,11 +303,9 @@ sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *MmapIn, size_t IEND_offset)
  **************************************/
 sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
 {
-  sealfield *Rec;
   size_t Offset;
-  size_t RecEnd=0;
   size_t IEND_offset=0;
-  uint32_t ChunkOffset,ChunkSize;
+  uint32_t ChunkSize;
   const char *FourCC;
 
   // Make sure it's a PNG.
@@ -358,34 +356,7 @@ sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
 	     !strncasecmp(FourCC,"seal",4))
 	{
 	// Process possible SEAL record.
-	Rec=NULL;
-	ChunkOffset=0;
-	while(ChunkOffset < ChunkSize)
-	  {
-	  Rec = SealParse(ChunkSize-ChunkOffset,Mmap->mem+Offset+8+ChunkOffset,Offset+8+ChunkOffset,Args);
-	  if (!Rec) { break; } // no record found; stop looking in this chunk
-
-	  // Found a signature!
-	  // Verify the data!
-	  Rec = SealCopy2(Rec,"@pubkeyfile",Args,"@pubkeyfile");
-	  Rec = SealVerify(Rec,Mmap);
-
-	  // Iterate on remainder
-	  RecEnd = SealGetIindex(Rec,"@RecEnd",0);
-	  if (RecEnd <= 0) { RecEnd=1; } // should never happen, but if it does, stop infinite loops
-	  ChunkOffset += RecEnd;
-
-	  // Retain state
-	  Args = SealCopy2(Args,"@p",Rec,"@p"); // keep previous settings
-	  Args = SealCopy2(Args,"@s",Rec,"@s"); // keep previous settings
-	  Args = SealCopy2(Args,"@dnscachelast",Rec,"@dnscachelast"); // store any cached DNS
-	  Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
-	  Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
-	  Args = SealCopy2(Args,"@sflags",Rec,"@sflags"); // retain sflags
-
-	  // Clean up
-	  SealFree(Rec); Rec=NULL;
-	  }
+	Args = SealVerifyBlock(Args, Offset+8, Offset+8+ChunkSize, Mmap);
 	}
     else if (!strncasecmp(FourCC,"exif",4))
 	{
