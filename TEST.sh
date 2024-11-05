@@ -8,7 +8,7 @@ for ka in rsa ec ; do
   bin/sealtool -g --ka "$ka" -D "test/sign-$ka.dns" -k "test/sign-$ka.key" --genpass ''
 
   # iterate over signing formats
-  for sf in 'hex' 'base64' 'date3:hex' 'date3:base64' ; do
+  for sf in 'hex' 'HEX' 'base64' 'date3:hex' 'date3:HEX' 'date3:base64' ; do
     sfname=${sf/:/_}
 
     # Test with local signing
@@ -18,7 +18,7 @@ for ka in rsa ec ; do
     for i in regression/test-unsigned* ; do
       j=${i/regression/test}
       out=${j/-unsigned/-signed-local-$ka-$sfname}
-      bin/sealtool -s -k "test/sign-$ka.key" --ka "$ka" -o "$out" "$i"
+      bin/sealtool -s -k "test/sign-$ka.key" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
     done
 
     # Verify local signing
@@ -32,7 +32,7 @@ for ka in rsa ec ; do
     for i in regression/test-unsigned* ; do
       j=${i/regression/test}
       out=${j/-unsigned/-signed-remote-$ka-$sfname}
-      bin/sealtool -S --ka "$ka" -o "$out" "$i"
+      bin/sealtool -S --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
     done
 
     # Verify remote signing

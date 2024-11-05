@@ -200,9 +200,6 @@ sealfield *	SealSignLocal	(sealfield *Args)
   // Keys must be loaded.
   if (!PrivateKey) { SealLoadPrivateKey(Args); }
 
-  // Apply double digest (date:userid:) as needed
-  Args = SealDoubleDigest(Args);
-
   // Set the date string
   memset(datestr,0,30);
   sf = SealGetText(Args,"sf"); // SEAL's 'sf' parameter; signing format (date, hex, whatever)
@@ -247,6 +244,10 @@ sealfield *	SealSignLocal	(sealfield *Args)
     datestrlen = strlen(datestr);
     Args = SealSetText(Args,"@sigdate",datestr);
     } // set datestr
+
+  // Apply double digest (date:userid:) as needed
+  // SealDoubleDigest uses @sigdate, so must be done AFTER date!
+  Args = SealDoubleDigest(Args);
 
   // Set the digest algorithm
   digestalg = SealGetText(Args,"da"); // SEAL's 'da' parameter
