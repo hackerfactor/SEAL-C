@@ -37,7 +37,7 @@ sealfield *	SealGetDNSfile	(sealfield *Rec)
   mmapfile *Mmap;
   const char *fname;
 
-  fname = SealGetText(Rec,"@pubkeyfile");
+  fname = SealGetText(Rec,"@dnsfile1");
   if (!fname) { return(NULL); }
 
   Mmap = MmapFile(fname,PROT_READ);
@@ -127,7 +127,7 @@ sealfield *	SealGetDNS	(sealfield *Rec)
   if (res_ninit(&dnsstate) < 0)
     {
     // Should never happen
-    fprintf(stderr,"ERROR: Unable to initialize DNS lookup. Aborting.\n");
+    fprintf(stderr," ERROR: Unable to initialize DNS lookup. Aborting.\n");
     exit(1);
     }
 
@@ -357,6 +357,13 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
      *****/
     Rec = SealDel(Rec,"@sigbin");
     Rec = SealSetBin(Rec,"@sigbin",siglen-datelen,(byte*)Sig+datelen);
+
+    // Remove any padding
+    sealfield *s;
+    s = SealSearch(Rec,"@sigbin");
+    while((s->ValueLen > 1) && isspace(s->Value[s->ValueLen-1])) { s->ValueLen--; }
+
+    // Decode the signature
     if (strstr(SigFormat,"HEX") || strstr(SigFormat,"hex"))
       {
       SealHexDecode(SealSearch(Rec,"@sigbin"));
@@ -512,7 +519,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
   else if (!strcmp(digestalg,"sha512")) { mdf = EVP_sha512; }
   else
 	{
-	fprintf(stderr,"ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
+	fprintf(stderr," ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
 	exit(1);
 	}
 
@@ -570,7 +577,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
   PubKeyCtx = EVP_PKEY_CTX_new(PubKey,NULL);
   if (!PubKeyCtx) // could happen if key is corrupt
 	{
-	fprintf(stderr,"Unable to create validation context.\n");
+	fprintf(stderr," ERROR: Unable to create validation context.\n");
 	e = ERR_get_error();
 	Rec = SealAddText(Rec,"@error"," (");
 	Rec = SealAddText(Rec,"@error",ERR_lib_error_string(e));
@@ -581,7 +588,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 	}
   if (EVP_PKEY_verify_init(PubKeyCtx) != 1)
 	{
-	fprintf(stderr,"Unable to initialize validation context.\n");
+	fprintf(stderr," ERROR: Unable to initialize validation context.\n");
 	e = ERR_get_error();
 	Rec = SealAddText(Rec,"@error"," (");
 	Rec = SealAddText(Rec,"@error",ERR_lib_error_string(e));
@@ -596,7 +603,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
     {
     if (EVP_PKEY_CTX_set_rsa_padding(PubKeyCtx, RSA_PKCS1_PADDING) != 1)
 	{
-	fprintf(stderr,"Unable to initialize RSA validation.\n");
+	fprintf(stderr," ERROR: Unable to initialize RSA validation.\n");
 	e = ERR_get_error();
 	Rec = SealAddText(Rec,"@error"," (");
 	Rec = SealAddText(Rec,"@error",ERR_lib_error_string(e));
@@ -609,7 +616,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 
   if (EVP_PKEY_CTX_set_signature_md(PubKeyCtx, mdf()) != 1)
 	{
-	fprintf(stderr,"Unable to set digest for validation.\n");
+	fprintf(stderr," ERROR: Unable to set digest for validation.\n");
 	e = ERR_get_error();
 	Rec = SealAddText(Rec,"@error"," (");
 	Rec = SealAddText(Rec,"@error",ERR_lib_error_string(e));
@@ -652,7 +659,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
   signum = SealGetIindex(Rec,"@s",2);
   if (signum < 1) // should never happen
     {
-    printf("WARNING: Invalid SEAL record count (%ld).\n",signum);
+    printf(" WARNING: Invalid SEAL record count (%ld).\n",signum);
     return(Rec);
     }
 
@@ -664,14 +671,14 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
     {
     if (!strchr(SealGetText(Rec,"b"),'F'))
 	{
-	printf("WARNING: SEAL record #%ld does not cover the start of file. Vulnerable to prepending attacks.\n",signum);
+	printf(" WARNING: SEAL record #%ld does not cover the start of file. Vulnerable to prepending attacks.\n",signum);
 	}
     }
   else // if (signum > 1)
     {
     if (!strchr(SealGetText(Rec,"b"),'F') && !strchr(SealGetText(Rec,"b"),'P'))
 	{
-	printf("WARNING: SEAL record #%ld does not cover the previous signature. Vulnerable to insertion attacks.\n",signum);
+	printf(" WARNING: SEAL record #%ld does not cover the previous signature. Vulnerable to insertion attacks.\n",signum);
 	}
     }
 
@@ -715,13 +722,13 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
   // Report any errors
   if (ErrorMsg)
 	{
-	printf("SEAL record #%ld is invalid: %s.\n",signum,ErrorMsg);
+	printf(" SEAL record #%ld is invalid: %s.\n",signum,ErrorMsg);
 	}
   else
 	{
 	char *Txt;
 
-	printf("SEAL record #%ld is valid.\n",signum);
+	printf(" SEAL record #%ld is valid.\n",signum);
 
 	if (Verbose)
 	  {
@@ -733,7 +740,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
 	    {
 	    rangeval = (const size_t*)(range->Value);
 	    MaxRange = range->ValueLen / sizeof(size_t);
-	    printf(" Signed bytes: ");
+	    printf("  Signed bytes: ");
 	    for(i=0; i < MaxRange; i++)
 	      {
 	      if (i%2) { printf("-%ld",(long)(rangeval[i])-1); } // end
@@ -750,7 +757,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
 	Txt = SealGetText(Rec,"@sigdate");
 	if (Txt && Txt[0])
 	  {
-	  printf(" Signed");
+	  printf("  Signed");
 	  printf(" %.4s-%.2s-%.2s",Txt,Txt+4,Txt+6);
 	  printf(" at %.2s:%.2s:%.2s",Txt+8,Txt+10,Txt+12);
 	  if (Txt[14]=='.') { printf("%s",Txt+14); }
@@ -758,26 +765,25 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
 	  }
 
 	Txt = SealGetText(Rec,"d");
-	printf(" Signed");
-	printf(" by %s",Txt);
+	printf("  Signed by %s",Txt);
 
 	Txt = SealGetText(Rec,"id");
 	if (Txt && Txt[0])
 	  {
-	  printf(" for %s",Txt);
+	  printf(" for user %s",Txt);
 	  }
 	printf("\n");
 
 	Txt = SealGetText(Rec,"copyright");
 	if (Txt && Txt[0])
 	  {
-	  printf(" Copyright: %s\n",Txt);
+	  printf("  Copyright: %s\n",Txt);
 	  }
 
 	Txt = SealGetText(Rec,"info");
 	if (Txt && Txt[0])
 	  {
-	  printf(" Comment: %s\n",Txt);
+	  printf("  Comment: %s\n",Txt);
 	  }
 	}
 
@@ -794,7 +800,7 @@ bool	SealVerifyFinal	(sealfield *Rec)
   if (Rec) { return(false); }
   if (!SealGetCindex(Rec,"@sflags",1)) // signatures should cover end of file
 	{
-	printf("WARNING: SEAL records do not finalize the file. Data may be appended.\n");
+	printf(" WARNING: SEAL records do not finalize the file. Data may be appended.\n");
 	return(false);
 	}
   return(true);
@@ -818,7 +824,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     if (!Rec) { return(Args); } // Nothing found
 
     // Found a signature!  Verify the data!
-    Rec = SealCopy2(Rec,"@pubkeyfile",Args,"@pubkeyfile");
+    Rec = SealCopy2(Rec,"@dnsfile1",Args,"@dnsfile1");
     Rec = SealVerify(Rec,Mmap);
 
     // Iterate on remainder

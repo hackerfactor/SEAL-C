@@ -40,7 +40,7 @@ mmapfile *	SealInsert	(sealfield *Rec, mmapfile *MmapIn, size_t InsertOffset)
   // Check if file is finalized (abort if it is)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
-	fprintf(stderr,"ERROR: File is finalized; cannot sign. Skipping.\n");
+	fprintf(stderr," ERROR: File is finalized; cannot sign. Skipping.\n");
 	return(NULL);
 	}
 
@@ -48,7 +48,7 @@ mmapfile *	SealInsert	(sealfield *Rec, mmapfile *MmapIn, size_t InsertOffset)
   Fout = SealFileOpen(fname,"w+b"); // returns handle or aborts
   if (!Fout)
 	{
-	fprintf(stderr,"ERROR: Cannot create file (%s). Aborting.\n",fname);
+	fprintf(stderr," ERROR: Cannot create file (%s). Aborting.\n",fname);
 	exit(1);
 	}
   rewind(Fout); // should not be needed
@@ -107,7 +107,7 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
   // Check if file is finalized (abort if it is)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
-	fprintf(stderr,"ERROR: File is finalized; cannot sign. Aborting.\n");
+	fprintf(stderr," ERROR: File is finalized; cannot sign. Aborting.\n");
 	exit(1);
 	}
 
@@ -133,7 +133,9 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
   p = SealGetIarray(Rec,"@p");
   if (!sig || (sig->ValueLen + s[0] != s[1]))
 	{
-	fprintf(stderr,"ERROR: signature size changed while writing. Aborting.\n");
+DEBUGPRINT("sig=%p",sig);
+if (sig) { DEBUGPRINT("size: %lu vs %lu",sig->ValueLen,s[1]-s[0]); }
+	fprintf(stderr," ERROR: signature size changed while writing. Aborting.\n");
 	exit(1);
 	}
 

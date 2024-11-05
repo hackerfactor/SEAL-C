@@ -203,7 +203,7 @@ void	Usage	(const char *progname)
   printf("  Verifying:\n");
   printf("  Verify any SEAL signature in the file(s)\n");
   printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (default: unset; use DNS)\n");
-  printf("  --pubkeyfile fname   :: For debugging: instead of DNs, use the dns file from the -g option.\n");
+  printf("  --dnsfile1 fname  :: Debugging: use this text file with DNS TXT value.\n");
   printf("\n");
   printf("  Generate signature:\n");
   printf("  -g, --generate       :: Required: generate a signature\n");
@@ -305,10 +305,12 @@ int main (int argc, char *argv[])
     {"version",   no_argument, NULL, 'V'},
     {"config",    required_argument, NULL, 9},
     {"generate",  no_argument, NULL, 'g'},
+    {"genpass" ,  no_argument, NULL, 'G'},
     {"sign",      no_argument, NULL, 's'},
     {"Sign",      no_argument, NULL, 'S'},
-    {"digestalg", required_argument, NULL, 'A'},
     {"da",        required_argument, NULL, 'A'},
+    {"digestalg", required_argument, NULL, 'A'},
+    {"dnsfile1", required_argument, NULL, 'P'}, // Debugging: specify dns via command-line
     {"apikey",    required_argument, NULL, 'a'},
     {"apiurl",    required_argument, NULL, 1},
     {"copyright", required_argument, NULL, 'C'},
@@ -320,7 +322,6 @@ int main (int argc, char *argv[])
     {"ka",        required_argument, NULL, 'K'},
     {"keyfile",   required_argument, NULL, 'k'},
     {"keybits",   required_argument, NULL, 1},
-    {"pubkeyfile", required_argument, NULL, 'P'}, // specify dns via command-line
     {"outfile",   required_argument, NULL, 'o'},
     {"options",   required_argument, NULL, 'O'},
     // long-only options
@@ -352,10 +353,13 @@ int main (int argc, char *argv[])
       case 'i': Args = SealSetText(Args,"id",optarg); break;
       case 'K': Args = SealSetText(Args,"keyalg",optarg); break;
       case 'k': Args = SealSetText(Args,"keyfile",optarg); break;
-      case 'P': Args = SealSetText(Args,"@pubkeyfile",optarg); break; // for debugging
+      case 'P': Args = SealSetText(Args,"@dnsfile1",optarg); break; // for debugging
       case 'o': Args = SealSetText(Args,"outfile",optarg); break;
       case 'O': Args = SealSetText(Args,"options",optarg); break;
       case 'u': Args = SealSetText(Args,"apiurl",optarg); break;
+
+      case 'G': // generate password (not in usage; really insecure)
+	Args = SealSetText(Args,"@genpass",optarg); break;
 
       case 'g': // generate flag
       case 'S': // signing flag: remote
@@ -463,13 +467,14 @@ int main (int argc, char *argv[])
 
     // Show file being processed.
     printf("[%s]\n",argv[optind]);
+    fflush(stdout);
 
     // Memory map the file; needed for finding the SEAL record's location.
     mmapfile *Mmap=NULL;
     Mmap = MmapFile(argv[optind],PROT_READ); // read-only
     if (!Mmap)
 	{
-	fprintf(stdout,"ERROR: Unknown file '%s'. Skipping.\n",argv[optind]);
+	fprintf(stdout," ERROR: Unknown file '%s'. Skipping.\n",argv[optind]);
 	continue;
 	}
 
@@ -481,7 +486,7 @@ int main (int argc, char *argv[])
     else if (Seal_isBMFF(Mmap)) { FileFormat='B'; } // BMFF
     else
 	{
-	fprintf(stdout,"ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
+	fprintf(stdout," ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
 	MmapFree(Mmap);
 	continue;
 	}

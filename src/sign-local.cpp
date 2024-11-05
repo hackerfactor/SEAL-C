@@ -22,6 +22,7 @@
    DSA: deprecated and discouraged. Do not use. Not supported.
    RSA: widely used
    EC: Lots of types
+     NIST Standard default: P-256 aka prime256v1 aka secp256r1
    ED25519: Adopted by NIST in 2019 as part of FIPS 186-5.
      OpenSSL doesn't (yet) support it with EVP_PKEY_sign_init
      https://github.com/openssl/openssl/issues/5873#issuecomment-378917092
@@ -92,7 +93,6 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
 {
   FILE *fp;
   OSSL_DECODER_CTX *decoder=NULL;
-  unsigned char *pwd;
   char *keyfile, *keyalg;
 
   // Only load it once
@@ -101,7 +101,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   keyfile = SealGetText(Args,"keyfile");
   if (!keyfile)
     {
-    fprintf(stderr,"ERROR: No keyfile defined.\n");
+    fprintf(stderr," ERROR: No keyfile defined.\n");
     exit(1);
     }
 
@@ -124,12 +124,12 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
     }
   else
     {
-    fprintf(stderr,"ERROR: No key algorithm defined.\n");
+    fprintf(stderr," ERROR: No key algorithm defined.\n");
     exit(1);
     }
   if (decoder == NULL)
     {
-    fprintf(stderr,"ERROR: Unable to open context for private key.\n");
+    fprintf(stderr," ERROR: Unable to open context for private key.\n");
     exit(1);
     }
 
@@ -137,7 +137,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   fp = fopen(keyfile,"rb");
   if (!fp)
     {
-    fprintf(stderr,"ERROR: Unable to open private key file (%s).\n",keyfile);
+    fprintf(stderr," ERROR: Unable to open private key file (%s).\n",keyfile);
     exit(1);
     }
 
@@ -147,27 +147,30 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   // If it fails, then try a password!
   int rc;
   rc = OSSL_DECODER_from_fp(decoder, fp); // assume no password
-  if (rc != 1) // assume no password
+  if (rc != 1) // failed; need password
     {
+    unsigned char *pwd;
+    bool FreePwd=false;
     // Try a password!
-    pwd = GetPassword();
-    if (pwd)
+    pwd = (unsigned char*)SealGetText(Args,"@genpass");
+    if (!pwd) { pwd = GetPassword(); FreePwd=true; }
+    if (pwd && pwd[0])
       {
       // I don't need to set_cipher since the file specifies the cipher.
       // Set the password.
       if (OSSL_DECODER_CTX_set_passphrase(decoder,pwd,strlen((char*)pwd)) != 1)
 	{
-	fprintf(stderr,"ERROR: Unable to set the password.\n");
+	fprintf(stderr," ERROR: Unable to set the password.\n");
 	exit(1);
 	}
-      free(pwd);
+      if (FreePwd) { free(pwd); }
       rc = OSSL_DECODER_from_fp(decoder, fp); // decode with password
       }
     // else: No password already failed.
     }
   if (rc != 1)
     {
-    fprintf(stderr,"ERROR: Unable to load private key file (%s).\n",keyfile);
+    fprintf(stderr," ERROR: Unable to load private key file (%s).\n",keyfile);
     exit(1);
     }
 
@@ -184,6 +187,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
 sealfield *	SealSignLocal	(sealfield *Args)
 {
   EVP_PKEY_CTX *ctx;
+  const EVP_MD* (*mdf)(void);
   char *digestalg=NULL;
   char *sf; // signing format (date, hex, whatever)
   char *keyalg; // rsa or ec
@@ -195,6 +199,9 @@ sealfield *	SealSignLocal	(sealfield *Args)
 
   // Keys must be loaded.
   if (!PrivateKey) { SealLoadPrivateKey(Args); }
+
+  // Apply double digest (date:userid:) as needed
+  Args = SealDoubleDigest(Args);
 
   // Set the date string
   memset(datestr,0,30);
@@ -241,19 +248,15 @@ sealfield *	SealSignLocal	(sealfield *Args)
     Args = SealSetText(Args,"@sigdate",datestr);
     } // set datestr
 
-  // Apply double digest (date:userid:) as needed
-  Args = SealDoubleDigest(Args);
-
   // Set the digest algorithm
-  const EVP_MD* (*mdf)(void);
   digestalg = SealGetText(Args,"da"); // SEAL's 'da' parameter
   if (!strcmp(digestalg,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(digestalg,"sha256")) { mdf = EVP_sha256; }
+  else if (!strcmp(digestalg,"sha256")) { mdf = EVP_sha256; } // default
   else if (!strcmp(digestalg,"sha384")) { mdf = EVP_sha384; }
   else if (!strcmp(digestalg,"sha512")) { mdf = EVP_sha512; }
   else
     {
-    fprintf(stderr,"ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
+    fprintf(stderr," ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
     exit(1);
     }
 
@@ -266,7 +269,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
   else if (!strcmp(keyalg,"ec")) { ; }
   else
     {
-    fprintf(stderr,"ERROR: Unsupported key algorithm (ka=%s).\n",keyalg);
+    fprintf(stderr," ERROR: Unsupported key algorithm (ka=%s).\n",keyalg);
     exit(1);
     }
 
@@ -274,14 +277,14 @@ sealfield *	SealSignLocal	(sealfield *Args)
   ctx = EVP_PKEY_CTX_new_from_pkey(NULL, PrivateKey, NULL);
   if (!ctx)
 	{
-	fprintf(stderr,"ERROR: Unable to initialize the sign context.\n");
+	fprintf(stderr," ERROR: Unable to initialize the sign context.\n");
 	exit(1);
 	}
 
   // Initialize context handle
    if (EVP_PKEY_sign_init(ctx) <= 0) // everyone else
 	{
-	fprintf(stderr,"ERROR: Initializing the sign context failed.\n");
+	fprintf(stderr," ERROR: Initializing the sign context failed.\n");
 	exit(1);
 	}
 
@@ -291,7 +294,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
     if ( (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) != 1) ||
 	 (EVP_PKEY_CTX_set_signature_md(ctx, mdf()) != 1) )
 	{
-	fprintf(stderr,"ERROR: Unable to initialize the RSA algorithm.\n");
+	fprintf(stderr," ERROR: Unable to initialize the RSA algorithm.\n");
 	exit(1);
 	}
     }
@@ -315,7 +318,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
   else if (strstr(sf,"HEX")) { enclen = siglen*2; }
   else
     {
-    fprintf(stderr,"ERROR: Unknown signature format (%s).\n",sf);
+    fprintf(stderr," ERROR: Unknown signature format (%s).\n",sf);
     exit(1);
     }
   if (datestrlen) { enclen += datestrlen+1; } // "date:"
@@ -332,9 +335,12 @@ sealfield *	SealSignLocal	(sealfield *Args)
     DigestBin = SealSearch(Args,"@digest");
     if (EVP_PKEY_sign(ctx, Sign->Value, &siglen, DigestBin->Value, DigestBin->ValueLen) != 1)
       {
-      fprintf(stderr,"ERROR: Failed to sign.\n");
+      fprintf(stderr," ERROR: Failed to sign.\n");
       exit(1);
       }
+
+    // Check for padding
+    Sign->ValueLen = siglen; // size may be smaller
 
     // Encode the signature
     Args = SealCopy(Args,"@enc","@signaturebin");
@@ -357,6 +363,15 @@ sealfield *	SealSignLocal	(sealfield *Args)
       {
       Args = SealMove(Args,"@signatureenc","@enc");
       }
+
+    // Add padding as needed
+    size_t i;
+    siglen = SealGetU32index(Args,"@sigsize",0);
+    Sign = SealSearch(Args,"@signatureenc");
+    for(i=Sign->ValueLen; i < siglen; i++)
+      {
+      Args = SealAddC(Args,"@signatureenc",' ');
+      }
     }
 
   // Clean up
@@ -375,7 +390,7 @@ void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf)
       strchr((char*)vf->Value,'\'') ||
       strchr((char*)vf->Value,' '))
 	{
-	fprintf(stderr,"ERROR: Invalid parameter: '%.*s' value cannot contain quotes or spaces.\n",
+	fprintf(stderr," ERROR: Invalid parameter: '%.*s' value cannot contain quotes or spaces.\n",
 	  (int)vf->FieldLen, vf->Field);
 	exit(1);
 	}
@@ -397,7 +412,6 @@ void	SealGenerateKeys	(sealfield *Args)
   OSSL_ENCODER_CTX *encoder=NULL;
   unsigned int Bits;
   char *keyfile=NULL, *pubfile=NULL;
-  unsigned char *pwd;
 
   vf = SealSearch(Args,"keybits");
   if (!vf) { Bits=2048; }
@@ -407,7 +421,7 @@ void	SealGenerateKeys	(sealfield *Args)
   vf = SealSearch(Args,"dnsfile");
   if (!vf || !vf->ValueLen)
     {
-    fprintf(stderr,"ERROR: dnsfile (-D) must be set.\n");
+    fprintf(stderr," ERROR: dnsfile (-D) must be set.\n");
     exit(1);
     }
   pubfile = (char*)vf->Value;
@@ -415,7 +429,7 @@ void	SealGenerateKeys	(sealfield *Args)
   vf = SealSearch(Args,"keyfile");
   if (!vf || !vf->ValueLen)
     {
-    fprintf(stderr,"ERROR: keyfile (-k) must be set.\n");
+    fprintf(stderr," ERROR: keyfile (-k) must be set.\n");
     exit(1);
     }
   keyfile = (char*)vf->Value;
@@ -425,33 +439,6 @@ void	SealGenerateKeys	(sealfield *Args)
   // Generate the key
 
   vf = SealSearch(Args,"ka");
-#if 0
-  if (!vf) { keypair=NULL; }
-  else if (!strcmp((char*)(vf->Value),"rsa"))
-    {
-    keypair = EVP_RSA_gen(Bits);
-    }
-#if INC_ED25519
-  else if (!strcmp((char*)(vf->Value),"ed25519"))
-    {
-    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
-    EVP_PKEY_keygen_init(pctx);
-    EVP_PKEY_keygen(pctx, &keypair);
-    EVP_PKEY_CTX_free(pctx);
-    }
-#endif
-  else if (!strcmp((char*)(vf->Value),"ec"))
-    {
-    // "ec" is a generic class. When generating, assume P-256 for now.
-    keypair = EVP_EC_gen("P-256");
-    Args = SealSetText(Args,"ka","ec");
-    }
-  else // some kind of specific elliptic curve
-    {
-    keypair = EVP_EC_gen((char*)(vf->Value));
-    Args = SealSetText(Args,"ka","ec");
-    }
-#else
   if (!vf) { keypair=NULL; }
   else if (!strcmp((char*)(vf->Value),"rsa"))
     {
@@ -486,11 +473,10 @@ void	SealGenerateKeys	(sealfield *Args)
     keypair = EVP_EC_gen((char*)(vf->Value));
     Args = SealSetText(Args,"ka","ec");
     }
-#endif
 
   if (!keypair)
     {
-    fprintf(stderr,"ERROR: Unable to generate the keys.\n");
+    fprintf(stderr," ERROR: Unable to generate the keys.\n");
     exit(1);
     }
 
@@ -498,13 +484,18 @@ void	SealGenerateKeys	(sealfield *Args)
   encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair, EVP_PKEY_KEYPAIR, "PEM", NULL, NULL);
   if (!encoder)
     {
-    fprintf(stderr,"ERROR: Unable to generate the private key.\n");
+    fprintf(stderr," ERROR: Unable to generate the private key.\n");
     exit(1);
     }
 
   // Set (optional) password
-  pwd = GetPassword();
-  if (pwd)
+  {
+  unsigned char *pwd;
+  bool FreePwd=false;
+
+  pwd = (unsigned char*)SealGetText(Args,"@genpass");
+  if (!pwd) { pwd = GetPassword(); FreePwd=true; }
+  if (pwd && pwd[0])
     {
     /*****
      Add the password to the private key.
@@ -512,32 +503,33 @@ void	SealGenerateKeys	(sealfield *Args)
      *****/
     if (OSSL_ENCODER_CTX_set_cipher(encoder, "AES-128-CBC", NULL) != 1)
 	{
-	fprintf(stderr,"ERROR: Unable to set password cipher.\n");
+	fprintf(stderr," ERROR: Unable to set password cipher.\n");
 	exit(1);
 	}
     if (OSSL_ENCODER_CTX_set_passphrase(encoder,pwd,strlen((char*)pwd)) != 1)
 	{
-	fprintf(stderr,"ERROR: Unable to set the password.\n");
+	fprintf(stderr," ERROR: Unable to set the password.\n");
 	exit(1);
 	}
     }
+  if (pwd && FreePwd) { free(pwd); }
+  }
 
   fp = fopen(keyfile,"wb");
   if (!fp)
     {
-    fprintf(stderr,"ERROR: Unable to write to the private key file (%s).\n",keyfile);
+    fprintf(stderr," ERROR: Unable to write to the private key file (%s).\n",keyfile);
     exit(1);
     }
 
   if (!OSSL_ENCODER_to_fp(encoder,fp))
     {
-    fprintf(stderr,"ERROR: Unable to save to the private key file (%s).\n",keyfile);
+    fprintf(stderr," ERROR: Unable to save to the private key file (%s).\n",keyfile);
     exit(1);
     }
 
   fclose(fp);
   OSSL_ENCODER_CTX_free(encoder);
-  if (pwd) { free(pwd); pwd=NULL; }
 
   // Save public key as DER!
   encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair,
@@ -547,7 +539,7 @@ void	SealGenerateKeys	(sealfield *Args)
 	"DER", NULL, NULL);
   if (!encoder)
     {
-    fprintf(stderr,"ERROR: Unable to generate the public key.\n");
+    fprintf(stderr," ERROR: Unable to generate the public key.\n");
     // don't delete the private keyfile since it can still generate public keys
     exit(1);
     }
@@ -568,7 +560,7 @@ void	SealGenerateKeys	(sealfield *Args)
   fp = fopen(pubfile,"wb");
   if (!fp)
     {
-    fprintf(stderr,"ERROR: Unable to write to the public key file (%s).\n",pubfile);
+    fprintf(stderr," ERROR: Unable to write to the public key file (%s).\n",pubfile);
     exit(1);
     }
   vf = SealSearch(Args,"seal");

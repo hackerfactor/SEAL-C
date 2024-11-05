@@ -84,7 +84,7 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
   else if (!strcmp(da,"sha512")) { mdf = EVP_sha512; }
   else
     {
-    //fprintf(stderr,"ERROR: Unknown digest algorithm (da=%s).\n",da);
+    //fprintf(stderr," ERROR: Unknown digest algorithm (da=%s).\n",da);
     Rec = SealSetText(Rec,"@error","Unknown digest algorithm (da=");
     Rec = SealAddText(Rec,"@error",da);
     Rec = SealAddText(Rec,"@error",")");
@@ -131,7 +131,6 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 	Rec = SealAddText(Rec,"@error","' in '");
 	Rec = SealAddTextLen(Rec,"@error",(int)(i-seg[0]),b+seg[0]);
 	Rec = SealAddText(Rec,"@error","'");
-DEBUGWHERE();
 	goto Abort;
 	}
     if (b[i]=='+') // addition symbol
@@ -216,8 +215,6 @@ DEBUGWHERE();
 	if (sum[0] < 0) { Rec = SealAddText(Rec,"@error","; underflow"); }
 	if (sum[1] > Mmap->memsize) { Rec = SealAddText(Rec,"@error","; overflow"); }
 	if (sum[1] < sum[0]) { Rec = SealAddText(Rec,"@error","; range begins after it ends"); }
-DEBUGPRINT("Error: sum: %ld %ld vs %ld",(long)(sum[0]), (long)(sum[1]), (long)(Mmap->memsize));
-DEBUGPRINT("Error: %s",SealGetText(Rec,"@error"));
 	goto Abort;
 	}
 
@@ -225,7 +222,6 @@ DEBUGPRINT("Error: %s",SealGetText(Rec,"@error"));
       Rec = RangeErrorCheck(Rec,sum,Mmap);
       if (SealSearch(Rec,"@error"))
 	{
-DEBUGWHERE();
 	goto Abort;
 	}
 
@@ -284,7 +280,7 @@ DEBUGWHERE();
   digestbin = SealSearch(Rec,"@digest");
   EVP_DigestFinal(ctx64,digestbin->Value,&mdsize); // store the digest
 
-  if (Verbose > 1)
+  if (Verbose > 0)
     {
     unsigned int i;
     printf("DEBUG Digest: ");
@@ -345,7 +341,7 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
     DigestAlg = SealGetText(Rec,"da");
     }
   if (!strcmp(DigestAlg,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(DigestAlg,"sha256")) { mdf = EVP_sha256; }
+  else if (!strcmp(DigestAlg,"sha256")) { mdf = EVP_sha256; } // default
   else if (!strcmp(DigestAlg,"sha384")) { mdf = EVP_sha384; }
   else if (!strcmp(DigestAlg,"sha512")) { mdf = EVP_sha512; }
   else // should never happen
@@ -381,7 +377,7 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
   digestbin->ValueLen = mdsize;
   free(digestbin->Value);
   digestbin->Value = (byte*)mdval;
-  if (Verbose > 1)
+  if (Verbose > 0)
     {
     unsigned int i;
     printf("DEBUG Double Digest: ");

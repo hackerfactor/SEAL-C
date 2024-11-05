@@ -89,16 +89,19 @@ const char *_RIFFvalidate[] = {
  Data and Pos may change during recursion, but Mmap is always source file.
  NOTE: This is recursive!
  **************************************/
-sealfield *	_RIFFwalk	(sealfield *Args, size_t DataLen, byte *Data, size_t Pos, int Depth, mmapfile *Mmap)
+sealfield *	_RIFFwalk	(sealfield *Args, size_t PosStart, size_t PosEnd, int Depth, mmapfile *Mmap)
 {
+  byte *Data; // simplify indexing
   size_t size;
   int r;
 
-  while(DataLen >= 8)
+  while(PosStart+8 < PosEnd)
     {
+    Data = Mmap->mem+PosStart;
+
     size = readle32(Data+4);
-    if (size%2) { size++; } // any padding
-    if (size > DataLen) { break; } // overflow
+    if (PosStart+size > PosEnd) { break; } // overflow
+    //DEBUGPRINT("%*s%.4s: %.4s",Depth*2,"",Data,Data+8);
 
     if ((Depth < 1) && !memcmp(Data,"RIFF",4)) // iterate on RIFF!
 	{
@@ -106,7 +109,7 @@ sealfield *	_RIFFwalk	(sealfield *Args, size_t DataLen, byte *Data, size_t Pos, 
 	  {
 	  // "RIFF" size and 4-byte type
 	  //DEBUGPRINT("%*s%.4s: %.4s",Depth*2,"",Data,Data+8);
-	  Args = _RIFFwalk(Args, DataLen-12, Data+12, Pos+12, Depth+1, Mmap);
+	  Args = _RIFFwalk(Args, PosStart+12, PosStart+12+size, Depth+1, Mmap);
 	  }
 	}
     else if ((Depth < 2) && !memcmp(Data,"LIST",4)) // iterate on LIST!
@@ -118,7 +121,7 @@ sealfield *	_RIFFwalk	(sealfield *Args, size_t DataLen, byte *Data, size_t Pos, 
 	  // only recurse on "INFO"
 	  if (!memcmp(Data+8,"INFO",4))
 	    {
-	    Args = _RIFFwalk(Args, DataLen-12, Data+12, Pos+12, Depth+1, Mmap);
+	    Args = _RIFFwalk(Args, PosStart+12, PosStart+12+size, Depth+1, Mmap);
 	    }
 	  }
 	}
@@ -133,15 +136,13 @@ sealfield *	_RIFFwalk	(sealfield *Args, size_t DataLen, byte *Data, size_t Pos, 
 	for(r=0; _RIFFvalidate[r]; r++)
 	  {
 	  if (memcmp(_RIFFvalidate[r],Data,4)) { continue; }// Can it contain a SEAL record?
-	  Args = SealVerifyBlock(Args, Pos+8, Pos+8+DataLen, Mmap);
+	  Args = SealVerifyBlock(Args, PosStart+8, PosStart+8+size, Mmap);
 	  } // foreach possible chunk
 	}
 
     // Skip size and padding
-    size += 8;
-    DataLen -= size;
-    Data += size;
-    Pos += size;
+    if (size%2) { size++; } // any padding
+    PosStart += 8+size;
     }
 
   return(Args);
@@ -262,7 +263,7 @@ sealfield *	Seal_RIFF	(sealfield *Args, mmapfile *Mmap)
   // Make sure it's a RIFF.
   if (!Seal_isRIFF(Mmap)) { return(Args); }
 
-  Args = _RIFFwalk(Args, Mmap->memsize, Mmap->mem, 0, 0, Mmap);
+  Args = _RIFFwalk(Args, 0, Mmap->memsize, 0, Mmap);
 
   /*****
    Sign as needed

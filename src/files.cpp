@@ -165,7 +165,7 @@ char *	MakeFilename	(char *Template, const char *Filename)
 	break;
 
       default:
-	fprintf(stderr,"ERROR: Output filename contains illegal character: %%");
+	fprintf(stderr," ERROR: Output filename contains illegal character: %%");
 	if (isprint(p[1]) && !isspace(p[1])) { fprintf(stderr,"%c",p[1]); }
 	fprintf(stderr,"\n");
 	exit(1);
@@ -199,7 +199,7 @@ FILE *	SealFileOpen   (const char *fname, const char *mode)
   Fout = fopen(fname,mode);
   if (!Fout)
 	{
-	fprintf(stderr,"ERROR: Unable to access '%s'. Aborting.\n",fname);
+	fprintf(stderr," ERROR: Unable to access '%s'. Aborting.\n",fname);
 	exit(1);
 	}
   return(Fout);
@@ -218,7 +218,7 @@ void	SealFileWrite   (FILE *Fout, size_t Len, byte *Data)
     w = fwrite(Data+Wrote, 1, Len-Wrote, Fout);
     if (w <= 0)
       {
-      fprintf(stderr,"ERROR: Failed to write to file. Aborting.\n");
+      fprintf(stderr," ERROR: Failed to write to file. Aborting.\n");
       exit(1);
       }
     }
@@ -239,7 +239,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
   Mmap = (mmapfile*)calloc(sizeof(mmapfile),1);
   if (!Mmap) // should never happen
     {
-    fprintf(stderr,"ERROR: Cannot allocate mmap structure\n");
+    fprintf(stderr," ERROR: Cannot allocate mmap structure\n");
     exit(1);
     }
 
@@ -254,7 +254,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
     }
   if (!Mmap->fp)
     {
-    fprintf(stderr,"ERROR: Cannot open file (%s)\n",Filename);
+    fprintf(stderr," ERROR: Cannot open file (%s)\n",Filename);
     free(Mmap);
     exit(1);
     }
@@ -263,7 +263,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
   FileHandle = fileno(Mmap->fp);
   if (FileHandle == -1) // should never happen since fopen worked
     {
-    fprintf(stderr,"ERROR: File inaccessible (%s)\n",Filename);
+    fprintf(stderr," ERROR: File inaccessible (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
     exit(1);
@@ -272,7 +272,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
   stat_t Stat;
   if ((fstat64(FileHandle,&Stat) == -1) || !S_ISREG(Stat.st_mode))
     {
-    fprintf(stderr,"ERROR: Not a regular file (%s)\n",Filename);
+    fprintf(stderr," ERROR: Not a regular file (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
     exit(1);
@@ -282,7 +282,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
   Mmap->mem = (byte *)mmap64(0,Mmap->memsize,Prot,MAP_SHARED,FileHandle,0);
   if (!Mmap->mem || (Mmap->mem == MAP_FAILED)) // should never happen
     {
-    fprintf(stderr,"ERROR: Memory map failed for file (%s)\n",Filename);
+    fprintf(stderr," ERROR: Memory map failed for file (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
     exit(1);
@@ -317,14 +317,14 @@ bool	CopyFile	(const char *dst, const char *src)
   Mmap = MmapFile(src,PROT_READ);
   if (!Mmap) // never happens since MmapFile checks errors
     {
-    fprintf(stderr,"ERROR: Copy failed from file (%s)\n",src);
+    fprintf(stderr," ERROR: Copy failed from file (%s)\n",src);
     exit(1);
     }
 
   Fout = fopen(dst,"wb+");
   if (!Fout)
     {
-    fprintf(stderr,"ERROR: Copy failed to file (%s)\n",dst);
+    fprintf(stderr," ERROR: Copy failed to file (%s)\n",dst);
     exit(1);
     }
 
@@ -335,7 +335,7 @@ bool	CopyFile	(const char *dst, const char *src)
 	WriteOut = fwrite(Mmap->mem+TotalOut, 1, WriteOut, Fout);
 	if (WriteOut <= 0) // write failure
 	  {
-	  fprintf(stderr,"ERROR: Copy from (%s) to (%s) failed\n",src,dst);
+	  fprintf(stderr," ERROR: Copy from (%s) to (%s) failed\n",src,dst);
 	  exit(1);
 	  }
 	TotalOut += WriteOut;

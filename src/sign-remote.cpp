@@ -62,7 +62,7 @@ sealfield *	SealSignURL	(sealfield *Args)
   // Make sure there's a known API URL!
   if (!SealIsURL(Args)) // Caller should make sure this never happens
     {
-    fprintf(stderr,"ERROR: apiurl does not begin with http:// or https://. Aborting.\n");
+    fprintf(stderr," ERROR: apiurl does not begin with http:// or https://. Aborting.\n");
     exit(1);
     }
 
@@ -74,14 +74,14 @@ sealfield *	SealSignURL	(sealfield *Args)
   crc = curl_global_init(CURL_GLOBAL_DEFAULT);
   if (crc != CURLE_OK)
     {
-    fprintf(stderr,"ERROR: Failed to initialize curl. Aborting.\n");
+    fprintf(stderr," ERROR: Failed to initialize curl. Aborting.\n");
     exit(1);
     }
 
   ch = curl_easy_init();
   if (!ch)
     {
-    fprintf(stderr,"ERROR: Failed to initialize curl handle. Aborting.\n");
+    fprintf(stderr," ERROR: Failed to initialize curl handle. Aborting.\n");
     exit(1);
     }
 
@@ -176,7 +176,7 @@ sealfield *	SealSignURL	(sealfield *Args)
   curl_global_cleanup();
   if (crc != CURLE_OK)
     {
-    fprintf(stderr,"ERROR: curl(%d]: %s\n",crc,errbuf[0] ? errbuf : "unknown");
+    fprintf(stderr," ERROR: curl(%d]: %s\n",crc,errbuf[0] ? errbuf : "unknown");
     exit(1);
     }
 
@@ -187,6 +187,7 @@ sealfield *	SealSignURL	(sealfield *Args)
    NOTE: The value may contain "\" to quote the next character.
    *****/
   sealfield *json, *jsonv;
+  //DEBUGPRINT("curldata=%s",SealGetText(Args,"@curldata"));
   json = Json2Seal(SealSearch(Args,"@curldata"));
   if (json)
     {

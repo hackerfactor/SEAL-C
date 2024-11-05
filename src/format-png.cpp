@@ -182,7 +182,7 @@ sealfield *	_PNGchunk	(sealfield *Args)
   rec = SealSearch(Args,"@record");
   if (rec==NULL) // should never happen
     {
-    printf("ERROR: Cannot generate the signature. Aborting.\n");
+    printf(" ERROR: Cannot generate the signature. Aborting.\n");
     exit(1);
     }
 
@@ -261,13 +261,13 @@ sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *MmapIn, size_t IEND_offset)
   // Is there an insertion point?
   if (IEND_offset == 0)
 	{
-	fprintf(stderr,"ERROR: PNG is truncated; cannot sign. Aborting.\n");
+	fprintf(stderr," ERROR: PNG is truncated; cannot sign. Aborting.\n");
 	}
 
   // Check if file is finalized (abort if it is)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
-	fprintf(stderr,"ERROR: PNG is finalized; cannot sign. Aborting.\n");
+	fprintf(stderr," ERROR: PNG is finalized; cannot sign. Aborting.\n");
 	exit(1);
 	}
 
@@ -342,7 +342,7 @@ sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
     if ((ChunkSize > Mmap->memsize) ||
 	(Offset+12+ChunkSize > Mmap->memsize))
 	{
-	fprintf(stderr,"ERROR: PNG is corrupted. Aborting.\n");
+	fprintf(stderr," ERROR: PNG is corrupted. Aborting.\n");
 	return(Args);
 	}
 

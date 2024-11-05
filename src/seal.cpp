@@ -863,7 +863,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
 	else if (vf->Value[i] == QuoteChar) { ; }
 	else
 	  {
-	  fprintf(stderr,"ERROR: Invalid parameter: '%.*s' value contains mixed quotes.\n",
+	  fprintf(stderr," ERROR: Invalid parameter: '%.*s' value contains mixed quotes.\n",
 		(int)vf->FieldLen, vf->Field);
 	  exit(1);
 	  }
@@ -872,7 +872,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
       else if (vf->Value[i] == ' ') { ; }
       else
 	  {
-	  fprintf(stderr,"ERROR: Invalid parameter: '%.*s' value contains an invalid character.\n",
+	  fprintf(stderr," ERROR: Invalid parameter: '%.*s' value contains an invalid character.\n",
 		(int)vf->FieldLen, vf->Field);
 	  exit(1);
 	  }
@@ -888,7 +888,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
 	  {
 	  if (!isdigit(vf->Value[i]))
 	    {
-	    fprintf(stderr,"ERROR: Invalid parameter: '%.*s' value is not numeric.\n",
+	    fprintf(stderr," ERROR: Invalid parameter: '%.*s' value is not numeric.\n",
 		(int)vf->FieldLen, vf->Field);
 	    exit(1);
 	    }
@@ -902,13 +902,13 @@ sealfield *	SealParmCheck	(sealfield *Args)
       // must be power of 2: 64 or larger
       if (u16 < 64)
         {
-	fprintf(stderr,"ERROR: Invalid parameter: '%.*s' value is too small (at least 64).\n",
+	fprintf(stderr," ERROR: Invalid parameter: '%.*s' value is too small (at least 64).\n",
 		(int)vf->FieldLen, vf->Field);
 	exit(1);
 	}
       else if (u16 & (u16-1)) // power of 2?
         {
-	fprintf(stderr,"ERROR: Invalid parameter: '%.*s' value is not a power of 2.\n",
+	fprintf(stderr," ERROR: Invalid parameter: '%.*s' value is not a power of 2.\n",
 		(int)vf->FieldLen, vf->Field);
 	exit(1);
 	}
@@ -933,7 +933,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
 	  {
 	  if (!isalnum(vf->Value[i]) && !strchr(".+/-",vf->Value[i]))
 	    {
-	    fprintf(stderr,"ERROR: Invalid parameter: '%.*s' value contains invalid characters.\n",
+	    fprintf(stderr," ERROR: Invalid parameter: '%.*s' value contains invalid characters.\n",
 		(int)vf->FieldLen, vf->Field);
 	    exit(1);
 	    }

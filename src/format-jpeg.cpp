@@ -185,7 +185,7 @@ sealfield *     _JPEGblock   (sealfield *Args, uint16_t Tag)
   rec = SealSearch(Args,"@record");
   if (rec==NULL) // should never happen
     {
-    printf("ERROR: Cannot generate the signature. Aborting.\n");
+    printf(" ERROR: Cannot generate the signature. Aborting.\n");
     exit(1);
     }
 
@@ -204,7 +204,7 @@ sealfield *     _JPEGblock   (sealfield *Args, uint16_t Tag)
   i = rec->ValueLen + 2 + 5;
   if (i > 0xfffe)
     {
-    printf("ERROR: SEAL record is too large for JPEG. Aborting.\n");
+    printf(" ERROR: SEAL record is too large for JPEG. Aborting.\n");
     exit(1);
     }
   Args = SealSetCindex(Args,"@BLOCK",2, (i>>8) & 0xff);
@@ -384,7 +384,7 @@ void	_SealFileWriteMPF	(FILE *Fout, size_t IncValue, size_t FFDAoffset, size_t *
 MPFdone:
   if (IsError)
     {
-    printf("ERROR: Invalid MPF metadata block; not fixing.\n");
+    printf(" ERROR: Invalid MPF metadata block; not fixing.\n");
     SealFileWrite(Fout, MPFoffset[1]-MPFoffset[0], Mmap->mem + MPFoffset[0]);
     }
   else
@@ -456,13 +456,13 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *MmapIn, size_t FFDAo
   // Is there an insertion point?
   if (FFDAoffset == 0)
 	{
-	fprintf(stderr,"ERROR: JPEG is truncated; cannot sign. Aborting.\n");
+	fprintf(stderr," ERROR: JPEG is truncated; cannot sign. Aborting.\n");
 	}
 
   // Check if file is finalized (abort if it is)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
-	fprintf(stderr,"ERROR: JPEG is finalized; cannot sign. Aborting.\n");
+	fprintf(stderr," ERROR: JPEG is finalized; cannot sign. Aborting.\n");
 	exit(1);
 	}
 
@@ -479,7 +479,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *MmapIn, size_t FFDAo
   Fout = SealFileOpen(fname,"w+b"); // returns handle or aborts
   if (!Fout)
     {
-    fprintf(stderr,"ERROR: Cannot create file (%s). Aborting.\n",fname);
+    fprintf(stderr," ERROR: Cannot create file (%s). Aborting.\n",fname);
     exit(1);
     }
 
@@ -583,12 +583,12 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
     BlockSize = readbe16(Mmap->mem+Offset+2);
     if (BlockSize < 2) // underflow
       {
-      fprintf(stderr,"ERROR: JPEG is corrupted. Aborting.\n");
+      fprintf(stderr," ERROR: JPEG is corrupted. Aborting.\n");
       return(Args);
       }
     if (Offset+BlockSize > Mmap->memsize) // overflow
       {
-      fprintf(stderr,"ERROR: JPEG is corrupted. Aborting.\n");
+      fprintf(stderr," ERROR: JPEG is corrupted. Aborting.\n");
       return(Args);
       }
     //DEBUGPRINT("Tag: %04x",(int)BlockType);
