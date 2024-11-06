@@ -68,7 +68,7 @@ void	SealStrEncode	(sealfield *Data)
   // Count amount of new space required
   for(i=j=0; i < Data->ValueLen; i++,j++)
     {
-    if (strchr("'\"",Data->Value[i])) { j++; }
+    if (strchr("'\"\\",Data->Value[i])) { j++; }
     }
 
   // i=string length, j=new string length
@@ -78,14 +78,15 @@ void	SealStrEncode	(sealfield *Data)
     Data->Value = (byte*)realloc(Data->Value,Data->ValueLen+4);
     memset(Data->Value+i,0,j-i+4); // clear new memory
     // Now copy over all new characters
-    i--; j--; // Start at the last character
-    while((i >= 0) && (j > i))
+    // Start at the last character
+    // NOTE: Can't check if (i >= 0) since size_t is unsigned; always true.
+    while((i > 0) && (j > i))
       {
-      Data->Value[j] = Data->Value[i];
-      if (strchr("'\"",Data->Value[i]))
+      Data->Value[j-1] = Data->Value[i-1];
+      if (strchr("'\"\\",Data->Value[i-1]))
         {
 	j--;
-	Data->Value[j]='\\';
+	Data->Value[j-1]='\\';
 	}
        j--; i--;
       }

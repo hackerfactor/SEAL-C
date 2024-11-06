@@ -657,7 +657,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
    If it's 1, then check if it covers the start of the file.
    *****/
   signum = SealGetIindex(Rec,"@s",2);
-  if (signum < 1) // should never happen
+  if (signum < 1) // happens if the seal record is corrupted
     {
     printf(" WARNING: Invalid SEAL record count (%ld).\n",signum);
     return(Rec);

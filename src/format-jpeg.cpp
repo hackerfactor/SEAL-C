@@ -721,7 +721,7 @@ NextBlock:
   Args = Seal_JPEGsign(Args,Mmap,FFDAoffset, (PreviousBlockType == 0xffe8) ? 0xffe9 : 0xffe8);
   if (SealGetIindex(Args,"@s",2)==0) // no signatures
     {
-    printf("No SEAL signatures found.\n");
+    printf(" No SEAL signatures found.\n");
     }
 
   return(Args);

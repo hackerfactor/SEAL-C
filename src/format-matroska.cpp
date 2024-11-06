@@ -244,7 +244,7 @@ sealfield *	Seal_Matroska	(sealfield *Args, mmapfile *Mmap)
   Args = Seal_Matroskasign(Args,Mmap); // Add a signature as needed
   if (SealGetIindex(Args,"@s",2)==0) // no signatures
     {
-    printf("No SEAL signatures found.\n");
+    printf(" No SEAL signatures found.\n");
     }
 
   return(Args);
