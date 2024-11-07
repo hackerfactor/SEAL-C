@@ -234,8 +234,15 @@ sealfield *	Seal_RIFFsign	(sealfield *Args, mmapfile *MmapIn)
   rec = SealSearch(Args,"@record");
   Args = SealAddBin(Args,"@BLOCK",rec->ValueLen, rec->Value);
 
-  // Set block length
+  // pad block to 16-bit alignment
   block = SealSearch(Args,"@BLOCK");
+  if (block->ValueLen % 2)
+    {
+    Args = SealAddC(Args,"@BLOCK",' ');
+    block = SealSearch(Args,"@BLOCK");
+    }
+
+  // Set block length
   BlockLen = block->ValueLen;
   writele32(block->Value+4,BlockLen-8);
 

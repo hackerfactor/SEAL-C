@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 // Revise the version if there is any significant change
-#define SEAL_VERSION "0.0.4-beta"
+#define SEAL_VERSION "0.0.5-beta"
 
 extern int Verbose;
 

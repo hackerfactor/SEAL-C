@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
+#include <ctype.h>
 
 #include "seal.hpp"
 #include "seal-parse.hpp"
@@ -84,7 +86,30 @@ sealfield *	SealRecord	(sealfield *Args)
     }
   else // No signature! Use padding!
     {
-    Args = SealAddTextPad(Args,"@record",(size_t)SealGetU32index(Args,"@sigsize",0),"abcdefghij");
+    size_t DateLen=0;
+    char *sf;
+
+    // Determine date padding
+    sf = SealGetText(Args,"sf");
+    if (!strncmp(sf,"date",4))
+      {
+      DateLen += 14; // YYYYMMDDhhmmss
+      Args = SealAddTextPad(Args,"@record",DateLen,"2");
+
+      if (isdigit(sf[4])) // if there are subseconds
+        {
+	int subsec;
+	subsec = sf[4]-'0';
+        Args = SealAddC(Args,"@record",'.');
+        Args = SealAddTextPad(Args,"@record",subsec,"3");
+	DateLen += 1 + subsec;
+	}
+
+      Args = SealAddC(Args,"@record",':');
+      DateLen++; // for the ":"
+      }
+
+    Args = SealAddTextPad(Args,"@record",(size_t)SealGetU32index(Args,"@sigsize",0)-DateLen,"abcdef");
     }
 
   // END signature: Record local (@S) relative to this record position

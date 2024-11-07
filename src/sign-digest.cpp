@@ -280,7 +280,7 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
   if (Verbose > 0)
     {
     unsigned int i;
-    printf("DEBUG Digest: ");
+    printf(" Digest: ");
     for(i=0; i < mdsize; i++) { printf("%02x",digestbin->Value[i]); }
     printf("\n");
     }
@@ -377,7 +377,7 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
   if (Verbose > 0)
     {
     unsigned int i;
-    printf("DEBUG Double Digest: ");
+    printf(" Double Digest: ");
     for(i=0; i < mdsize; i++) { printf("%02x",digestbin->Value[i]); }
     printf("\n");
     }

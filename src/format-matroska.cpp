@@ -27,6 +27,16 @@
  The value of the SEAL chunk is a "<seal .../>" record.
 
  For signing? Append the SEAL record at the end of the file.
+
+ ===============================
+ Feedback from Phil Harvey (exiftool):
+ > Typically all metadata comes before the first cluster, and by default ExifTool won't read it if it comes afterwards.
+
+ I'm going to insert it after the Header and any prior SEAL records,
+ but before any other chunks.
+ HOWEVER, this prevents appending.
+ I also did some playing with mkvmerge. It doesn't support
+ true appending. It seems to always rewrites and combines elements.
  ************************************************/
 #include <stdlib.h>
 #include <ctype.h>
@@ -118,10 +128,15 @@ sealfield *	_Matroskawalk	(sealfield *Args, mmapfile *Mmap)
     if (iLen == (size_t)(-1)) { break; } // invalid
     if (Offset+iLen > Mmap->memsize) { break; } // overflow
 
-    if (iTag == 0x5345414C) // if SEAL chunk
+    if (iTag == 0xa45dfa3) // if Header chunk
+	{
+	Args = SealSetIindex(Args,"@MatInsert",0,Offset+iLen);
+	}
+    else if (iTag == 0x5345414C) // if SEAL chunk
 	{
 	// Process possible SEAL record.
 	Args = SealVerifyBlock(Args, Offset, Offset+iLen, Mmap);
+	Args = SealSetIindex(Args,"@MatInsert",0,Offset+iLen);
 	}
 
     Offset+=iLen;
@@ -190,12 +205,14 @@ sealfield *	Seal_Matroskasign	(sealfield *Args, mmapfile *MmapIn)
   // Check for appending
   if (!Opt || !strstr(Opt,"append")) // if not append
 	{
-	// Skip the PNG checksum and finalize to the end of file ("f")
 	Args = SealAddText(Args,"b",",s~f");
 	}
   else
 	{
-	Args = SealAddText(Args,"b",",s~s+3"); // +3 for '"/>'
+	// Matroska doesn't support true appending.
+	//Args = SealAddText(Args,"b",",s~s+3"); // +3 for '"/>'
+	fprintf(stderr," ERROR: This format (Matroska) does not support appending. Skipping.\n");
+	return(Args);
 	}
 
   // Get the record
@@ -214,8 +231,8 @@ sealfield *	Seal_Matroskasign	(sealfield *Args, mmapfile *MmapIn)
   rec = SealSearch(Args,"@record");
   Args = SealAddBin(Args,"@BLOCK",rec->ValueLen,rec->Value);
   SealSetType(Args,"@BLOCK",'x');
-  
-  MmapOut = SealInsert(Args,MmapIn,MmapIn->memsize);
+ 
+  MmapOut = SealInsert(Args,MmapIn,SealGetIindex(Args,"@MatInsert",0));
   if (MmapOut)
     {
     // Sign it!
@@ -236,6 +253,7 @@ sealfield *	Seal_Matroska	(sealfield *Args, mmapfile *Mmap)
   // Make sure it's a Matroska.
   if (!Seal_isMatroska(Mmap)) { return(Args); }
 
+  // This identifies where to insert SEAL.
   Args = _Matroskawalk(Args, Mmap);
 
   /*****

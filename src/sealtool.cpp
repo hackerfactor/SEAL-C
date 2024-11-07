@@ -217,14 +217,19 @@ void	Usage	(const char *progname)
   printf("  --uid text           :: Unique key identifier (default: not set)\n");
   printf("\n");
   printf("  Signing with a local private key:\n");
-  printf("  -s, --sign           :: Required: Enable signing\n");
+  printf("  -s, --sign           :: Required: Enable signing (requires lowercase 's')\n");
   printf("  -k, --keyfile fname  :: File for storing the private key in PEM format (default: ./seal-private.pem)\n");
   printf("\n");
   printf("  Signing with a remote signing service:\n");
-  printf("  -S, --Sign           :: Required: Enable signing\n");
+  printf("  -S, --Sign           :: Required: Enable signing (requires uppercase 'S')\n");
   printf("  -u, --apiurl url     :: For remote signers (default: no url)\n");
   printf("  -a, --apikey id      :: For remote signers (default: no API key)\n");
   printf("  -i, --id id          :: User-specific identifier (default: no identifier)\n");
+  printf("\n");
+  printf("  Manual signing: (mostly for debugging; probably not what you want)\n");
+  printf("  -M, --Manual ''      :: Generate the SEAL record with a stubbed value.\n");
+  printf("  -M, --Manual digest  :: Given a hex digest, sign it using a remote service.\n");
+  printf("  -m, --manual digest  :: Given a hex digest, sign it using a local key.\n");
   printf("\n");
   printf("  Common signing options (for local and remote)\n");
   printf("  -d, --domain domain  :: DNS entry with the public key (default: localhost.localdomain)\n");
@@ -306,8 +311,6 @@ int main (int argc, char *argv[])
     {"config",    required_argument, NULL, 9},
     {"generate",  no_argument, NULL, 'g'},
     {"genpass" ,  no_argument, NULL, 'G'},
-    {"sign",      no_argument, NULL, 's'},
-    {"Sign",      no_argument, NULL, 'S'},
     {"da",        required_argument, NULL, 'A'},
     {"digestalg", required_argument, NULL, 'A'},
     {"dnsfile1", required_argument, NULL, 'P'}, // Debugging: specify dns via command-line
@@ -318,12 +321,16 @@ int main (int argc, char *argv[])
     {"dnsfile",   required_argument, NULL, 'D'},
     {"domain",    required_argument, NULL, 'd'},
     {"id",        required_argument, NULL, 'i'},
-    {"keyalg",    required_argument, NULL, 'K'},
     {"ka",        required_argument, NULL, 'K'},
-    {"keyfile",   required_argument, NULL, 'k'},
+    {"keyalg",    required_argument, NULL, 'K'},
     {"keybits",   required_argument, NULL, 1},
+    {"keyfile",   required_argument, NULL, 'k'},
+    {"Manual",    required_argument, NULL, 'M'},
+    {"manual",    required_argument, NULL, 'm'},
     {"outfile",   required_argument, NULL, 'o'},
     {"options",   required_argument, NULL, 'O'},
+    {"Sign",      no_argument, NULL, 'S'},
+    {"sign",      no_argument, NULL, 's'},
     // long-only options
     {"sf",        required_argument, NULL, 1},
     {"kv",        required_argument, NULL, 1}, // must be numeric >= 0
@@ -331,7 +338,7 @@ int main (int argc, char *argv[])
     // modes
     {NULL,0,NULL,0}
     };
-  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghi:K:k:o:O:Ssu:VvW?",long_options,&long_option_index)) != -1)
+  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghi:K:k:M:m:o:O:Ssu:VvW?",long_options,&long_option_index)) != -1)
     {
     switch(c)
       {
@@ -361,12 +368,22 @@ int main (int argc, char *argv[])
       case 'G': // generate password (not in usage; really insecure)
 	Args = SealSetText(Args,"@genpass",optarg); break;
 
+      case 'M': // manual remote signing
+      case 'm': // manual local signing
+	{
+	if (optarg[0])
+	  {
+	  Args = SealSetText(Args,"@digest",optarg);
+	  SealHexDecode(SealSearch(Args,"@digest")); // hex to binary
+	  }
+	}
+	// fall through to Mode check
       case 'g': // generate flag
       case 'S': // signing flag: remote
       case 's': // signing flag: local
 	if (Mode!='v') // if it's not the default value...
 	  {
-	  fprintf(stderr,"ERROR: Only one -g, -s, or -S permitted\n");
+	  fprintf(stderr,"ERROR: Only one -g, -s, -S, -m, or -M permitted\n");
 	  exit(1);
 	  }
 	Mode=c;
@@ -424,22 +441,15 @@ int main (int argc, char *argv[])
     return(0); // done processing
     }
 
-  // Process all args
-  if (optind >= argc)
-    {
-    fprintf(stderr,"ERROR: No input files.\n");
-    exit(1);
-    }
-
   // If signing, get dynamic signing parameters
-  if (strchr("sS",Mode))
+  if (strchr("sSmM",Mode))
     {
     /*****
      When signing, no digest gets the size of the signature (@sigsize).
      This never changes between calls, so do it now.
      *****/
-    if (IsURL && (Mode=='S')) { Args = SealSignURL(Args); }
-    else if (IsLocal && (Mode=='s')) { Args = SealSignLocal(Args); }
+    if (IsURL && strchr("SM",Mode)) { Args = SealSignURL(Args); }
+    else if (IsLocal && strchr("sm",Mode)) { Args = SealSignLocal(Args); }
     // Must have sigsize!
     if (SealGetU32index(Args,"@sigsize",0)==0)
 	{
@@ -453,6 +463,20 @@ int main (int argc, char *argv[])
     Args = SealSetText(Args,"Mode","verify");
     }
   if (Verbose > 3) { DEBUGWALK("Post-CLI Parameters",Args); } // DEBUGGING
+
+  // Manual processing
+  if (strchr("Mm",Mode))
+    {
+    Seal_Manual(Args);
+    return(0); // done processing
+    }
+
+  // Process all args
+  if (optind >= argc)
+    {
+    fprintf(stderr,"ERROR: No input files.\n");
+    exit(1);
+    }
 
   // Don't mess up command-line parameters
   CleanArgs = Args;
@@ -484,6 +508,7 @@ int main (int argc, char *argv[])
     else if (Seal_isRIFF(Mmap)) { FileFormat='R'; } // RIFF
     else if (Seal_isMatroska(Mmap)) { FileFormat='M'; } // Matroska
     else if (Seal_isBMFF(Mmap)) { FileFormat='B'; } // BMFF
+    else if (Seal_isPDF(Mmap)) { FileFormat='p'; } // PDF
     else
 	{
 	fprintf(stdout," ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
@@ -510,6 +535,7 @@ int main (int argc, char *argv[])
 	case 'J': Args = Seal_JPEG(Args,Mmap); break; // JPEG
 	case 'M': Args = Seal_Matroska(Args,Mmap); break; // Matroska
 	case 'P': Args = Seal_PNG(Args,Mmap); break; // PNG
+	case 'p': Args = Seal_PDF(Args,Mmap); break; // PDF
 	case 'R': Args = Seal_RIFF(Args,Mmap); break; // RIFF
 	default: break; // should never happen
 	}

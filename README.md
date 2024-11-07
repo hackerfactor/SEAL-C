@@ -48,7 +48,7 @@ This code currently supports static-files only. It does not support streaming da
 |Documentation Format|Write Support|Read Support|
 |------|-------------|------------|
 |OpenDocument (docx, pptx, etc.)|Coming soon.|Coming soon.|
-|PDF |Coming soon.|Coming soon.|
+|PDF |SEAL records in PDF comments|SEAL records in PDF comments|
 |HTML |Coming soon.|Coming soon.|
 |Plain Text |Coming soon.|Coming soon.|
 

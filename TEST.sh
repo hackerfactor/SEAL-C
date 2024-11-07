@@ -42,3 +42,7 @@ for ka in rsa ec ; do
   done #sf
 done # ka
 
+
+### And try manual fields
+./SIGNANY.sh -Comment regression/test-signed-comment.jpg
+

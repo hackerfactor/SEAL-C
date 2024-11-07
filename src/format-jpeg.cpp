@@ -15,6 +15,7 @@
        The length includes itself! Never less than 2!
        The APP name is based on the last nibble:
        ffe0 = APP0, ffe5 = APP5, ffee = APP14, etc.
+     fffe :: text comment
      ffda :: start of stream (forget nice blocks; just dump data after a short header)
    ffd9 :: end of image (no length)
 
@@ -531,7 +532,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *MmapIn, size_t FFDAo
 } /* Seal_JPEGsign() */
 
 /**************************************
- FormatJPEG(): Process a JPEG.
+ Seal_JPEG(): Process a JPEG.
  Reads every seal signature.
  If signing, add the signature before the ffda stream.
  **************************************/
@@ -705,7 +706,11 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
        And if the nested media is finalized, then this file cannot be signed.
        *****/
       Args = SealVerifyBlock(Args, Offset+2, Offset+2+BlockSize, Mmap);
-      }
+      } // if APP block
+    else if (BlockType == 0xfffe)
+      {
+      Args = SealVerifyBlock(Args, Offset+2, Offset+2+BlockSize, Mmap);
+      } // if comment block
 
 NextBlock:
     // NEXT!
@@ -725,5 +730,5 @@ NextBlock:
     }
 
   return(Args);
-} /* FormatJPEG() */
+} /* Seal_JPEG() */
 

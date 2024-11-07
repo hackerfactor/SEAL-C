@@ -118,8 +118,8 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
   // Sign it (this creates '@signatureenc')
   switch(SealGetCindex(sigparm,"@mode",0)) // sign it
     {
-    case 'S': sigparm = SealSignURL(sigparm); break;
-    case 's': sigparm = SealSignLocal(sigparm); break;
+    case 'M': case 'S': sigparm = SealSignURL(sigparm); break;
+    case 'm': case 's': sigparm = SealSignLocal(sigparm); break;
     default: break; // never happens
     }
 
@@ -133,8 +133,6 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
   p = SealGetIarray(Rec,"@p");
   if (!sig || (sig->ValueLen + s[0] != s[1]))
 	{
-DEBUGPRINT("sig=%p",sig);
-if (sig) { DEBUGPRINT("size: %lu vs %lu",sig->ValueLen,s[1]-s[0]); }
 	fprintf(stderr," ERROR: signature size changed while writing. Aborting.\n");
 	exit(1);
 	}

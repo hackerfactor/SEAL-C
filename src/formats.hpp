@@ -11,6 +11,8 @@
 #include "seal.hpp"
 #include "files.hpp"
 
+sealfield *	Seal_Manual	(sealfield *Args);
+
 bool		Seal_isPNG	(mmapfile *Mmap);
 sealfield *	Seal_PNG	(sealfield *Args, mmapfile *MmapIn);
 
@@ -25,6 +27,9 @@ sealfield *	Seal_Matroska	(sealfield *Args, mmapfile *MmapIn);
 
 bool		Seal_isBMFF	(mmapfile *Mmap);
 sealfield *	Seal_BMFF	(sealfield *Args, mmapfile *MmapIn);
+
+bool		Seal_isPDF	(mmapfile *Mmap);
+sealfield *	Seal_PDF	(sealfield *Args, mmapfile *MmapIn);
 
 #endif
 

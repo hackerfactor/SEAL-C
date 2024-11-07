@@ -14,6 +14,7 @@
 #include <curl/curl.h>
 #include <string.h> // memset
 #include "seal.hpp"
+#include "seal-parse.hpp"
 #include "sign.hpp"
 #include "json.hpp"
 
@@ -145,22 +146,11 @@ sealfield *	SealSignURL	(sealfield *Args)
     /*****
      digest is binary, but we need it in hex.
      *****/
-    uint64_t b;
-    int n; // nibble
-    Str = (char*)calloc(vf->ValueLen*2+4,1); // allocate extra for null padding
-    for(b=0; b < vf->ValueLen; b++)
-      {
-      n=(vf->Value[b] / 0x10);
-      if (n < 10) { Str[b*2+0] = '0'+n; }
-      else { Str[b*2+0] = 'a'+(n-10); }
-      n=(vf->Value[b] % 0x10);
-      if (n < 10) { Str[b*2+1] = '0'+n; }
-      else { Str[b*2+1] = 'a'+(n-10); }
-      }
+    SealHexEncode(vf,false); // bin to hex
     // Store hex
     Args = SealAddText(Args,"@post","&digest=");
-    Args = SealAddText(Args,"@post",Str);
-    free(Str);
+    Args = SealAddText(Args,"@post",(char*)vf->Value);
+    SealHexDecode(vf); // hex to bin
     }
 
   // Set the post data
@@ -191,13 +181,13 @@ sealfield *	SealSignURL	(sealfield *Args)
   json = Json2Seal(SealSearch(Args,"@curldata"));
   if (json)
     {
-    if (Verbose > 1)
+    if (Verbose > 0)
 	{
-	if (Verbose > 2) { DEBUGWALK("Remote results",json); }
+	if (Verbose > 1) { DEBUGWALK(" Remote results",json); }
 	else
 	  {
 	  jsonv = SealSearch(json,"double-digest");
-	  if (jsonv) { printf("DEBUG Double Digest: %s\n",jsonv->Value); }
+	  if (jsonv) { printf("  Double Digest: %s\n",jsonv->Value); }
 	  }
 	}
     jsonv = SealSearch(json,"sigsize");
@@ -205,6 +195,7 @@ sealfield *	SealSignURL	(sealfield *Args)
     else if (jsonv->Type=='4') { Args = SealSetU32index(Args,"@sigsize",0,((uint32_t*)jsonv->Value)[0]); }
     else if (jsonv->Type=='8') { Args = SealSetU32index(Args,"@sigsize",0,((uint64_t*)jsonv->Value)[0]); }
     else if (jsonv->Type=='c') { Args = SealSetU32index(Args,"@sigsize",0,atol((char*)jsonv->Value)); }
+    else if (jsonv->Type=='I') { Args = SealSetIindex(Args,"@sigsize",0,atol((char*)jsonv->Value)); }
 
     jsonv = SealSearch(json,"signature");
     if (!jsonv) { ; }

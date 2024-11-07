@@ -14,7 +14,13 @@
 
 #include "seal.hpp"
 
-typedef struct stat64 stat_t;
+#ifdef __CYGWIN__
+  #define fstat64(a,b) fstat(a,b)
+  #define mmap64(a,b,c,d,e,f) mmap(a,b,c,d,e,f)
+  typedef struct stat stat_t;
+#else
+  typedef struct stat64 stat_t;
+#endif
 
 typedef struct
   {

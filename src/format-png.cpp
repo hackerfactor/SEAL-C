@@ -110,7 +110,7 @@ uint32_t	_PNGCrc32	(uint32_t DataLen, byte *Data)
  If Mmap is set, then compute checksum and set @p and @s.
  Otherwise, return a stub chunk.
  Returns record in [@record]
- Returns chunk in [@PNGchunk]
+ Returns chunk in [@BLOCK]
  Returns offset and length to the signature in [@s]
  **************************************/
 sealfield *	_PNGchunk	(sealfield *Args)
