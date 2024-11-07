@@ -1,10 +1,9 @@
 #!/bin/bash
 
-Field="$1"
-Fname="$2"
+Fname="$1"
 if [ "$Fname" == "" ] ; then
-  echo "Usage: $0 ExiftoolField DestinationFile"
-  echo "  e.g.: $0 -Comment ./test.jpg"
+  echo "Usage: $0 DestinationFile"
+  echo "  e.g.: $0 ./test.jpg"
   exit
 fi
 
@@ -16,7 +15,8 @@ rec1=$(bin/sealtool -M '')
 #echo "$rec1"
 
 # insert the record into the file
-exiftool -overwrite_original "$Field=$rec1" "$Fname" > /dev/null 2>&1
+# ExifTool doesn't want the start or end ticks
+exiftool -config regression/exiftool-seal.config  -overwrite_original -SEAL="${rec1:6:-2}" "$Fname" > /dev/null 2>&1
 if [ "$?" != "0" ] ; then
   echo "ExifTool failure."
   exit 1
@@ -32,7 +32,7 @@ rec2=$(bin/sealtool -M "$digest")
 
 # re-insert
 cp regression/test-unsigned.jpg "$Fname"
-exiftool -overwrite_original "$Field=$rec2" "$Fname" > /dev/null 2>&1
+exiftool -config regression/exiftool-seal.config  -overwrite_original -SEAL="${rec2:6:-2}" "$Fname" > /dev/null 2>&1
 
 # Now check it
 bin/sealtool "$Fname"
