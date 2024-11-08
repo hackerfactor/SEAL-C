@@ -6,7 +6,9 @@
  These are in the form:
    <seal ... />
  or
-   <xmp:seal>seal ... </xmp:seal>
+   <*:seal>seal ... </\*:seal>
+   <*:seal seal ... />
+   where '*' is a namespace
  Where "..." are attributes in the format: field=value.
  ************************************************/
 // C headers
@@ -425,7 +427,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       }
     //DEBUGPRINT("State[%d]=[%.*s]",State,(int)(TextLen-i),(char*)Text+i);
 
-    // State 0: Looking for "<seal" or "<xmp:seal"
+    // State 0: Looking for "<seal" or "<*:seal"
     if (State==0)
       {
       // Must begin with "<"
@@ -438,11 +440,14 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	State=1;
 	continue;
 	}
-      // "<xmp:seal>" or "<xmp:seal "
-      if ((i+10 < TextLen) && !memcmp(Text+i,"<xmp:seal",9) && strchr("> ",Text[i+9]))
+      // "<*:seal>" or "<*:seal "
+      size_t j;
+      for(j=i+1; (j+10 < TextLen) && isalnum(Text[j]); j++) { ; }
+      if ((Text[j]==':') && (j+10 < TextLen) && !memcmp(Text+j,":seal",5) && strchr("> ",Text[j+5]))
         {
 	// found a start!
-	i+=9;
+	//DEBUGPRINT("Found: '%.*s'",(int)(j+6-i),Text+i);
+	i=j+5;
 	State=1;
 	continue;
 	}
@@ -453,8 +458,10 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
     else if (State==1)
       {
       if (isspace(Text[i])) { continue; }
+      //DEBUGPRINT("Text: [%.*s]",(int)i,Text);
       if (Text[i]=='>') { goto Done; } // no more values
-      if ((i+1 < TextLen) && !memcmp("/>",Text+i,2)) { goto Done; } // no more values
+      if ((i+1 < TextLen) && !memcmp("/>",Text+i,2)) { goto Done; } // no more values (self-closing)
+      if ((i+1 < TextLen) && !memcmp("</",Text+i,2)) { goto Done; } // no more values (nested closing)
 
       if (Text[i]=='<') { i--; IsBad=true; } // bad start; recheck the character
       if (!isalpha(Text[i])) { IsBad=true; } // bad start
@@ -529,9 +536,11 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	  }
 
 	// Store the value
+	//DEBUGPRINT("Field[%s]='%.*s'",Str,(int)(ve-vs),Text+vs);
 	Rec = SealSetTextLen(Rec,Str,ve-vs,(char*)Text+vs);
 	if (Quote != 1) { SealStrDecode(SealSearch(Rec,Str)); } // convert any \c to c
 	else if (Quote == 1) { SealXmlDecode(SealSearch(Rec,Str)); } // convert any &code; to utf8
+	//DEBUGPRINT("Field[%s] Quote=%d = [%s]",Str,Quote,SealGetText(Rec,Str));
 
 	// Remove temporary storage
 	Rec = SealDel(Rec,"@field");

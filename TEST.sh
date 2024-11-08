@@ -45,4 +45,5 @@ done # ka
 
 ### And try manual fields
 ./SIGNANY.sh -Comment regression/test-signed-comment.jpg
+./SIGNXMP.sh test/test-signed-xmp.jpg
 
