@@ -158,7 +158,9 @@ struct
     {"name",'s'},
     {"mdta",'s'}, // metadata
     {"keys",'s'}, // item keys
+    {"mime",'s'}, // XMP
     {"xml ",'s'}, // XMP
+    {"XMP_",'s'}, // XMP
     {"Exif",'e'}, // EXIF
     {NULL,0} // END
   };

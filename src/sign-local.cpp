@@ -146,6 +146,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   // If it works, then no password was needed.
   // If it fails, then try a password!
   int rc;
+  rewind(fp);
   rc = OSSL_DECODER_from_fp(decoder, fp); // assume no password
   if (rc != 1) // failed; need password
     {
@@ -164,6 +165,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
 	exit(1);
 	}
       if (FreePwd) { free(pwd); }
+      rewind(fp);
       rc = OSSL_DECODER_from_fp(decoder, fp); // decode with password
       }
     // else: No password already failed.
