@@ -225,6 +225,14 @@ void	Usage	(const char *progname)
   printf("  -u, --apiurl url     :: For remote signers (default: no url)\n");
   printf("  -a, --apikey id      :: For remote signers (default: no API key)\n");
   printf("  -i, --id id          :: User-specific identifier (default: no identifier)\n");
+  printf("  --cacert file.crl    :: Use file.crl for trusted root certificates.");
+#ifdef __CYGWIN__
+  printf(" (default: ./cacert.crl)");
+#else
+  printf(" (default: unset; uses operating system defaults)");
+#endif
+  printf("\n");
+  printf("  --cert-insecure      :: Do not validate server's TLS certificate.\n");
   printf("\n");
   printf("  Manual signing: (mostly for debugging; probably not what you want)\n");
   printf("  -M, --Manual ''      :: Generate the SEAL record with a stubbed value.\n");
@@ -290,6 +298,9 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"id","");
   Args = SealSetText(Args,"apiurl","");
   Args = SealSetText(Args,"apikey","");
+#ifdef __CYGWIN__
+  Args = SealSetText(Args,"cacert","./cacert.crt");
+#endif
 
   // Set default config file based on user's home.
   Args = SealSetText(Args,"config",getenv("HOME"));
@@ -316,8 +327,10 @@ int main (int argc, char *argv[])
     {"dnsfile1", required_argument, NULL, 'P'}, // Debugging: specify dns via command-line
     {"apikey",    required_argument, NULL, 'a'},
     {"apiurl",    required_argument, NULL, 1},
-    {"copyright", required_argument, NULL, 'C'},
+    {"cacert",    required_argument, NULL, 1}, // for specifying root PEMs
+    {"cert-insecure", no_argument, NULL, 1}, // for ignoring TLS verification
     {"comment",   required_argument, NULL, 'c'},
+    {"copyright", required_argument, NULL, 'C'},
     {"dnsfile",   required_argument, NULL, 'D'},
     {"domain",    required_argument, NULL, 'd'},
     {"id",        required_argument, NULL, 'i'},
@@ -343,6 +356,7 @@ int main (int argc, char *argv[])
     switch(c)
       {
       case 0: // generic longopt with no_argument
+	Args = SealSetText(Args,long_options[long_option_index].name,"1");
 	break;
       case 1: // generic longopt with required_argument (and no single-letter mapping)
 	Args = SealSetText(Args,long_options[long_option_index].name,optarg);

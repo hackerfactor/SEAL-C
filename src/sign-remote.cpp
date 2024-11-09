@@ -86,6 +86,15 @@ sealfield *	SealSignURL	(sealfield *Args)
     exit(1);
     }
 
+  // Ignore TLS cerification?
+  if (SealSearch(Args,"cert-insecure")) { curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 0L); }
+  else { curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 1L); }
+
+  // In Cygwin, curl tries to find a cert in /etc, which doesn't exist.
+  // Therefore, include our own cacert from https://curl.se/docs/caextract.html
+  vf = SealSearch(Args,"cacert");
+  if (vf) { curl_easy_setopt(ch, CURLOPT_CAINFO, vf->Value); }
+
   // Set retrieval parameters
   Str = SealGetText(Args,"apiurl");
   curl_easy_setopt(ch, CURLOPT_URL, Str); // set the URL
