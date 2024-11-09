@@ -21,8 +21,8 @@ This code currently supports static-files only. It does not support streaming da
 |AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |TIFF  |Coming soon.|Coming soon.|
 |DICOM |Coming soon.|Coming soon.|
-|EXIF  |See Manual Signing|Coming soon.|
-|XMP   |See Manual Signing|Reads as a text field.|
+|EXIF  |See [Manual Signing](#manualsigning)|Coming soon.|
+|XMP   |See [Manual Signing](#manualsigning)|Reads as a text field.|
 |GIF   |TBD|TBD|
 |BMP   |No (no metadata support)|No (no metadata support)|
 |FAX   |No.|No. Seriously, just no.|
@@ -57,7 +57,7 @@ This code currently supports static-files only. It does not support streaming da
 |Container Formats|Write Support|Read Support|About|
 |------|-------------|------------|-----|
 |EXIF |TBD |Coming soon.|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats.
-|XMP |TBD |Yes, treated as text|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files.
+|XMP |See [Manual Signing](#manualsigning)|Yes, treated as text|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files.
 |RIFF |SEAL blocks |All SEAL, XMP, and info blocks.|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files.|
 |ISP-BMFF |SEAL blocks|SEAL blocks, or any top-level XML or info.|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
 |Matroska |SEAL blocks |All SEAL blocks.|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio).|
@@ -65,7 +65,7 @@ This code currently supports static-files only. It does not support streaming da
 
 Want other formats? Let us know!
 
-## Manual Signing
+## <a name='manualsigning'></a>Manual Signing
 `sealtool` provides a manual signing option. This is where it generates the SEAL record, but it is up to you to insert the record into the file.
 
 1. Generate the initial SEAL record template. This uses the -m or -M parameters with no value after it. Use -m for local signing and -M for remote signing. For example:
