@@ -328,7 +328,7 @@ int main (int argc, char *argv[])
     {"apikey",    required_argument, NULL, 'a'},
     {"apiurl",    required_argument, NULL, 1},
     {"cacert",    required_argument, NULL, 1}, // for specifying root PEMs
-    {"cert-insecure", no_argument, NULL, 1}, // for ignoring TLS verification
+    {"cert-insecure", no_argument, NULL, 0}, // for ignoring TLS verification
     {"comment",   required_argument, NULL, 'c'},
     {"copyright", required_argument, NULL, 'C'},
     {"dnsfile",   required_argument, NULL, 'D'},
