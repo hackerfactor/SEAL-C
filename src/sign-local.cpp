@@ -181,8 +181,8 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
 
 /**************************************
  SealSignLocal(): Sign data using the private key!
- If there is no @digest, then set the signature size (@sigsize).
- If there is @digest, then set the signature (@signature).
+ If there is no @digest1, then set the signature size (@sigsize).
+ If there is @digest1, then set the signature (@signature).
  **************************************/
 sealfield *	SealSignLocal	(sealfield *Args)
 {
@@ -326,14 +326,15 @@ sealfield *	SealSignLocal	(sealfield *Args)
   Args = SealSetU32index(Args,"@sigsize",0,enclen);
 
   /***** Signing! *****/
-  if (SealSearch(Args,"@digest")) // if digest exists, then do signing!
+  if (SealSearch(Args,"@digest1")) // if digest exists, then do signing!
     {
     sealfield *DigestBin;
     sealfield *Sign;
 
     Args = SealAlloc(Args,"@signaturebin",siglen,'x');
     Sign = SealSearch(Args,"@signaturebin");
-    DigestBin = SealSearch(Args,"@digest");
+    DigestBin = SealSearch(Args,"@digest2");
+    if (!DigestBin) { DigestBin = SealSearch(Args,"@digest1"); }
     if (EVP_PKEY_sign(ctx, Sign->Value, &siglen, DigestBin->Value, DigestBin->ValueLen) != 1)
       {
       fprintf(stderr," ERROR: Failed to sign.\n");

@@ -207,7 +207,8 @@ sealfield *	Seal_RIFFsign	(sealfield *Args, mmapfile *MmapIn)
   else
 	{
 	// if starting from the beginning of the file
-	Args = SealSetText(Args,"b","F");
+	// Skip the total file length.
+	Args = SealSetText(Args,"b","F~F+4,F+8");
 	}
   // Range covers signature and end of record.
   Args = SealAddText(Args,"b","~S");

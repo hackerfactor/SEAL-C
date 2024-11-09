@@ -178,7 +178,7 @@ sealfield *	_PNGchunk	(sealfield *Args)
    create the SEAL record!
    NOTE: 
    *****/
-  Args = SealRecord(Args); // populate with placeholder at "@S" (capital-S)
+  Args = SealRecord(Args);
   rec = SealSearch(Args,"@record");
   if (rec==NULL) // should never happen
     {
@@ -217,8 +217,6 @@ sealfield *	_PNGchunk	(sealfield *Args)
   rec->Type = 'x'; // debug with hex dump
   Args = SealAddTextLen(Args,"@BLOCK",4,"1234"); // store padding for CRC
 
-  // Update @p
-  Args = SealCopy(Args,"@p","@s"); // Rotates previous @s to @p
   // Update @s relative to the chunk
   Args = SealIncIindex(Args,"@s",0,PNGheader);
   Args = SealIncIindex(Args,"@s",1,PNGheader);

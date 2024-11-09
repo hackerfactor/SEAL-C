@@ -60,7 +60,8 @@ typedef struct sealfield sealfield;
 #define DEBUGPRINT2(...)       fprintf(stderr, __VA_ARGS__)
 #define DEBUGPRINT(_fmt, ...)  DEBUGPRINT2(WHERESTR ": " _fmt "\n", WHEREARG, __VA_ARGS__)
 #define DEBUGWHERE()  DEBUGPRINT2(WHERESTR "\n", WHEREARG)
-#define DEBUGWALK(x,y) { DEBUGPRINT2(WHERESTR ": WALK: %s\n", WHEREARG, x); SealWalk(y); }
+#define DEBUGWALK(x,y) { DEBUGPRINT2(WHERESTR ": WALK: %s\n", WHEREARG, x); SealWalk(y,false); }
+#define DEBUGSHOW(x,y) { DEBUGPRINT2(WHERESTR ": SHOW: %s\n", WHEREARG, x); SealWalk(y,true); }
 void	DEBUGhexdump	(size_t DataLen, const byte *Data);
 
 // Common macros
@@ -86,7 +87,7 @@ void	DEBUGhexdump	(size_t DataLen, const byte *Data);
 sealfield *	SealClone	(sealfield *src);
 
 void	SealFree	(sealfield *vf);
-void	SealWalk	(sealfield *vf);
+void	SealWalk	(sealfield *vf, bool ShowOne);
 void	SealSetType	(sealfield *vfhead, const char *Field, const char Type);
 int	SealCmp	(sealfield *vfhead, const char *Field1, const char *Field2);
 int	SealCmp2	(sealfield *vfhead1, const char *Field1, sealfield *vfhead2, const char *Field2);

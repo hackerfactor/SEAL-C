@@ -41,9 +41,9 @@ sealfield *	Seal_Manual	(sealfield *Args)
 {
   sealfield *digest;
 
-  Args = SealRecord(Args); // populate with placeholder at "@S" (capital-S)
+  Args = SealRecord(Args);
 
-  digest = SealSearch(Args,"@digest");
+  digest = SealSearch(Args,"@digest1");
   if (digest)
     {
     // sign it

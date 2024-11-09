@@ -277,20 +277,6 @@ Done:
 } /* SealGetDNS() */
 
 /********************************************************
- SealRotateRecords(): Before processing each record, rotate
- the previous '@s' to '@p'.
- ********************************************************/
-sealfield *	SealRotateRecords	(sealfield *Rec)
-{
-  size_t *I;
-  Rec = SealCopy(Rec,"@p","@s");
-  I = SealGetIarray(Rec,"@s");
-  I[0] = I[1] = 0;
-  I[2]++;
-  return(Rec);
-} /* SealRotateRecords() */
-
-/********************************************************
  SealValidateDecodeParts(): Given seal record with signature,
  decode the signature and finalize the digest.
  Returns: Errors are detailed in '@error'
@@ -502,7 +488,8 @@ sealfield *	SealValidateSig	(sealfield *Rec)
   /*****
    If you're calling this function, then we have:
    '@sigbin' = binary signature
-   '@digest' = binary digest
+   '@digest1' = binary digest
+   '@digest2' = (optional) binary digest
    '@publicbin' = binary public key
    'ka' = key algorthtm
    And we know the record is not revoked.
@@ -545,7 +532,8 @@ sealfield *	SealValidateSig	(sealfield *Rec)
     goto Done;
     }
 
-  digestbin = SealSearch(Rec,"@digest");
+  digestbin = SealSearch(Rec,"@digest2");
+  if (!digestbin) { digestbin = SealSearch(Rec,"@digest1"); }
   if (!digestbin) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no digest found");
@@ -628,7 +616,8 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 
   // Check the signature!
   sigbin = SealSearch(Rec,"@sigbin");
-  digestbin = SealSearch(Rec,"@digest");
+  digestbin = SealSearch(Rec,"@digest2");
+  if (!digestbin) { digestbin = SealSearch(Rec,"@digest1"); }
   if (EVP_PKEY_verify(PubKeyCtx, sigbin->Value, sigbin->ValueLen, digestbin->Value, digestbin->ValueLen) != 1)
 	{
 	Rec = SealSetText(Rec,"@error","signature mismatch");
@@ -649,6 +638,10 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
 {
   char *ErrorMsg;
   long signum; // signature number
+  sealfield *range;
+  const size_t *rangeval;
+  unsigned int i,MaxRange;
+
   if (!Rec) { return(Rec); }
 
   /*****
@@ -671,14 +664,14 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
     {
     if (!strchr(SealGetText(Rec,"b"),'F'))
 	{
-	printf(" WARNING: SEAL record #%ld does not cover the start of file. Vulnerable to prepending attacks.\n",signum);
+	printf("  WARNING: SEAL record #%ld does not cover the start of file. Vulnerable to prepending attacks.\n",signum);
 	}
     }
   else // if (signum > 1)
     {
     if (!strchr(SealGetText(Rec,"b"),'F') && !strchr(SealGetText(Rec,"b"),'P'))
 	{
-	printf(" WARNING: SEAL record #%ld does not cover the previous signature. Vulnerable to insertion attacks.\n",signum);
+	printf("  WARNING: SEAL record #%ld does not cover the previous signature. Vulnerable to insertion attacks.\n",signum);
 	}
     }
 
@@ -723,6 +716,23 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
   if (ErrorMsg)
 	{
 	printf(" SEAL record #%ld is invalid: %s.\n",signum,ErrorMsg);
+	if (Verbose)
+	  {
+	  range = SealSearch(Rec,"@digest1");
+	  if (range)
+	    {
+	    printf("  Digest: ");
+	    for(i=0; i < range->ValueLen; i++) { printf("%02x",range->Value[i]); }
+	    printf("\n");
+	    }
+	  range = SealSearch(Rec,"@digest2");
+	  if (range)
+	    {
+	    printf("  Double Digest: ");
+	    for(i=0; i < range->ValueLen; i++) { printf("%02x",range->Value[i]); }
+	    printf("\n");
+	    }
+	  }
 	}
   else
 	{
@@ -732,9 +742,21 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
 
 	if (Verbose)
 	  {
-	  sealfield *range;
-	  const size_t *rangeval;
-	  int i,MaxRange;
+	  range = SealSearch(Rec,"@digest1");
+	  if (range)
+	    {
+	    printf("  Digest: ");
+	    for(i=0; i < range->ValueLen; i++) { printf("%02x",range->Value[i]); }
+	    printf("\n");
+	    }
+	  range = SealSearch(Rec,"@digest2");
+	  if (range)
+	    {
+	    printf("  Double Digest: ");
+	    for(i=0; i < range->ValueLen; i++) { printf("%02x",range->Value[i]); }
+	    printf("\n");
+	    }
+
 	  range = SealSearch(Rec,"@digestrange");
 	  if (range && (range->ValueLen > 0)) // better always be defined!
 	    {
@@ -824,7 +846,6 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     if (!Rec) { return(Args); } // Nothing found
 
     // Found a signature!  Verify the data!
-    Rec = SealCopy2(Rec,"@dnsfile1",Args,"@dnsfile1");
     Rec = SealVerify(Rec,Mmap);
 
     // Iterate on remainder
@@ -833,12 +854,12 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     BlockStart += RecEnd;
  
     // Retain state
-    Args = SealCopy2(Args,"@p",Rec,"@p"); // keep previous settings
-    Args = SealCopy2(Args,"@s",Rec,"@s"); // keep previous settings
+    Args = SealCopy2(Args,"@s",Rec,"@s");
+    Args = SealCopy2(Args,"@p",Rec,"@s");
+    Args = SealCopy2(Args,"@sflags",Rec,"@sflags"); // retain sflags
     Args = SealCopy2(Args,"@dnscachelast",Rec,"@dnscachelast"); // store any cached DNS
     Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
     Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
-    Args = SealCopy2(Args,"@sflags",Rec,"@sflags"); // retain sflags
 
     // Clean up
     SealFree(Rec); Rec=NULL;

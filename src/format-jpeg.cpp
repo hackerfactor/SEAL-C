@@ -182,7 +182,7 @@ sealfield *     _JPEGblock   (sealfield *Args, uint16_t Tag)
    create the SEAL record!
    NOTE:
    *****/
-  Args = SealRecord(Args); // populate with placeholder at "@S" (capital-S)
+  Args = SealRecord(Args);
   rec = SealSearch(Args,"@record");
   if (rec==NULL) // should never happen
     {

@@ -45,8 +45,8 @@ size_t	SealCurlCallback	(void *buffer, size_t size, size_t nmemb, void *parm)
 /********************************************************
  SealSignURL(): Sign using a web request.
  There are two modes:
-   If Args['@digest'] is not set, then returns amount of space to allocate (sigsize).
-   If Args['@digest'] is set, then do the signature (signature).
+   If Args['@digest1'] is not set, then returns amount of space to allocate (sigsize).
+   If Args['@digest1'] is set, then do the signature (signature).
  Returns: Args on success, aborts on failure.
   Sets the seal field with the results.
     "@sigsize" = signature length as uint32_t
@@ -140,7 +140,7 @@ sealfield *	SealSignURL	(sealfield *Args)
     Args = SealAddText(Args,"@post","&verbose=1");
     }
 
-  vf = SealSearch(Args,"@digest");
+  vf = SealSearch(Args,"@digest1");
   if (vf && (vf->ValueLen > 0))
     {
     /*****
@@ -184,12 +184,21 @@ sealfield *	SealSignURL	(sealfield *Args)
     if (Verbose > 0)
 	{
 	if (Verbose > 1) { DEBUGWALK(" Remote results",json); }
+#if 0
 	else
 	  {
 	  jsonv = SealSearch(json,"double-digest");
 	  if (jsonv) { printf("  Double Digest: %s\n",jsonv->Value); }
 	  }
+#endif
 	}
+
+    if (SealSearch(json,"double-digest")) // only when verbose
+	{
+	Args = SealCopy2(Args,"@digest2",json,"double-digest");
+	SealHexDecode(SealSearch(Args,"@digest2"));
+	}
+
     jsonv = SealSearch(json,"sigsize");
     if (!jsonv) { ; }
     else if (jsonv->Type=='4') { Args = SealSetU32index(Args,"@sigsize",0,((uint32_t*)jsonv->Value)[0]); }

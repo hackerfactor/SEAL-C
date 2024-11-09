@@ -26,7 +26,11 @@
    - tag 0x05345414C (SEAL), encoded as 0x085345414C
  The value of the SEAL chunk is a "<seal .../>" record.
 
- For signing? Append the SEAL record at the end of the file.
+ For signing?
+  - If finalized and no previous signature, add SEAL record at
+    the beginning of the file.
+  - If appending or finalizing an already-signed file,
+    append the SEAL record at the end of the file.
 
  ===============================
  Feedback from Phil Harvey (exiftool):
@@ -37,6 +41,8 @@
  HOWEVER, this prevents appending.
  I also did some playing with mkvmerge. It doesn't support
  true appending. It seems to always rewrites and combines elements.
+
+ However, if you want to append, then sign at the end.
  ************************************************/
 #include <stdlib.h>
 #include <ctype.h>
@@ -175,6 +181,7 @@ sealfield *	Seal_Matroskasign	(sealfield *Args, mmapfile *MmapIn)
   sealfield *rec; // SEAL record
   char *Opt;
   mmapfile *MmapOut;
+  size_t InsertOffset=0;
 
   fname = SealGetText(Args,"@FilenameOut");
   if (!fname || !fname[0] || !MmapIn) { return(Args); } // not signing
@@ -188,11 +195,15 @@ sealfield *	Seal_Matroskasign	(sealfield *Args, mmapfile *MmapIn)
    The last record goes to the end of the file. Unless...
    Unless it is appending.
    *****/
+  InsertOffset = SealGetIindex(Args,"@MatInsert",0);
+  Args = SealDel(Args,"@MatInsert"); // no longer needed
+
   Args = SealDel(Args,"b");
   if (SealGetCindex(Args,"@sflags",0)=='F') // if exists, then append
 	{
 	// if appending, overlap signatures to prevent insertion attacks.
 	Args = SealSetText(Args,"b","P");
+	InsertOffset = MmapIn->memsize; // insert at end of file
 	}
   else
 	{
@@ -210,9 +221,9 @@ sealfield *	Seal_Matroskasign	(sealfield *Args, mmapfile *MmapIn)
   else
 	{
 	// Matroska doesn't support true appending.
-	//Args = SealAddText(Args,"b",",s~s+3"); // +3 for '"/>'
-	fprintf(stderr," ERROR: This format (Matroska) does not support appending. Skipping.\n");
-	return(Args);
+	Args = SealAddText(Args,"b",",s~s+3"); // +3 for '"/>'
+	InsertOffset = MmapIn->memsize; // insert at end of file
+	//fprintf(stderr," ERROR: This format (Matroska) does not support appending. Skipping.\n");
 	}
 
   // Get the record
@@ -232,7 +243,7 @@ sealfield *	Seal_Matroskasign	(sealfield *Args, mmapfile *MmapIn)
   Args = SealAddBin(Args,"@BLOCK",rec->ValueLen,rec->Value);
   SealSetType(Args,"@BLOCK",'x');
  
-  MmapOut = SealInsert(Args,MmapIn,SealGetIindex(Args,"@MatInsert",0));
+  MmapOut = SealInsert(Args,MmapIn,InsertOffset);
   if (MmapOut)
     {
     // Sign it!

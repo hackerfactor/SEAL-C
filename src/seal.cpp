@@ -70,7 +70,7 @@ void	SealFree	(sealfield *vf)
 /**************************************
  SealWalk(): DEBUGGING. Walk the chain of sealfield records.
  **************************************/
-void	SealWalk	(sealfield *vf)
+void	SealWalk	(sealfield *vf, bool ShowOne)
 {
   int num=0;
   size_t i;
@@ -129,6 +129,7 @@ void	SealWalk	(sealfield *vf)
 	  break;
 	}
     num++;
+    if (ShowOne) { break; }
     }
 } /* SealWalk() */
 

@@ -143,9 +143,29 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
   p[1] = s[1];
   p[2] = s[2];
   Rec = SealIncIindex(Rec,"@s",2,1); // increase number of signatures
-  SealFree(sigparm);
 
   printf(" Signature record #%ld added: %s\n",(long)SealGetIindex(Rec,"@s",2),fname);
+  if (Verbose) // if showing digest
+    {
+    sealfield *d;
+    uint i;
+    d = SealSearch(sigparm,"@digest1");
+    if (d) // should always exist!
+	{
+	printf("  Digest: ");
+	for(i=0; i < d->ValueLen; i++) { printf("%02x",d->Value[i]); }
+	printf("\n");
+	}
+    d = SealSearch(sigparm,"@digest2");
+    if (d) // may exist!
+	{
+	printf("  Double Digest: ");
+	for(i=0; i < d->ValueLen; i++) { printf("%02x",d->Value[i]); }
+	printf("\n");
+	}
+    }
+
+  SealFree(sigparm);
   return(true);
 } /* SealSign() */
 

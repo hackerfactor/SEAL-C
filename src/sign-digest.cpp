@@ -48,7 +48,7 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
 /**************************************
  SealDigest(): Given a file, compute the digest!
  This uses 'da', 'b', 's', and 'p' arguments.
- Computes the digest and stores binary data in @digest.
+ Computes the digest and stores binary data in @digest1.
  Stores the byte range in '@digestrange'.
  Any error messages are stored in @error.
  **************************************/
@@ -66,6 +66,8 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
   if (!Rec || !Mmap) { return(Rec); }
   Rec = SealDel(Rec,"@error");
   Rec = SealDel(Rec,"@digestrange");
+  Rec = SealDel(Rec,"@digest1");
+  Rec = SealDel(Rec,"@digest2");
 
   // Load parameters
   s = SealGetIarray(Rec,"@s"); // should always be set
@@ -236,6 +238,9 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
     } // for reading b string
 
   // No more string! Anything left to add?
+  //DEBUGPRINT("State=%d  sum=%ld %ld  acc=%ld",state,(long)sum[0],(long)sum[1],(long)acc);
+  if (state==3) { sum[1] += acc*Addsym; state=4; }
+
   seg[1] = i;
   if (state==0) { ; }
   else if (state==4)
@@ -250,12 +255,14 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 	//DEBUGPRINT("Segment: seg=%d '%.*s', range: %u-%u (0x%x - 0x%x)",state,(int)(seg[1]-seg[0]),b+seg[0],(uint)sum[0],(uint)sum[1],(uint)sum[0],(uint)sum[1]);
 	}
     }
+#if 0
   else if (state == 3) // start of next range and then ends
     {
     sum[1] = Mmap->memsize;
     Rec = RangeErrorCheck(Rec,sum,Mmap);
     if (SealSearch(Rec,"@error")) { goto Abort; }
     }
+#endif
   else if (state == 5) // end of range
     {
     sum[1] += acc*Addsym;
@@ -273,10 +280,11 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
   /* Finish the digest! */
   unsigned int mdsize;
   mdsize = EVP_MD_size(mdf()); // digest size
-  Rec = SealAlloc(Rec,"@digest",mdsize,'b'); // binary digest
-  digestbin = SealSearch(Rec,"@digest");
+  Rec = SealAlloc(Rec,"@digest1",mdsize,'b'); // binary digest
+  digestbin = SealSearch(Rec,"@digest1");
   EVP_DigestFinal(ctx64,digestbin->Value,&mdsize); // store the digest
 
+#if 0
   if (Verbose > 0)
     {
     unsigned int i;
@@ -284,17 +292,23 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
     for(i=0; i < mdsize; i++) { printf("%02x",digestbin->Value[i]); }
     printf("\n");
     }
+#endif
 
 Abort:
   EVP_MD_CTX_free(ctx64);
+#if 0
+  DEBUGSHOW("s",SealSearch(Rec,"@s"));
+  DEBUGSHOW("p",SealSearch(Rec,"@p"));
+  DEBUGSHOW(b,SealSearch(Rec,"@digestrange"));
+#endif
   return(Rec);
 } /* SealDigest() */
 
 /**************************************
  SealDoubleDigest(): If there's a date or id,
  then add them to the digest.
- This uses binary '@digest', 'id', '@sigdate', and 'da' arguments.
- Computes the digest and replaces binary data in @digest.
+ This uses binary '@digest1', 'id', '@sigdate', and 'da' arguments.
+ Computes the digest and places new data in @digest2.
  Any error messages are stored in @error.
  **************************************/
 sealfield *	SealDoubleDigest	(sealfield *Rec)
@@ -324,7 +338,8 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
 
   if (!UserId && !SigDate) { return(Rec); }
 
-  digestbin = SealSearch(Rec,"@digest"); // could be empty
+  Rec = SealCopy(Rec,"@digest2","@digest1");
+  digestbin = SealSearch(Rec,"@digest2"); // could be empty
   if (!digestbin) // should never happen
     {
     if (!SealSearch(Rec,"@error")) { Rec = SealSetText(Rec,"@error","Digest not computed"); }
@@ -374,6 +389,7 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
   digestbin->ValueLen = mdsize;
   free(digestbin->Value);
   digestbin->Value = (byte*)mdval;
+#if 0
   if (Verbose > 0)
     {
     unsigned int i;
@@ -381,6 +397,7 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
     for(i=0; i < mdsize; i++) { printf("%02x",digestbin->Value[i]); }
     printf("\n");
     }
+#endif
 
   return(Rec);
 } /* SealDoubleDigest() */

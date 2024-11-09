@@ -74,8 +74,8 @@ sealfield *	SealRecord	(sealfield *Args)
   // Add the signature!!!
   Args = SealAddText(Args,"@record"," s=\"");
 
-  // START signature: Record local (@S) relative to this record position
-  Args = SealSetIindex(Args,"@S",0,SealGetSize(Args,"@record"));
+  // START signature: Record local (@s) relative to this record position
+  Args = SealSetIindex(Args,"@s",0,SealGetSize(Args,"@record"));
 
   // Encode the signature (or placeholder)
   vf = SealSearch(Args,"@signatureenc");
@@ -112,12 +112,11 @@ sealfield *	SealRecord	(sealfield *Args)
     Args = SealAddTextPad(Args,"@record",(size_t)SealGetU32index(Args,"@sigsize",0)-DateLen,"abcdef");
     }
 
-  // END signature: Record local (@S) relative to this record position
-  Args = SealSetIindex(Args,"@S",1,SealGetSize(Args,"@record"));
+  // END signature: Record local (@s) relative to this record position
+  Args = SealSetIindex(Args,"@s",1,SealGetSize(Args,"@record"));
 
   // End record
   Args = SealAddText(Args,"@record","\"/>");
-  Args = SealCopy(Args,"@s","@S");
   return(Args);
 } /* SealRecord() */
 

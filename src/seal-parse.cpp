@@ -519,19 +519,18 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	// Check for the signature position and save it
 	if (!strcmp(Str,"s"))
 	  {
-	  Rec = SealSetIindex(Rec,"@S",0,vs);
-	  Rec = SealSetIindex(Rec,"@S",1,ve);
 	  Rec = SealSetIindex(Rec,"@s",0,Offset+vs);
 	  Rec = SealSetIindex(Rec,"@s",1,Offset+ve);
+	  Rec = SealSetIindex(Rec,"@s",2,SealGetIindex(Args,"@s",2)+1); // increment record number
 
 	  if (Args)
 	    {
 	    Rec = SealCopy2(Rec,"@p",Args,"@s"); // previous '@s' is now '@p'
-	    Rec = SealIncIindex(Rec,"@s",2,1); // increment record number
 	    Rec = SealCopy2(Rec,"@sflags",Args,"@sflags"); // tell verifier the sflags
 	    Rec = SealCopy2(Rec,"@dnscachelast",Args,"@dnscachelast"); // use any cached DNS
 	    Rec = SealCopy2(Rec,"@public",Args,"@public"); // use any cached DNS
 	    Rec = SealCopy2(Rec,"@publicbin",Args,"@publicbin"); // use any cached DNS
+	    Rec = SealCopy2(Rec,"@dnsfile1",Args,"@dnsfile1"); // use any local dns file
 	    }
 	  }
 
@@ -570,42 +569,4 @@ Done:
     }
   return(Rec);
 } /* SealParse() */
-
-#if TESTPARSE
-/**************************************
- SealParseTest(): Debug code for testing.
- **************************************/
-void	SealParseTest()
-{
-  size_t Offset;
-  sealfield *Test=NULL,*SF,*sf;
-
-  DEBUGWHERE();
-  Test=SealSetText(Test,"Test","abc <seal seal=1 b='F~S,s~f' info='Neal\\'Test' d=\"hackerfactor.com\" s=\"TDoJi+rjP2N8863kZk0KfJdvUf6isS0GYx14Cl3/fwp\"/> def");
-  DEBUGPRINT("Test: %.*s",(int)(Test->ValueLen),(char*)Test->Value);
-  SF = SealParse(Test->ValueLen,Test->Value,0,NULL);
-  SealWalk(SF);
-  sf = SealSearch(SF,"info");
-  SealStrEncode(sf);
-  SealWalk(SF);
-  Offset = SealGetIindex(SF,"@RecEnd",0);
-  if (Offset > 0) { DEBUGPRINT("Remainder: %s",(char*)Test->Value+Offset); }
-  SealFree(SF);
-
-  DEBUGWHERE();
-  Test=SealSetText(Test,"Test","<xmp:seal>seal=1 b=&quot;F~S,s~f&quot; info=&quot;Yeah&amp;&#65;bb&#x44;cc&#x09;dd&quot; d=&quot;hackerfactor.com&quot; s=&quot;TDoJi+rjP2N8863kZk0KfJdvUf6isS0GYx14Cl3/fwp&quot;</xmp:seal>");
-  DEBUGPRINT("Test: %.*s",(int)(Test->ValueLen),(char*)Test->Value);
-  SF = SealParse(Test->ValueLen,Test->Value,0,NULL);
-  SealWalk(SF);
-  DEBUGWHERE();
-  sf = SealSearch(SF,"info");
-  SealXmlEncode(sf);
-  SealWalk(SF);
-  Offset = SealGetIindex(SF,"@RecEnd",0);
-  if (Offset > 0) { DEBUGPRINT("Remainder: %s",(char*)Test->Value+Offset); }
-  SealFree(SF);
-
-  SealFree(Test);
-} /* SealParseTest() */
-#endif
 

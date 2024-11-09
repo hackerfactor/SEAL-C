@@ -373,8 +373,8 @@ int main (int argc, char *argv[])
 	{
 	if (optarg[0])
 	  {
-	  Args = SealSetText(Args,"@digest",optarg);
-	  SealHexDecode(SealSearch(Args,"@digest")); // hex to binary
+	  Args = SealSetText(Args,"@digest1",optarg);
+	  SealHexDecode(SealSearch(Args,"@digest1")); // hex to binary
 	  }
 	}
 	// fall through to Mode check
@@ -483,6 +483,7 @@ int main (int argc, char *argv[])
   Args=NULL;
 
   // Process command-line files.
+  bool First=true;
   for( ; optind < argc; optind++)
     {
     // Start off with a clean set of parameters
@@ -490,6 +491,7 @@ int main (int argc, char *argv[])
     Args = SealClone(CleanArgs);
 
     // Show file being processed.
+    if (First) { First=false; } else { printf("\n"); }
     printf("[%s]\n",argv[optind]);
     fflush(stdout);
 

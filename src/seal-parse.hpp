@@ -24,9 +24,4 @@ void	SealHexEncode	(sealfield *Data, bool IsUpper);
 void	SealBase64Decode	(sealfield *Data);
 void	SealBase64Encode	(sealfield *Data);
 
-#define TESTPARSE 0
-#if TESTPARSE
-void	SealParseTest();
-#endif
-
 #endif

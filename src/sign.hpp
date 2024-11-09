@@ -45,7 +45,6 @@ sealfield *	SealSignURL	(sealfield *Args);
 
 // Verify
 sealfield *	SealGetDNS	(sealfield *Rec);
-sealfield *	SealRotateRecords	(sealfield *Rec);
 sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap);
 bool	SealVerifyFinal	(sealfield *Rec);
 sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd, mmapfile *Mmap);
