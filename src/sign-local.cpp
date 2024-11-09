@@ -429,6 +429,12 @@ void	SealGenerateKeys	(sealfield *Args)
     exit(1);
     }
   pubfile = (char*)vf->Value;
+  // No overwrite!
+  if (access(pubfile,F_OK)==0)
+    {
+    fprintf(stderr," ERROR: dnsfile (%s) already exists. Overwriting prohibited. Aborting..\n",pubfile);
+    exit(1);
+    }
 
   vf = SealSearch(Args,"keyfile");
   if (!vf || !vf->ValueLen)
@@ -437,6 +443,12 @@ void	SealGenerateKeys	(sealfield *Args)
     exit(1);
     }
   keyfile = (char*)vf->Value;
+  // No overwrite!
+  if (access(keyfile,F_OK)==0)
+    {
+    fprintf(stderr," ERROR: keyfile (%s) already exists. Overwriting prohibited. Aborting..\n",keyfile);
+    exit(1);
+    }
 
   // If support for other algorithms is added, do it here.
   // For now, only supporing RSA.
