@@ -74,7 +74,9 @@ $ sealtool -M '' --apiurl *url* --apikey *key* --id 12345
 <seal seal="1" kv="1" ka="rsa" da="sha256" sf="date:hex" id="12345" b="F~S,s~f" d="signmydata.com" s="22222222222222:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefab"/>
 ```
 This returns a template that has the correct formatting and spacing for inserting into XMP, EXIF, or some other metadata field. If necessary, you can change the `b=` parameter to match your file format.
+
 2. Insert the template into your file.
+
 3. Verify that `sealtool` sees the template. It should report that the signature is invalid. Use the `-v` parameter to see the computed digest values.
 ```
 $ bin/sealtool -v test.jpg
@@ -85,6 +87,7 @@ $ bin/sealtool -v test.jpg
 ```
   - The "Digest" refers to the computed byte range (`b=`) processed by the digest algorithm (`da=`).
   - The "Double Digest" appears if there is a timestamp (`sf=date:hex`) or user identity (`id=`).
+
 4. Use the computed "Digest" (not Double Digest) to recompute the template with the appropriate signature.
 ```
 $ sealtool -M '08a69e78b54266759cfdf45e5a4a89e60dfea5ecf27bd6b4db83b92294dc2b9c' --apiurl *url* --apikey *key* --id 12345
