@@ -80,14 +80,14 @@ fi
 if [ 1 == 1 ] ; then
 echo ""
 echo "#### Non-standard JPEG comment"
-./SIGNANY.sh -Comment test/test-signed-comment.jpg
+./SignManual.sh -Comment test/test-signed-comment.jpg
 
 echo ""
 echo "#### EXIF"
-./SIGNANY.sh -EXIF:seal test/test-signed-exif.jpg
+./SignManual.sh -EXIF:seal test/test-signed-exif.jpg
 
 echo ""
 echo "#### XMP"
-./SIGNANY.sh -XMP:seal test/test-signed-comment.jpg
+./SignManual.sh -XMP:seal test/test-signed-comment.jpg
 fi
 

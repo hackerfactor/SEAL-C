@@ -1,4 +1,5 @@
 #!/bin/bash
+# Sample code for manual signing using ExifTool
 
 Field="$1"
 Fname="$2"
