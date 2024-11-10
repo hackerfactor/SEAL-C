@@ -62,7 +62,7 @@ This code currently supports static-files only. It does not support streaming da
 |EXIF |TBD |Coming soon.|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats.
 |XMP |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Yes, treated as text|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files.
 |RIFF |Yes: SEAL blocks |Yes: All SEAL, XMP, and info blocks.|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files.|
-|ISP-BMFF |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
+|ISO-BMFF |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
 |Matroska |Yes: SEAL blocks |Yes: All SEAL blocks.|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio).|
 |ZIP |Coming soon. |Coming soon.|ZIP is an archive container that can hold multiple files. The OpenDocument formats use ZIP.|
 
