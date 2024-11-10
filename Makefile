@@ -9,6 +9,10 @@ CXXFLAGS=-O2 -Wall
 # DEBUG=2 = gprof enabled
 DEBUG=0
 
+# Which compiler?
+CXX=g++
+#CXX=musl-gcc
+
 #CXXFLAGS=-std=c++17
 
 ifeq ($(DEBUG),0)
@@ -21,9 +25,13 @@ ifeq ($(DEBUG),2)
   CXXFLAGS += -pg
 endif
 
-INC = -Isrc
-LIB = -L/usr/local/lib -lresolv -lcrypto -lssl -lcurl
+INC = -Isrc -I/usr/local/include
+LIB = -L/usr/local/lib -static-libgcc -lresolv -lcrypto -lssl -lcurl
 EXE = bin/sealtool
+
+# For static linking
+#CXXFLAGS += -static
+#LIB += -ldl -static-libgcc 
 
 all: $(EXE)
 

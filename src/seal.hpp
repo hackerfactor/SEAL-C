@@ -20,6 +20,25 @@
 // Revise the version if there is any significant change
 #define SEAL_VERSION "0.0.6-beta"
 
+#ifndef _GNU_SOURCE
+    #define _GNU_SOURCE
+    #include <features.h>
+    #ifndef __USE_GNU
+        #define __MUSL__
+    #endif
+    #undef _GNU_SOURCE /* don't contaminate other includes unnecessarily */
+#else
+    #include <features.h>
+    #ifndef __USE_GNU
+        #define __MUSL__
+    #endif
+#endif
+
+#ifdef __MUSL__
+  typedef unsigned int uint;
+  typedef unsigned long ulong;
+#endif
+
 extern int Verbose;
 
 // Common data types

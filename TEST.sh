@@ -27,7 +27,7 @@ for ka in rsa ec ; do
     # Verify local signing
     echo ""
     echo "#### Verify Local $ka $sf"
-    bin/sealtool --ka "$ka" --dnsfile1 "test/sign-$ka.dns" test/test-*local-$ka-$sfname*
+    bin/sealtool --ka "$ka" --dnsfile "test/sign-$ka.dns" test/test-*local-$ka-$sfname*
 
     # Test with remote signing
     echo ""
@@ -58,19 +58,19 @@ for ka in ec ; do
       out3=${j/-unsigned/-signed-local-append3-$ka-$sfname}
       # create but leave open for appending
       echo ""
-      bin/sealtool -v -s -k "test/sign-$ka.key" --options append --ka "$ka" --dnsfile1 "test/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out1" "$i"
+      bin/sealtool -v -s -k "test/sign-$ka.key" --options append --ka "$ka" --dnsfile "test/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out1" "$i"
       echo ""
-      bin/sealtool -v --ka "$ka" --dnsfile1 "test/sign-$ka.dns" "$out1"
+      bin/sealtool -v --ka "$ka" --dnsfile "test/sign-$ka.dns" "$out1"
       # append
       echo ""
-      bin/sealtool -v -s -k "test/sign-$ka.key" --options append --ka "$ka" --dnsfile1 "test/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out2" "$out1"
+      bin/sealtool -v -s -k "test/sign-$ka.key" --options append --ka "$ka" --dnsfile "test/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out2" "$out1"
       echo ""
-      bin/sealtool -v --ka "$ka" --dnsfile1 "test/sign-$ka.dns" "$out2"
+      bin/sealtool -v --ka "$ka" --dnsfile "test/sign-$ka.dns" "$out2"
       # finalize
       echo ""
-      bin/sealtool -v -s -k "test/sign-$ka.key" --ka "$ka" --dnsfile1 "test/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out3" "$out2"
+      bin/sealtool -v -s -k "test/sign-$ka.key" --ka "$ka" --dnsfile "test/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out3" "$out2"
       echo ""
-      bin/sealtool -v --ka "$ka" --dnsfile1 "test/sign-$ka.dns" "$out3"
+      bin/sealtool -v --ka "$ka" --dnsfile "test/sign-$ka.dns" "$out3"
     done
   done #sf
 done # ka

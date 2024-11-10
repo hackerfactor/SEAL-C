@@ -375,7 +375,7 @@ void	SealBase64Encode	(sealfield *Data)
   bio = BIO_push(b64, bio);
   BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
   BIO_write(b64,Data->Value,Data->ValueLen);
-  BIO_flush(b64);
+  (void)BIO_flush(b64);
 
   BIO_get_mem_ptr(b64, &bptr);
   Data->Value = (byte*)realloc(Data->Value,bptr->length+4);
@@ -530,7 +530,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	    Rec = SealCopy2(Rec,"@dnscachelast",Args,"@dnscachelast"); // use any cached DNS
 	    Rec = SealCopy2(Rec,"@public",Args,"@public"); // use any cached DNS
 	    Rec = SealCopy2(Rec,"@publicbin",Args,"@publicbin"); // use any cached DNS
-	    Rec = SealCopy2(Rec,"@dnsfile1",Args,"@dnsfile1"); // use any local dns file
+	    Rec = SealCopy2(Rec,"dnsfile",Args,"dnsfile"); // use any local dns file
 	    }
 	  }
 

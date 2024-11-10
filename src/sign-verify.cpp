@@ -28,6 +28,30 @@
 #include "sign.hpp"
 #include "files.hpp"
 
+#if defined(__linux__) && !defined(__GLIBC__)
+static inline int res_ninit(res_state statp)
+{
+	int rc = res_init();
+	if (statp != &_res) { memcpy(statp, &_res, sizeof(*statp)); }
+	return rc;
+}
+
+static inline int res_nclose(res_state statp)
+{
+	if (!statp) { return -1; }
+	if (statp != &_res) { memset(statp, 0, sizeof(*statp)); }
+	return 0;
+}
+
+static inline int res_nquery(res_state statp,
+                  const char *dname, int nclass, int type,
+                  unsigned char *answer, int anslen)
+{
+	if (!statp) { return -1; }
+	return(res_query(dname, nclass, type, answer, anslen));
+}
+#endif
+
 /********************************************************
  SealGetDNSfile(): Given a file that goes to DNS, use it.
  ********************************************************/
@@ -37,8 +61,8 @@ sealfield *	SealGetDNSfile	(sealfield *Rec)
   mmapfile *Mmap;
   const char *fname;
 
-  fname = SealGetText(Rec,"@dnsfile1");
-  if (!fname) { return(NULL); }
+  fname = SealGetText(Rec,"dnsfile");
+  if (!fname || !fname[0]) { return(NULL); }
 
   Mmap = MmapFile(fname,PROT_READ);
   if (!Mmap) { return(NULL); }
@@ -844,6 +868,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     {
     Rec = SealParse(BlockEnd-BlockStart, Mmap->mem+BlockStart, BlockStart, Args);
     if (!Rec) { return(Args); } // Nothing found
+    Rec = SealCopy2(Rec,"dnsfile",Args,"dnsfile"); // store any cached DNS
 
     // Found a signature!  Verify the data!
     Rec = SealVerify(Rec,Mmap);

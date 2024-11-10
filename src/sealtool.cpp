@@ -203,7 +203,6 @@ void	Usage	(const char *progname)
   printf("  Verifying:\n");
   printf("  Verify any SEAL signature in the file(s)\n");
   printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (default: unset; use DNS)\n");
-  printf("  --dnsfile1 fname  :: Debugging: use this text file with DNS TXT value.\n");
   printf("\n");
   printf("  Generate signature:\n");
   printf("  -g, --generate       :: Required: generate a signature\n");
@@ -318,7 +317,6 @@ int main (int argc, char *argv[])
     {"genpass" ,  no_argument, NULL, 'G'},
     {"da",        required_argument, NULL, 'A'},
     {"digestalg", required_argument, NULL, 'A'},
-    {"dnsfile1", required_argument, NULL, 'P'}, // Debugging: specify dns via command-line
     {"apikey",    required_argument, NULL, 'a'},
     {"apiurl",    required_argument, NULL, 1},
     {"cacert",    required_argument, NULL, 1}, // for specifying root PEMs
@@ -368,7 +366,6 @@ int main (int argc, char *argv[])
       case 'i': Args = SealSetText(Args,"id",optarg); break;
       case 'K': Args = SealSetText(Args,"keyalg",optarg); break;
       case 'k': Args = SealSetText(Args,"keyfile",optarg); break;
-      case 'P': Args = SealSetText(Args,"@dnsfile1",optarg); break; // for debugging
       case 'o': Args = SealSetText(Args,"outfile",optarg); break;
       case 'O': Args = SealSetText(Args,"options",optarg); break;
       case 'u': Args = SealSetText(Args,"apiurl",optarg); break;
