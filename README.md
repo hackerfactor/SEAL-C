@@ -19,11 +19,11 @@ This code currently supports static-files only. It does not support streaming da
 |WEBP  |SEAL blocks|All SEAL, XMP, and informational (INFO) blocks.|
 |HEIC  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
-|TIFF  |Coming soon.|Coming soon.|
-|DICOM |Coming soon.|Coming soon.|
+|PNM/PPM/PGM|SEAL in comments|SEAL in comments.|
 |EXIF  |See [Manual Signing](#manualsigning)|Coming soon.|
 |XMP   |See [Manual Signing](#manualsigning)|Reads as a text field.|
-|PNM/PPM/PGM|SEAL in comments|SEAL in comments.|
+|TIFF  |Coming soon.|Coming soon.|
+|DICOM |Coming soon.|Coming soon.|
 |GIF   |TBD|TBD|
 |BMP   |No (no metadata support)|No (no metadata support)|
 |FAX   |No.|No. Seriously, just no.|
@@ -31,18 +31,19 @@ This code currently supports static-files only. It does not support streaming da
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
 |AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
-|MP3   |Coming soon.|Coming soon.|
-|MKA   |SEAL blocks|All SEAL blocks.|
 |WAV   |SEAL blocks|All SEAL, XMP, and info blocks.|
+|MKA   |SEAL blocks|All SEAL blocks.|
+|MP3   |Coming soon.|Coming soon.|
 
 |Video Format|Write Support|Read Support|
 |------|-------------|------------|
 |MP4   |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |3GP   |SEAL blocks|SEAL blocks, or any top-level XML or info.|
-|HEIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
-|AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
-|Quicktime |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |AVI   |SEAL blocks|All SEAL, XMP, and info blocks.|
+|AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|HEIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|HEVC  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|Quicktime |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |WEBM  |SEAL blocks|All SEAL blocks.|
 |MKV   |SEAL blocks|All SEAL blocks.|
 
