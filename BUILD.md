@@ -68,7 +68,7 @@ sealtool -S file.jpg
 ```
 
 ## <a name='manualsigning'></a>Manual Signing
-`sealtool` can sign many file formats. However, what if you want to sign a file using a format that it doesn't support? (E.g., it can read XMP data but it cannot write XMP data.) The problem includes a manual signing option. This is where it generates the SEAL record, but it is up to you to insert the record into the file.
+`sealtool` can sign many file formats. However, what if you want to sign a file using a format that it doesn't support? (E.g., it can read XMP data but it cannot write XMP data.) The program includes a manual signing option. This is where it generates the SEAL record, but it is up to you to insert the record into the file.
 
 1. Generate the initial SEAL record template. This uses the -m or -M parameters with no value after it. Use -m for local signing and -M for remote signing. For example:
 ```
