@@ -13,11 +13,11 @@ For debugging:
 5. Electric Fence (libefence): `apt install electric-fence`
 6. Valgrind: `apt install valgrind`
 
-## To Build
+## Build
 1. Clone this repository
 2. Run `make`. This will build into bin/sealtool
 
-## To Use (Local Signing)
+## Local Signing
 First, generate some keys. For example, to generate RSA keys, use:
   `bin/sealtool -g -K rsa -k seal-rsa.key -D seal-rsa.dns`
 This will generate two files:
@@ -36,7 +36,7 @@ Finally, you can test the signature. If you have DNS configured, then you can us
 If you don't have DNS configured, then you can test with your public key:
   `bin/sealtool --pubkeyfile ./seal-rsa.dns ./test-unsigned-seal.png`
 
-## To Use (Remote Signing)
+## Remote Signing
 1. Create an account on a signing service, such as signmydata.com. It will assign you an ID, URL for signing, and API key.
 
 2. Sign using the capital `-S` parameter. Be sure to supply your ID, domain, API key, and API url. For example:
@@ -99,7 +99,7 @@ This contains the computed signature for your provided digest. You can now repla
 
 ## Current Status
 This is the initial release.
-- It only supports a wide range of image, audio, video, and document files -- with more being added. All common web formats are supported, including JPEG, PNG, WebP, PDF, and MP4.
+- It supports a wide range of image, audio, video, and document files -- with more being added. All common web formats are supported, including JPEG, PNG, WebP, PDF, and MP4.
 - It supports RSA and elliptic curve (EC using prime256v1 and secp256r1).
 - Needs an autogen for building the code. (How do I make autogen require openssl 3.x?)
 
