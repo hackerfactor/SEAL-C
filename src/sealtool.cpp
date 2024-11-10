@@ -403,27 +403,27 @@ int main (int argc, char *argv[])
       case 'W': // write the data as a config file
 	{
 	char *s;
-	printf("# Generating signature options\n");
-	s=SealGetText(Args,"dnsfile"); if (s && s[0]) { printf("dnsfile=%s\n",s); } else { printf("#dnsfile=\n"); }
-	s=SealGetText(Args,"uuid"); if (s && s[0]) { printf("uuid=%s\n",s); } else { printf("#uuid=\n"); }
-	printf("\n");
-	printf("# Local signing options (for use with -s)\n");
-	printf("keyfile=%s\n",SealGetText(Args,"keyfile"));
-	printf("\n");
-	printf("# Remote signing options (for use with -S)\n");
-	s=SealGetText(Args,"apiurl"); if (s && s[0]) { printf("apiurl=%s\n",s); } else { printf("#apiurl=\n"); }
-	s=SealGetText(Args,"apikey"); if (s && s[0]) { printf("apikey=%s\n",s); } else { printf("#apikey=\n"); }
-	s=SealGetText(Args,"id"); if (s && s[0]) { printf("id=%s\n",s); } else { printf("#id=\n"); }
-	printf("\n");
-	printf("# Common signing options (for use with -s or -S)\n");
-	printf("domain=%s\n",SealGetText(Args,"domain"));
+	printf("# Common options\n");
+	s=SealGetText(Args,"domain"); if (s && s[0]) { printf("domain=%s\n",s); } else { printf("#domain=\n"); }
 	printf("digestalg=%s\n",SealGetText(Args,"digestalg"));
 	printf("keyalg=%s\n",SealGetText(Args,"keyalg"));
 	printf("kv=%s\n",SealGetText(Args,"kv"));
 	printf("sf=%s\n",SealGetText(Args,"sf"));
 	s=SealGetText(Args,"info"); if (s && s[0]) { printf("comment=%s\n",s); } else { printf("#comment=\n"); }
 	s=SealGetText(Args,"copyright"); if (s && s[0]) { printf("copyright=%s\n",s); } else { printf("#copyright=\n"); }
-	printf("outfile=%s\n",SealGetText(Args,"outfile"));
+	printf("\n");
+	printf("# Local signing options (for use with -s and -m)\n");
+	s=SealGetText(Args,"keyfile"); if (s && s[0]) { printf("keyfile=%s\n",s); } else { printf("#keyfile=\n"); }
+	printf("\n");
+	printf("# Remote signing options (for use with -S and -M)\n");
+	s=SealGetText(Args,"apiurl"); if (s && s[0]) { printf("apiurl=%s\n",s); } else { printf("#apiurl=\n"); }
+	s=SealGetText(Args,"apikey"); if (s && s[0]) { printf("apikey=%s\n",s); } else { printf("#apikey=\n"); }
+	s=SealGetText(Args,"id"); if (s && s[0]) { printf("id=%s\n",s); } else { printf("#id=\n"); }
+	s=SealGetText(Args,"outfile"); if (s && s[0]) { printf("outfile=%s\n",s); } else { printf("#outfile=\n"); }
+	printf("\n");
+	printf("# Generating signature options (for use with -g)\n");
+	s=SealGetText(Args,"dnsfile"); if (s && s[0]) { printf("dnsfile=%s\n",s); } else { printf("#dnsfile=\n"); }
+	s=SealGetText(Args,"uuid"); if (s && s[0]) { printf("uuid=%s\n",s); } else { printf("#uuid=\n"); }
 	printf("\n");
 	exit(0);
 	}

@@ -62,7 +62,9 @@ apikey=abcd1234
 id=12345
 outfile=./%b-seal%e
 ```
-Then you can use:
+(Or use: `sealtool [list of options] -W > $HOME/.seal.cfg`)
+
+With the configuration file, you can use:
 ```
 sealtool -S file.jpg
 ```
