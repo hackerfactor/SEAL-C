@@ -23,6 +23,7 @@ This code currently supports static-files only. It does not support streaming da
 |DICOM |Coming soon.|Coming soon.|
 |EXIF  |See [Manual Signing](#manualsigning)|Coming soon.|
 |XMP   |See [Manual Signing](#manualsigning)|Reads as a text field.|
+|PNM/PPM/PGM|SEAL in comments|SEAL in comments.|
 |GIF   |TBD|TBD|
 |BMP   |No (no metadata support)|No (no metadata support)|
 |FAX   |No.|No. Seriously, just no.|

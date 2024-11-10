@@ -273,12 +273,6 @@ int main (int argc, char *argv[])
   bool IsURL=false; // for signing, use URL?
   bool IsLocal=false; // for signing, use local?
 
-#if TESTPARSE
-  DEBUGPRINT("TEST PARSE: %s","START");
-  SealParseTest();
-  DEBUGPRINT("TEST PARSE: %s","END");
-#endif
-
   // Set default values
   Args = SealSetText(Args,"seal","1"); // SEAL version; currently always '1'
   Args = SealSetText(Args,"b","F~S,s~f"); // default byte range is everything
@@ -478,14 +472,14 @@ int main (int argc, char *argv[])
     }
   if (Verbose > 3) { DEBUGWALK("Post-CLI Parameters",Args); } // DEBUGGING
 
-  // Manual processing
+  // Manual processing (no files)
   if (strchr("Mm",Mode))
     {
     Seal_Manual(Args);
     return(0); // done processing
     }
 
-  // Process all args
+  // Process all args (files required)
   if (optind >= argc)
     {
     fprintf(stderr,"ERROR: No input files.\n");
@@ -525,6 +519,7 @@ int main (int argc, char *argv[])
     else if (Seal_isMatroska(Mmap)) { FileFormat='M'; } // Matroska
     else if (Seal_isBMFF(Mmap)) { FileFormat='B'; } // BMFF
     else if (Seal_isPDF(Mmap)) { FileFormat='p'; } // PDF
+    else if (Seal_isPPM(Mmap)) { FileFormat='m'; } // PPM/PGM
     else
 	{
 	fprintf(stdout," ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
@@ -550,6 +545,7 @@ int main (int argc, char *argv[])
 	case 'B': Args = Seal_BMFF(Args,Mmap); break; // BMFF
 	case 'J': Args = Seal_JPEG(Args,Mmap); break; // JPEG
 	case 'M': Args = Seal_Matroska(Args,Mmap); break; // Matroska
+	case 'm': Args = Seal_PPM(Args,Mmap); break; // PPM/PGM
 	case 'P': Args = Seal_PNG(Args,Mmap); break; // PNG
 	case 'p': Args = Seal_PDF(Args,Mmap); break; // PDF
 	case 'R': Args = Seal_RIFF(Args,Mmap); break; // RIFF
