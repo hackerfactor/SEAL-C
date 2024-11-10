@@ -17,7 +17,7 @@ For debugging:
 1. Clone this repository
 2. Run `make`. This will build into bin/sealtool
 
-## To Use
+## To Use (Local Signing)
 First, generate some keys. For example, to generate RSA keys, use:
   `bin/sealtool -g -K rsa -k seal-rsa.key -D seal-rsa.dns`
 This will generate two files:
@@ -36,12 +36,42 @@ Finally, you can test the signature. If you have DNS configured, then you can us
 If you don't have DNS configured, then you can test with your public key:
   `bin/sealtool --pubkeyfile ./seal-rsa.dns ./test-unsigned-seal.png`
 
+## To Use (Remote Signing)
+1. Create an account on a signing service, such as signmydata.com. It will assign you an ID, URL for signing, and API key.
+
+2. Sign using the capital `-S` parameter. Be sure to supply your ID, domain, API key, and API url. For example:
+```
+sealtool -S -D signmydata.com --id 12345 --apiurl 'https://signmydata.com/?sign' --apikey 'abcd1234' -o file-seal.jpg file.jpg
+```
+
+3. Check the signature:
+```
+sealtool file-seal.jpg
+```
+
+If you don't want to repeatedly enter the long set of command-line parameters, you can use a configuration file: $HOME/.seal.cfg
+```
+# Remote signing options (for use with -S)
+domain=signmydata.com
+digestalg=sha256
+keyalg=rsa
+kv=1
+sf=date:hex
+apiurl=https://signmydata.com/?sign
+apikey=abcd1234
+id=12345
+outfile=./%b-seal%e
+```
+Then you can use:
+```
+sealtool -S file.jpg
+```
+
 ## Current Status
 This is the initial release.
-- It only supports PNG and JPEG right now. Other formats, like PPM, MOV, etc. are coming very soon.
+- It only supports a wide range of image, audio, video, and document files -- with more being added. All common web formats are supported, including JPEG, PNG, WebP, PDF, and MP4.
+- It supports RSA and elliptic curve (EC using prime256v1 and secp256r1).
 - Needs an autogen for building the code. (How do I make autogen require openssl 3.x?)
-- It needs automated regression testing.
-- RSA works. I haven't tested EC very much. And some EC algorithms (e.g., P-384) are not working for some unknown reason. I need to add more crypto options.
 
-Remember, this is the first release. If you see any problems, let me know!
+If you see any problems, let me know!
 
