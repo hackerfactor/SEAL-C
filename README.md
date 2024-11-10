@@ -31,9 +31,10 @@ This code currently supports static-files only. It does not support streaming da
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
 |AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
-|WAV   |SEAL blocks|All SEAL, XMP, and info blocks.|
+|M4A   |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |MKA   |SEAL blocks|All SEAL blocks.|
 |MP3   |Coming soon.|Coming soon.|
+|WAV   |SEAL blocks|All SEAL, XMP, and info blocks.|
 
 |Video Format|Write Support|Read Support|
 |------|-------------|------------|
@@ -43,7 +44,7 @@ This code currently supports static-files only. It does not support streaming da
 |AVIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |HEIF  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |HEVC  |SEAL blocks|SEAL blocks, or any top-level XML or info.|
-|Quicktime |SEAL blocks|SEAL blocks, or any top-level XML or info.|
+|MOV/Quicktime |SEAL blocks|SEAL blocks, or any top-level XML or info.|
 |WEBM  |SEAL blocks|All SEAL blocks.|
 |MKV   |SEAL blocks|All SEAL blocks.|
 
