@@ -17,6 +17,7 @@
 #define PAD 4 /* padding to prevent overflow; should not be needed */
 
 int Verbose=0;
+int ReturnCode=0;
 
 /**************************************
  DEBUGhexdump(): Display hexdump of data.
@@ -866,7 +867,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
 	  {
 	  fprintf(stderr," ERROR: Invalid parameter: '%.*s' value contains mixed quotes.\n",
 		(int)vf->FieldLen, vf->Field);
-	  exit(1);
+	  exit(0x80);
 	  }
 	}
       else if (isalnum(vf->Value[i]) || ispunct(vf->Value[i])) { ; }
@@ -875,7 +876,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
 	  {
 	  fprintf(stderr," ERROR: Invalid parameter: '%.*s' value contains an invalid character.\n",
 		(int)vf->FieldLen, vf->Field);
-	  exit(1);
+	  exit(0x80);
 	  }
       }
 
@@ -891,7 +892,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
 	    {
 	    fprintf(stderr," ERROR: Invalid parameter: '%.*s' value is not numeric.\n",
 		(int)vf->FieldLen, vf->Field);
-	    exit(1);
+	    exit(0x80);
 	    }
 	  u16=u16*10 + (vf->Value[i] - '0');
 	  }
@@ -905,13 +906,13 @@ sealfield *	SealParmCheck	(sealfield *Args)
         {
 	fprintf(stderr," ERROR: Invalid parameter: '%.*s' value is too small (at least 64).\n",
 		(int)vf->FieldLen, vf->Field);
-	exit(1);
+	exit(0x80);
 	}
       else if (u16 & (u16-1)) // power of 2?
         {
 	fprintf(stderr," ERROR: Invalid parameter: '%.*s' value is not a power of 2.\n",
 		(int)vf->FieldLen, vf->Field);
-	exit(1);
+	exit(0x80);
 	}
       }
 
@@ -936,7 +937,7 @@ sealfield *	SealParmCheck	(sealfield *Args)
 	    {
 	    fprintf(stderr," ERROR: Invalid parameter: '%.*s' value contains invalid characters.\n",
 		(int)vf->FieldLen, vf->Field);
-	    exit(1);
+	    exit(0x80);
 	    }
 	  }
 	}

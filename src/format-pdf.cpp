@@ -337,7 +337,7 @@ sealfield *	Seal_PDFsign	(sealfield *Rec, mmapfile *MmapIn, size_t EOF_offset)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
 	fprintf(stderr," ERROR: PDF is finalized; cannot sign. Aborting.\n");
-	exit(1);
+	exit(0x80);
 	}
 
   /*****

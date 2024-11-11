@@ -40,6 +40,7 @@
 #endif
 
 extern int Verbose;
+extern int ReturnCode;
 
 // Common data types
 typedef unsigned char byte;

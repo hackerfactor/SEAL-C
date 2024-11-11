@@ -168,7 +168,7 @@ char *	MakeFilename	(char *Template, const char *Filename)
 	fprintf(stderr," ERROR: Output filename contains illegal character: %%");
 	if (isprint(p[1]) && !isspace(p[1])) { fprintf(stderr,"%c",p[1]); }
 	fprintf(stderr,"\n");
-	exit(1);
+	exit(0x80);
       }
     Template+=2; // move past '%'
     }
@@ -200,7 +200,7 @@ FILE *	SealFileOpen   (const char *fname, const char *mode)
   if (!Fout)
 	{
 	fprintf(stderr," ERROR: Unable to access '%s'. Aborting.\n",fname);
-	exit(1);
+	exit(0x80);
 	}
   return(Fout);
 } /* SealFileOpen() */
@@ -219,7 +219,7 @@ void	SealFileWrite   (FILE *Fout, size_t Len, byte *Data)
     if (w <= 0)
       {
       fprintf(stderr," ERROR: Failed to write to file. Aborting.\n");
-      exit(1);
+      exit(0x80);
       }
     }
 } /* SealFileWrite() */
@@ -240,7 +240,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
   if (!Mmap) // should never happen
     {
     fprintf(stderr," ERROR: Cannot allocate mmap structure\n");
-    exit(1);
+    exit(0x80);
     }
 
   // Open file and check it
@@ -256,7 +256,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
     {
     fprintf(stderr," ERROR: Cannot open file (%s)\n",Filename);
     free(Mmap);
-    exit(1);
+    exit(0x80);
     }
 
   // mmap requires file handle
@@ -266,7 +266,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
     fprintf(stderr," ERROR: File inaccessible (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
-    exit(1);
+    exit(0x80);
     }
 
   stat_t Stat;
@@ -275,7 +275,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
     fprintf(stderr," ERROR: Not a regular file (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
-    exit(1);
+    exit(0x80);
     }
 
   Mmap->memsize = Stat.st_size;
@@ -285,7 +285,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
     fprintf(stderr," ERROR: Memory map failed for file (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
-    exit(1);
+    exit(0x80);
     }
 
   return(Mmap);
@@ -318,14 +318,14 @@ bool	CopyFile	(const char *dst, const char *src)
   if (!Mmap) // never happens since MmapFile checks errors
     {
     fprintf(stderr," ERROR: Copy failed from file (%s)\n",src);
-    exit(1);
+    exit(0x80);
     }
 
   Fout = fopen(dst,"wb+");
   if (!Fout)
     {
     fprintf(stderr," ERROR: Copy failed to file (%s)\n",dst);
-    exit(1);
+    exit(0x80);
     }
 
   WriteOut = TotalOut = 0;
@@ -336,7 +336,7 @@ bool	CopyFile	(const char *dst, const char *src)
 	if (WriteOut <= 0) // write failure
 	  {
 	  fprintf(stderr," ERROR: Copy from (%s) to (%s) failed\n",src,dst);
-	  exit(1);
+	  exit(0x80);
 	  }
 	TotalOut += WriteOut;
 	}
@@ -345,7 +345,7 @@ bool	CopyFile	(const char *dst, const char *src)
         {
 	fclose(Fout);
 	unlink(dst);
-	exit(1); // abort
+	exit(0x80); // abort
 	}
 
   // Clean up

@@ -187,7 +187,7 @@ sealfield *     _JPEGblock   (sealfield *Args, uint16_t Tag)
   if (rec==NULL) // should never happen
     {
     printf(" ERROR: Cannot generate the signature. Aborting.\n");
-    exit(1);
+    exit(0x80);
     }
 
   /*****
@@ -206,7 +206,7 @@ sealfield *     _JPEGblock   (sealfield *Args, uint16_t Tag)
   if (i > 0xfffe)
     {
     printf(" ERROR: SEAL record is too large for JPEG. Aborting.\n");
-    exit(1);
+    exit(0x80);
     }
   Args = SealSetCindex(Args,"@BLOCK",2, (i>>8) & 0xff);
   Args = SealSetCindex(Args,"@BLOCK",3, i & 0xff);
@@ -464,7 +464,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *MmapIn, size_t FFDAo
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
 	fprintf(stderr," ERROR: JPEG is finalized; cannot sign. Aborting.\n");
-	exit(1);
+	exit(0x80);
 	}
 
   // Check for MPF
@@ -481,7 +481,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *MmapIn, size_t FFDAo
   if (!Fout)
     {
     fprintf(stderr," ERROR: Cannot create file (%s). Aborting.\n",fname);
-    exit(1);
+    exit(0x80);
     }
 
   // Grab the new block placeholder

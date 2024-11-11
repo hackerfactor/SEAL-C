@@ -102,7 +102,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   if (!keyfile)
     {
     fprintf(stderr," ERROR: No keyfile defined.\n");
-    exit(1);
+    exit(0x80);
     }
 
   keyalg = SealGetText(Args,"ka");
@@ -125,12 +125,12 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   else
     {
     fprintf(stderr," ERROR: No key algorithm defined.\n");
-    exit(1);
+    exit(0x80);
     }
   if (decoder == NULL)
     {
     fprintf(stderr," ERROR: Unable to open context for private key.\n");
-    exit(1);
+    exit(0x80);
     }
 
   // Open private key file
@@ -138,7 +138,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   if (!fp)
     {
     fprintf(stderr," ERROR: Unable to open private key file (%s).\n",keyfile);
-    exit(1);
+    exit(0x80);
     }
 
   // Decode from file!
@@ -162,7 +162,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
       if (OSSL_DECODER_CTX_set_passphrase(decoder,pwd,strlen((char*)pwd)) != 1)
 	{
 	fprintf(stderr," ERROR: Unable to set the password.\n");
-	exit(1);
+	exit(0x80);
 	}
       if (FreePwd) { free(pwd); }
       rewind(fp);
@@ -173,7 +173,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   if (rc != 1)
     {
     fprintf(stderr," ERROR: Unable to load private key file (%s).\n",keyfile);
-    exit(1);
+    exit(0x80);
     }
 
   // If it got here, then it worked.
@@ -260,7 +260,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
   else
     {
     fprintf(stderr," ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
-    exit(1);
+    exit(0x80);
     }
 
   // Set the encryption algorithm
@@ -273,7 +273,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
   else
     {
     fprintf(stderr," ERROR: Unsupported key algorithm (ka=%s).\n",keyalg);
-    exit(1);
+    exit(0x80);
     }
 
   // Allocated the context handle
@@ -281,14 +281,14 @@ sealfield *	SealSignLocal	(sealfield *Args)
   if (!ctx)
 	{
 	fprintf(stderr," ERROR: Unable to initialize the sign context.\n");
-	exit(1);
+	exit(0x80);
 	}
 
   // Initialize context handle
    if (EVP_PKEY_sign_init(ctx) <= 0) // everyone else
 	{
 	fprintf(stderr," ERROR: Initializing the sign context failed.\n");
-	exit(1);
+	exit(0x80);
 	}
 
   // RSA requires padding
@@ -298,7 +298,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
 	 (EVP_PKEY_CTX_set_signature_md(ctx, mdf()) != 1) )
 	{
 	fprintf(stderr," ERROR: Unable to initialize the RSA algorithm.\n");
-	exit(1);
+	exit(0x80);
 	}
     }
 
@@ -322,7 +322,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
   else
     {
     fprintf(stderr," ERROR: Unknown signature format (%s).\n",sf);
-    exit(1);
+    exit(0x80);
     }
   if (datestrlen) { enclen += datestrlen+1; } // "date:"
   Args = SealSetU32index(Args,"@sigsize",0,enclen);
@@ -340,7 +340,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
     if (EVP_PKEY_sign(ctx, Sign->Value, &siglen, DigestBin->Value, DigestBin->ValueLen) != 1)
       {
       fprintf(stderr," ERROR: Failed to sign.\n");
-      exit(1);
+      exit(0x80);
       }
 
     // Check for padding
@@ -396,7 +396,7 @@ void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf)
 	{
 	fprintf(stderr," ERROR: Invalid parameter: '%.*s' value cannot contain quotes or spaces.\n",
 	  (int)vf->FieldLen, vf->Field);
-	exit(1);
+	exit(0x80);
 	}
 
   fprintf(fp," %s=%s",Label,vf->Value);
@@ -426,28 +426,28 @@ void	SealGenerateKeys	(sealfield *Args)
   if (!vf || !vf->ValueLen)
     {
     fprintf(stderr," ERROR: dnsfile (-D) must be set.\n");
-    exit(1);
+    exit(0x80);
     }
   pubfile = (char*)vf->Value;
   // No overwrite!
   if (access(pubfile,F_OK)==0)
     {
     fprintf(stderr," ERROR: dnsfile (%s) already exists. Overwriting prohibited. Aborting..\n",pubfile);
-    exit(1);
+    exit(0x80);
     }
 
   vf = SealSearch(Args,"keyfile");
   if (!vf || !vf->ValueLen)
     {
     fprintf(stderr," ERROR: keyfile (-k) must be set.\n");
-    exit(1);
+    exit(0x80);
     }
   keyfile = (char*)vf->Value;
   // No overwrite!
   if (access(keyfile,F_OK)==0)
     {
     fprintf(stderr," ERROR: keyfile (%s) already exists. Overwriting prohibited. Aborting..\n",keyfile);
-    exit(1);
+    exit(0x80);
     }
 
   // If support for other algorithms is added, do it here.
@@ -493,7 +493,7 @@ void	SealGenerateKeys	(sealfield *Args)
   if (!keypair)
     {
     fprintf(stderr," ERROR: Unable to generate the keys.\n");
-    exit(1);
+    exit(0x80);
     }
 
   // Save the private key as PEM
@@ -501,7 +501,7 @@ void	SealGenerateKeys	(sealfield *Args)
   if (!encoder)
     {
     fprintf(stderr," ERROR: Unable to generate the private key.\n");
-    exit(1);
+    exit(0x80);
     }
 
   // Set (optional) password
@@ -520,12 +520,12 @@ void	SealGenerateKeys	(sealfield *Args)
     if (OSSL_ENCODER_CTX_set_cipher(encoder, "AES-128-CBC", NULL) != 1)
 	{
 	fprintf(stderr," ERROR: Unable to set password cipher.\n");
-	exit(1);
+	exit(0x80);
 	}
     if (OSSL_ENCODER_CTX_set_passphrase(encoder,pwd,strlen((char*)pwd)) != 1)
 	{
 	fprintf(stderr," ERROR: Unable to set the password.\n");
-	exit(1);
+	exit(0x80);
 	}
     }
   if (pwd && FreePwd) { free(pwd); }
@@ -535,13 +535,13 @@ void	SealGenerateKeys	(sealfield *Args)
   if (!fp)
     {
     fprintf(stderr," ERROR: Unable to write to the private key file (%s).\n",keyfile);
-    exit(1);
+    exit(0x80);
     }
 
   if (!OSSL_ENCODER_to_fp(encoder,fp))
     {
     fprintf(stderr," ERROR: Unable to save to the private key file (%s).\n",keyfile);
-    exit(1);
+    exit(0x80);
     }
 
   fclose(fp);
@@ -557,7 +557,7 @@ void	SealGenerateKeys	(sealfield *Args)
     {
     fprintf(stderr," ERROR: Unable to generate the public key.\n");
     // don't delete the private keyfile since it can still generate public keys
-    exit(1);
+    exit(0x80);
     }
 
   // Save binary public key to memory (I'll base64-encode it without the headers)
@@ -577,7 +577,7 @@ void	SealGenerateKeys	(sealfield *Args)
   if (!fp)
     {
     fprintf(stderr," ERROR: Unable to write to the public key file (%s).\n",pubfile);
-    exit(1);
+    exit(0x80);
     }
   vf = SealSearch(Args,"seal");
   fprintf(fp,"seal=%.*s",(int)vf->ValueLen,vf->Value);

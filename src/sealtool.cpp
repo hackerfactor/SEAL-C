@@ -3,6 +3,13 @@
  See LICENSE
 
  Main program.
+
+ Return codes:
+   0x00 No issues.
+   0x01 At least one file without a signature.
+   0x02 At least one signature is invalid.
+   0x03 Both 0x01 and 0x02
+   0x80 Error
  ************************************************/
 // C headers
 #include <stdlib.h>
@@ -62,7 +69,7 @@ sealfield *	ReadCfg	(sealfield *Args)
   if (!fp)
     {
     fprintf(stderr,"ERROR: Unable to read configuration file: '%s'\n",fname);
-    exit(1);
+    exit(0x80);
     }
 
   /* Read the file */
@@ -75,7 +82,7 @@ sealfield *	ReadCfg	(sealfield *Args)
     if (b > 1024)
 	{
 	fprintf(stderr,"ERROR: configuration file line too long: line %d in '%s'\n",LineNo,fname);
-	exit(1);
+	exit(0x80);
 	}
 
     if (c=='\n') // end of line!
@@ -89,7 +96,7 @@ sealfield *	ReadCfg	(sealfield *Args)
 	  if (SealGetText(Args,Buf)==NULL)
 	    {
 	    fprintf(stderr,"ERROR: unknown field '%.*s': line %d in '%s'\n",fieldlen,Buf,LineNo,fname);
-	    exit(1);
+	    exit(0x80);
 	    }
 	  //fprintf(stderr,"DEBUG: Line[%d] field='%.*s' value='%.*s'\n",LineNo,fieldlen,Buf,valueend-valuestart,Buf+valuestart);
 	  Args=SealSetText(Args,Buf,Buf+valuestart);
@@ -97,7 +104,7 @@ sealfield *	ReadCfg	(sealfield *Args)
 	else // unknown line format
 	  {
 	  fprintf(stderr,"ERROR: configuration file bad format: line %d in '%s'\n",LineNo,fname);
-	  exit(1);
+	  exit(0x80);
 	  }
 
 	// Reset for next line
@@ -117,7 +124,7 @@ sealfield *	ReadCfg	(sealfield *Args)
 	if ((b==0) && !isalnum(c)) // bad start
 	  {
 	  fprintf(stderr,"ERROR: configuration file bad initial character: line %d in '%s'\n",LineNo,fname);
-	  exit(1);
+	  exit(0x80);
 	  }
 	if (isalnum(c))
 	  {
@@ -257,7 +264,13 @@ void	Usage	(const char *progname)
   printf("  -c, --comment text   :: Informational/comment text (default: no added text)\n");
   printf("  --kv number          :: Unique key version (default: 1)\n");
   printf("  --sf text            :: Signing format (default: HEX)\n");
-  exit(1);
+  printf("\n");
+  printf("  Return codes:\n");
+  printf("    0x00 All files have valid signatures.\n");
+  printf("    0x01 At least one file without a signature.\n");
+  printf("    0x02 At least one signature is invalid.\n");
+  printf("    0x03 Both 0x01 and 0x02\n");
+  printf("    0x80 Error\n");
 } /* Usage() */
 
 /**************************************
@@ -389,7 +402,7 @@ int main (int argc, char *argv[])
 	if (Mode!='v') // if it's not the default value...
 	  {
 	  fprintf(stderr,"ERROR: Only one -g, -s, -S, -m, or -M permitted\n");
-	  exit(1);
+	  exit(0x80);
 	  }
 	Mode=c;
 	break;
@@ -427,7 +440,9 @@ int main (int argc, char *argv[])
 	break;
       case 'h': // help
       case '?': // help
-      default:  Usage(argv[0]); SealFree(Args); exit(1);
+        Usage(argv[0]); SealFree(Args); exit(0);
+      default:
+        Usage(argv[0]); SealFree(Args); exit(0x80);
       }
     } // while reading args
 
@@ -443,7 +458,7 @@ int main (int argc, char *argv[])
 	Args = SealSetText(Args,"dnsfile","./seal-public.dns");
 	}
     SealGenerateKeys(Args);
-    return(0); // done processing
+    return(ReturnCode); // done processing
     }
 
   // If signing, get dynamic signing parameters
@@ -459,7 +474,7 @@ int main (int argc, char *argv[])
     if (SealGetU32index(Args,"@sigsize",0)==0)
 	{
 	fprintf(stderr,"ERROR: Unable to determine the signature size. Aborting.\n");
-	exit(1);
+	exit(0x80);
 	}
     Args = SealSetCindex(Args,"@mode",0,Mode);
     }
@@ -473,14 +488,14 @@ int main (int argc, char *argv[])
   if (strchr("Mm",Mode))
     {
     Seal_Manual(Args);
-    return(0); // done processing
+    return(ReturnCode); // done processing
     }
 
   // Process all args (files required)
   if (optind >= argc)
     {
     fprintf(stderr,"ERROR: No input files.\n");
-    exit(1);
+    exit(0x80);
     }
 
   // Don't mess up command-line parameters
@@ -520,13 +535,13 @@ int main (int argc, char *argv[])
     else
 	{
 	fprintf(stdout," ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
+	ReturnCode |= 0x01; // at least one file has no signature
 	MmapFree(Mmap);
 	continue;
 	}
 
     // File exists! Now process it!
-    if ((Mode=='s') || // if signing from local file
-        (Mode=='S')) // if signing from remote service
+    if (strchr("sS",Mode)) // if signing local/remote
       {
       char *Outname, *Template;
       Template = (char*)(SealSearch(Args,"outfile")->Value);
@@ -549,7 +564,17 @@ int main (int argc, char *argv[])
 	default: break; // should never happen
 	}
 
+    if (SealGetIindex(Args,"@s",2)==0) // no signatures
+	{
+	ReturnCode |= 0x01; // at least one file has no signature
+	}
+    else // Check final
+	{
+	SealVerifyFinal(Args);
+	}
+
     if (Verbose > 1) { DEBUGWALK("Post-File Parameters",Args); } // DEBUGGING
+    
     MmapFree(Mmap);
     if (Args) { SealFree(Args); Args=NULL; }
     } // foreach command-line file
@@ -558,6 +583,6 @@ int main (int argc, char *argv[])
   SealFreePrivateKey(); // if a private key was allocated
   if (Args) { SealFree(Args); Args=NULL; }
   SealFree(CleanArgs); // free memory for completeness
-  return(0);
+  return(ReturnCode); // done processing
 } /* main() */
 

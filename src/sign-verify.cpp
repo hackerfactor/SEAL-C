@@ -152,7 +152,7 @@ sealfield *	SealGetDNS	(sealfield *Rec)
     {
     // Should never happen
     fprintf(stderr," ERROR: Unable to initialize DNS lookup. Aborting.\n");
-    exit(1);
+    exit(0x80);
     }
 
   memset(&Buffer, 0, 16384);
@@ -531,7 +531,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
   else
 	{
 	fprintf(stderr," ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
-	exit(1);
+	exit(0x80);
 	}
 
   // Prepare the public key
@@ -596,7 +596,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 	Rec = SealAddText(Rec,"@error",": ");
 	Rec = SealAddText(Rec,"@error",ERR_reason_error_string(e));
 	Rec = SealAddText(Rec,"@error",")");
-	exit(1);
+	exit(0x80);
 	}
   if (EVP_PKEY_verify_init(PubKeyCtx) != 1)
 	{
@@ -607,7 +607,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 	Rec = SealAddText(Rec,"@error",": ");
 	Rec = SealAddText(Rec,"@error",ERR_reason_error_string(e));
 	Rec = SealAddText(Rec,"@error",")");
-	exit(1);
+	exit(0x80);
 	}
 
   // RSA needs padding
@@ -622,7 +622,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 	Rec = SealAddText(Rec,"@error",": ");
 	Rec = SealAddText(Rec,"@error",ERR_reason_error_string(e));
 	Rec = SealAddText(Rec,"@error",")");
-	exit(1);
+	exit(0x80);
 	}
     } // setup rsa padding
 
@@ -635,7 +635,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 	Rec = SealAddText(Rec,"@error",": ");
 	Rec = SealAddText(Rec,"@error",ERR_reason_error_string(e));
 	Rec = SealAddText(Rec,"@error",")");
-	exit(1);
+	exit(0x80);
 	}
 
   // Check the signature!
@@ -739,6 +739,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
   // Report any errors
   if (ErrorMsg)
 	{
+	ReturnCode |= 0x02; // at least one file is invalid
 	printf(" SEAL record #%ld is invalid: %s.\n",signum,ErrorMsg);
 	if (Verbose)
 	  {

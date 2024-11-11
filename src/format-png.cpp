@@ -183,7 +183,7 @@ sealfield *	_PNGchunk	(sealfield *Args)
   if (rec==NULL) // should never happen
     {
     printf(" ERROR: Cannot generate the signature. Aborting.\n");
-    exit(1);
+    exit(0x80);
     }
 
   /*****
@@ -266,7 +266,7 @@ sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *MmapIn, size_t IEND_offset)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
 	fprintf(stderr," ERROR: PNG is finalized; cannot sign. Aborting.\n");
-	exit(1);
+	exit(0x80);
 	}
 
   /*****

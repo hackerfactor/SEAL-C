@@ -49,7 +49,7 @@ mmapfile *	SealInsert	(sealfield *Rec, mmapfile *MmapIn, size_t InsertOffset)
   if (!Fout)
 	{
 	fprintf(stderr," ERROR: Cannot create file (%s). Aborting.\n",fname);
-	exit(1);
+	exit(0x80);
 	}
   rewind(Fout); // should not be needed
 
@@ -108,7 +108,7 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
   if (SealGetCindex(Rec,"@sflags",1)=='f')
 	{
 	fprintf(stderr," ERROR: File is finalized; cannot sign. Aborting.\n");
-	exit(1);
+	exit(0x80);
 	}
 
   // Compute new digest
@@ -134,7 +134,7 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
   if (!sig || (sig->ValueLen + s[0] != s[1]))
 	{
 	fprintf(stderr," ERROR: signature size changed while writing. Aborting.\n");
-	exit(1);
+	exit(0x80);
 	}
 
   // Update file with new signature

@@ -64,7 +64,7 @@ sealfield *	SealSignURL	(sealfield *Args)
   if (!SealIsURL(Args)) // Caller should make sure this never happens
     {
     fprintf(stderr," ERROR: apiurl does not begin with http:// or https://. Aborting.\n");
-    exit(1);
+    exit(0x80);
     }
 
   // Clear any previous results
@@ -76,14 +76,14 @@ sealfield *	SealSignURL	(sealfield *Args)
   if (crc != CURLE_OK)
     {
     fprintf(stderr," ERROR: Failed to initialize curl. Aborting.\n");
-    exit(1);
+    exit(0x80);
     }
 
   ch = curl_easy_init();
   if (!ch)
     {
     fprintf(stderr," ERROR: Failed to initialize curl handle. Aborting.\n");
-    exit(1);
+    exit(0x80);
     }
 
   // Ignore TLS cerification?
@@ -176,7 +176,7 @@ sealfield *	SealSignURL	(sealfield *Args)
   if (crc != CURLE_OK)
     {
     fprintf(stderr," ERROR: curl(%d]: %s\n",crc,errbuf[0] ? errbuf : "unknown");
-    exit(1);
+    exit(0x80);
     }
 
   /*****
