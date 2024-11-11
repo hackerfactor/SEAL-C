@@ -6,8 +6,8 @@
 
  Return codes:
    0x00 No issues.
-   0x01 At least one file without a signature.
-   0x02 At least one signature is invalid.
+   0x01 At least one signature is invalid.
+   0x02 At least one file without a signature.
    0x03 Both 0x01 and 0x02
    0x80 Error
  ************************************************/
@@ -267,8 +267,8 @@ void	Usage	(const char *progname)
   printf("\n");
   printf("  Return codes:\n");
   printf("    0x00 All files have valid signatures.\n");
-  printf("    0x01 At least one file without a signature.\n");
-  printf("    0x02 At least one signature is invalid.\n");
+  printf("    0x01 At least one signature is invalid.\n");
+  printf("    0x02 At least one file without a signature.\n");
   printf("    0x03 Both 0x01 and 0x02\n");
   printf("    0x80 Error\n");
 } /* Usage() */
@@ -535,7 +535,7 @@ int main (int argc, char *argv[])
     else
 	{
 	fprintf(stdout," ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
-	ReturnCode |= 0x01; // at least one file has no signature
+	ReturnCode |= 0x02; // at least one file has no signature
 	MmapFree(Mmap);
 	continue;
 	}
@@ -566,7 +566,7 @@ int main (int argc, char *argv[])
 
     if (SealGetIindex(Args,"@s",2)==0) // no signatures
 	{
-	ReturnCode |= 0x01; // at least one file has no signature
+	ReturnCode |= 0x02; // at least one file has no signature
 	}
     else // Check final
 	{

@@ -739,7 +739,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
   // Report any errors
   if (ErrorMsg)
 	{
-	ReturnCode |= 0x02; // at least one file is invalid
+	ReturnCode |= 0x01; // at least one file is invalid
 	printf(" SEAL record #%ld is invalid: %s.\n",signum,ErrorMsg);
 	if (Verbose)
 	  {
