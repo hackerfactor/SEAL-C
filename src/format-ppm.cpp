@@ -156,7 +156,7 @@ sealfield *	Seal_PPMsign	(sealfield *Args, mmapfile *MmapIn)
    Unless it is appending.
    *****/
   Args = SealDel(Args,"b");
-  if (SealGetCindex(Args,"@sflags",0)=='F') // if exists, then append
+  if (strchr(SealGetText(Args,"@sflags"),'F')) // if exists, then append
 	{
 	// if appending, overlap signatures to prevent insertion attacks.
 	Args = SealSetText(Args,"b","P");

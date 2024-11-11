@@ -316,7 +316,9 @@ int main (int argc, char *argv[])
   // p and s are used with b to generate the hash.
   Args = SealSetIindex(Args,"@s",2,0); // sig offset in file [0]=start, [1]=end, [2]=number of signatures; default:zeros
   Args = SealSetIindex(Args,"@p",1,0); // previous sig offset in file [0]=start, [1]=end; default:[0,0]
-  Args = SealSetCindex(Args,"@sflags",2,0); // Flags: [0] has 'F', [1] has 'f'; set by SealDigest()
+  Args = SealSetText(Args,"@sflags"," "); // total range flags, set by SealDigest()
+  Args = SealSetText(Args,"@sflags0"," "); // starting range flags, set by SealDigest()
+  Args = SealSetText(Args,"@sflags1"," "); // ending range flags, set by SealDigest()
 
   // Read command-line
   int long_option_index;
@@ -568,7 +570,7 @@ int main (int argc, char *argv[])
 	{
 	ReturnCode |= 0x02; // at least one file has no signature
 	}
-    else // Check final
+    else if (Mode=='v') // Check final
 	{
 	SealVerifyFinal(Args);
 	}

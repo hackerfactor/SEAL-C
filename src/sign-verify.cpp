@@ -44,13 +44,138 @@ static inline int res_nclose(res_state statp)
 }
 
 static inline int res_nquery(res_state statp,
-                  const char *dname, int nclass, int type,
-                  unsigned char *answer, int anslen)
+	          const char *dname, int nclass, int type,
+	          unsigned char *answer, int anslen)
 {
 	if (!statp) { return -1; }
 	return(res_query(dname, nclass, type, answer, anslen));
 }
 #endif
+
+#pragma GCC visibility push(hidden)
+/********************************************************
+ _SealVerifyShow(): Display results
+ ErrorMsg is set when the signature is invalid.
+ ********************************************************/
+void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
+{
+  sealfield *vf;
+  char *Txt;
+  unsigned int i;
+
+  // Show header
+  if (ErrorMsg)
+	{
+	printf(" SEAL record #%ld is invalid: %s.\n",signum,ErrorMsg);
+	}
+  else
+	{
+	printf(" SEAL record #%ld is valid.\n",signum);
+	}
+
+  // Show digest (if verbose)
+  if (Verbose)
+	{
+	vf = SealSearch(Rec,"@digest1");
+	if (vf)
+	  {
+	  printf("  Digest: ");
+	  for(i=0; i < vf->ValueLen; i++) { printf("%02x",vf->Value[i]); }
+	  printf("\n");
+	  }
+	vf = SealSearch(Rec,"@digest2");
+	if (vf)
+	  {
+	  printf("  Double Digest: ");
+	  for(i=0; i < vf->ValueLen; i++) { printf("%02x",vf->Value[i]); }
+	  printf("\n");
+	  }
+
+	vf = SealSearch(Rec,"@digestrange");
+	if (vf && (vf->ValueLen > 0)) // better always be defined!
+	  {
+	  size_t *rangeval, MaxRange;
+
+	  rangeval = (size_t*)(vf->Value);
+	  MaxRange = vf->ValueLen / sizeof(size_t);
+	  printf("  Signed bytes: ");
+	  for(i=0; i < MaxRange; i++)
+	    {
+	    if (i%2) { printf("-%lu",(unsigned long)(rangeval[i])-1); } // end
+	    else // start
+	      {
+	      if (i > 0) { printf(", "); }
+	      printf("%lu",(unsigned long)(rangeval[i]));
+	      }
+	    }
+	  printf("\n");
+	  }
+	}
+
+  // Show range
+  Txt = SealGetText(Rec,"@sflags0");
+  if (Txt)
+	{
+	printf("  Signature spans: ");
+	if (strchr(Txt,'F')) { printf("Start of file"); }
+	else if (strchr(Txt,'P')) { printf("Start of previous signature"); }
+	else if (strchr(Txt,'p')) { printf("End of previous signature"); }
+	else if (strchr(Txt,'S')) { printf("Start of signature"); }
+	else if (strchr(Txt,'s')) { printf("End of signature"); }
+	else if (strchr(Txt,'f')) { printf("End of file"); }
+	else { printf("Absolute offset"); }
+	printf(" to ");
+	Txt = SealGetText(Rec,"@sflags1");
+	if (strchr(Txt,'f')) { printf("end of file"); }
+	else if (strchr(Txt,'s')) { printf("end of signature"); }
+	else if (strchr(Txt,'S')) { printf("start of signature"); }
+	else if (strchr(Txt,'p')) { printf("end of previous signature"); }
+	else if (strchr(Txt,'P')) { printf("start of previous signature"); }
+	else if (strchr(Txt,'F')) { printf("start of file"); }
+	else { printf("absolute offset"); }
+	printf("\n");
+	}
+
+  // If show details
+	{
+	Txt = SealGetText(Rec,"@sigdate");
+	if (Txt && Txt[0])
+	  {
+	  if (ErrorMsg) { printf("  Altered after"); }
+	  else { printf("  Signed"); }
+	  printf(" on %.4s-%.2s-%.2s",Txt,Txt+4,Txt+6);
+	  printf(" at %.2s:%.2s:%.2s",Txt+8,Txt+10,Txt+12);
+	  if (Txt[14]=='.') { printf("%s",Txt+14); }
+	  printf(" GMT\n");
+	  }
+
+	Txt = SealGetText(Rec,"d");
+	if (ErrorMsg) { printf("  Altered after signed by"); }
+	else { printf("  Signed by"); }
+	printf(" %s",Txt);
+
+	Txt = SealGetText(Rec,"id");
+	if (Txt && Txt[0])
+	  {
+	  printf(" for user %s",Txt);
+	  }
+	printf("\n");
+
+	Txt = SealGetText(Rec,"copyright");
+	if (Txt && Txt[0])
+	  {
+	  printf("  Copyright: %s\n",Txt);
+	  }
+
+	Txt = SealGetText(Rec,"info");
+	if (Txt && Txt[0])
+	  {
+	  printf("  Comment: %s\n",Txt);
+	  }
+	}
+} /* _SealVerifyShow() */
+
+#pragma GCC visibility pop
 
 /********************************************************
  SealGetDNSfile(): Given a file that goes to DNS, use it.
@@ -662,9 +787,6 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
 {
   char *ErrorMsg;
   long signum; // signature number
-  sealfield *range;
-  const size_t *rangeval;
-  unsigned int i,MaxRange;
 
   if (!Rec) { return(Rec); }
 
@@ -718,7 +840,15 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
 	{
 	// @sigdate set by SealValidateDecodeParts
 	Rec = SealDigest(Rec,Mmap);
-	Rec = SealDoubleDigest(Rec); // apply sigdate:userid: as needed
+
+	// Retain flags
+	Rec = SealSetText(Rec,"@sflags",SealGetText(Rec,"@sflags0"));
+	Rec = SealAddC(Rec,"@sflags",'~');
+	Rec = SealAddText(Rec,"@sflags",SealGetText(Rec,"@sflags1"));
+	Rec = SealAddC(Rec,"@sflags",'|');
+
+	// apply sigdate:userid: as needed
+	Rec = SealDoubleDigest(Rec);
 	ErrorMsg = SealGetText(Rec,"@error");
 	}
 
@@ -736,102 +866,15 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
 	ErrorMsg = SealGetText(Rec,"@error");
 	}
 
-  // Report any errors
+  // Report any errors or findings
   if (ErrorMsg)
 	{
 	ReturnCode |= 0x01; // at least one file is invalid
-	printf(" SEAL record #%ld is invalid: %s.\n",signum,ErrorMsg);
-	if (Verbose)
-	  {
-	  range = SealSearch(Rec,"@digest1");
-	  if (range)
-	    {
-	    printf("  Digest: ");
-	    for(i=0; i < range->ValueLen; i++) { printf("%02x",range->Value[i]); }
-	    printf("\n");
-	    }
-	  range = SealSearch(Rec,"@digest2");
-	  if (range)
-	    {
-	    printf("  Double Digest: ");
-	    for(i=0; i < range->ValueLen; i++) { printf("%02x",range->Value[i]); }
-	    printf("\n");
-	    }
-	  }
+	_SealVerifyShow(Rec,signum,ErrorMsg);
 	}
   else
 	{
-	char *Txt;
-
-	printf(" SEAL record #%ld is valid.\n",signum);
-
-	if (Verbose)
-	  {
-	  range = SealSearch(Rec,"@digest1");
-	  if (range)
-	    {
-	    printf("  Digest: ");
-	    for(i=0; i < range->ValueLen; i++) { printf("%02x",range->Value[i]); }
-	    printf("\n");
-	    }
-	  range = SealSearch(Rec,"@digest2");
-	  if (range)
-	    {
-	    printf("  Double Digest: ");
-	    for(i=0; i < range->ValueLen; i++) { printf("%02x",range->Value[i]); }
-	    printf("\n");
-	    }
-
-	  range = SealSearch(Rec,"@digestrange");
-	  if (range && (range->ValueLen > 0)) // better always be defined!
-	    {
-	    rangeval = (const size_t*)(range->Value);
-	    MaxRange = range->ValueLen / sizeof(size_t);
-	    printf("  Signed bytes: ");
-	    for(i=0; i < MaxRange; i++)
-	      {
-	      if (i%2) { printf("-%ld",(long)(rangeval[i])-1); } // end
-	      else // start
-	        {
-		if (i > 0) { printf(", "); }
-	        printf("%ld",(long)(rangeval[i]));
-		}
-	      }
-	    printf("\n");
-	    }
-	  }
-
-	Txt = SealGetText(Rec,"@sigdate");
-	if (Txt && Txt[0])
-	  {
-	  printf("  Signed");
-	  printf(" %.4s-%.2s-%.2s",Txt,Txt+4,Txt+6);
-	  printf(" at %.2s:%.2s:%.2s",Txt+8,Txt+10,Txt+12);
-	  if (Txt[14]=='.') { printf("%s",Txt+14); }
-	  printf(" GMT\n");
-	  }
-
-	Txt = SealGetText(Rec,"d");
-	printf("  Signed by %s",Txt);
-
-	Txt = SealGetText(Rec,"id");
-	if (Txt && Txt[0])
-	  {
-	  printf(" for user %s",Txt);
-	  }
-	printf("\n");
-
-	Txt = SealGetText(Rec,"copyright");
-	if (Txt && Txt[0])
-	  {
-	  printf("  Copyright: %s\n",Txt);
-	  }
-
-	Txt = SealGetText(Rec,"info");
-	if (Txt && Txt[0])
-	  {
-	  printf("  Comment: %s\n",Txt);
-	  }
+	_SealVerifyShow(Rec,signum,NULL);
 	}
 
   return(Rec);
@@ -844,8 +887,8 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
  ********************************************************/
 bool	SealVerifyFinal	(sealfield *Rec)
 {
-  if (Rec) { return(false); }
-  if (!SealGetCindex(Rec,"@sflags",1)) // signatures should cover end of file
+  if (!Rec) { return(false); }
+  if (!strchr(SealGetText(Rec,"@sflags"),'f')) // signatures should cover end of file
 	{
 	printf(" WARNING: SEAL records do not finalize the file. Data may be appended.\n");
 	return(false);
@@ -882,10 +925,10 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     // Retain state
     Args = SealCopy2(Args,"@s",Rec,"@s");
     Args = SealCopy2(Args,"@p",Rec,"@s");
-    Args = SealCopy2(Args,"@sflags",Rec,"@sflags"); // retain sflags
     Args = SealCopy2(Args,"@dnscachelast",Rec,"@dnscachelast"); // store any cached DNS
     Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
     Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
+    Args = SealAddText(Args,"@sflags",SealGetText(Rec,"@sflags"));
 
     // Clean up
     SealFree(Rec); Rec=NULL;

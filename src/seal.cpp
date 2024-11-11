@@ -467,7 +467,7 @@ sealfield *	SealAddTextLen	(sealfield *vfhead, const char *Field, size_t ValueLe
     }
 
   // If not found, then set it!
-  if (!vf) { return(SealSetText(vfhead,Field,Value)); }
+  if (!vf) { return(SealSetTextLen(vfhead,Field,ValueLen,Value)); }
 
   // Found it! Reallocate space and append.
   if (ValueLen > 0)

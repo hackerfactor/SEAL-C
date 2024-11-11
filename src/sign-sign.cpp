@@ -38,7 +38,7 @@ mmapfile *	SealInsert	(sealfield *Rec, mmapfile *MmapIn, size_t InsertOffset)
   if (!block) { return(NULL); } // missing block! (called wrong)
 
   // Check if file is finalized (abort if it is)
-  if (SealGetCindex(Rec,"@sflags",1)=='f')
+  if (strchr(SealGetText(Rec,"@sflags"),'f'))
 	{
 	fprintf(stderr," ERROR: File is finalized; cannot sign. Skipping.\n");
 	return(NULL);
@@ -105,7 +105,7 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
   if (!fname || !fname[0]) { return(NULL); } // not signing
 
   // Check if file is finalized (abort if it is)
-  if (SealGetCindex(Rec,"@sflags",1)=='f')
+  if (strchr(SealGetText(Rec,"@sflags"),'f'))
 	{
 	fprintf(stderr," ERROR: File is finalized; cannot sign. Aborting.\n");
 	exit(0x80);

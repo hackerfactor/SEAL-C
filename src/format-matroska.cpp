@@ -199,7 +199,7 @@ sealfield *	Seal_Matroskasign	(sealfield *Args, mmapfile *MmapIn)
   Args = SealDel(Args,"@MatInsert"); // no longer needed
 
   Args = SealDel(Args,"b");
-  if (SealGetCindex(Args,"@sflags",0)=='F') // if exists, then append
+  if (strchr(SealGetText(Args,"@sflags"),'F')) // if exists, then append
 	{
 	// if appending, overlap signatures to prevent insertion attacks.
 	Args = SealSetText(Args,"b","P");

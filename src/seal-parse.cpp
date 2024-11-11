@@ -526,7 +526,6 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	  if (Args)
 	    {
 	    Rec = SealCopy2(Rec,"@p",Args,"@s"); // previous '@s' is now '@p'
-	    Rec = SealCopy2(Rec,"@sflags",Args,"@sflags"); // tell verifier the sflags
 	    Rec = SealCopy2(Rec,"@dnscachelast",Args,"@dnscachelast"); // use any cached DNS
 	    Rec = SealCopy2(Rec,"@public",Args,"@public"); // use any cached DNS
 	    Rec = SealCopy2(Rec,"@publicbin",Args,"@publicbin"); // use any cached DNS

@@ -3,12 +3,15 @@
 rm -rf test
 mkdir test
 
+echo "##### Local Key Generation Test"
 for ka in rsa ec ; do
   # generate keys
   bin/sealtool -g --ka "$ka" -D "test/sign-$ka.dns" -k "test/sign-$ka.key" --genpass ''
 done # ka
 
 if [ 1 == 1 ] ; then
+echo ""
+echo "##### Format Test"
 for ka in rsa ec ; do
   # iterate over signing formats
   for sf in 'hex' 'HEX' 'base64' 'date3:hex' 'date3:HEX' 'date3:base64' ; do
@@ -46,8 +49,28 @@ for ka in rsa ec ; do
 done # ka
 fi
 
+### PNG options
+if [ 1 == 1 ] ; then
+echo ""
+echo "##### PNG Chunk Test"
+for opt in seAl sEAl sEAL seAL teXt ; do
+  i=regression/test-unsigned.png
+  ka=rsa
+    sf="date3:base64"
+    sfname=${sf/:/_}
+    j=${i/regression/test}
+      out=${j/-unsigned/-signed-local-pngchunk-$opt-$ka-$sfname}
+      echo ""
+      bin/sealtool -v -s -k "test/sign-$ka.key" --options "$opt" --ka "$ka" --dnsfile "test/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
+      echo ""
+      bin/sealtool -v --ka "$ka" --dnsfile "test/sign-$ka.dns" "$out"
+done
+fi
+
 ### Append
 if [ 1 == 1 ] ; then
+echo ""
+echo "##### Append Test"
 for ka in ec ; do
   for sf in 'date3:hex' ; do
     sfname=${sf/:/_}
@@ -79,15 +102,17 @@ fi
 ### Try manual fields
 if [ 1 == 1 ] ; then
 echo ""
+echo "##### Manual Test"
+echo ""
 echo "#### Non-standard JPEG comment"
-./SignManual.sh -Comment test/test-signed-comment.jpg
+./SignManual.sh -Comment test/test-signed-local-manual-comment.jpg
 
 echo ""
 echo "#### EXIF"
-./SignManual.sh -EXIF:seal test/test-signed-exif.jpg
+./SignManual.sh -EXIF:seal test/test-signed-local-manual-exif.jpg
 
 echo ""
 echo "#### XMP"
-./SignManual.sh -XMP:seal test/test-signed-comment.jpg
+./SignManual.sh -XMP:seal test/test-signed-local-manual-xmp.jpg
 fi
 

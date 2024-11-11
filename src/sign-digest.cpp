@@ -50,6 +50,7 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
  This uses 'da', 'b', 's', and 'p' arguments.
  Computes the digest and stores binary data in @digest1.
  Stores the byte range in '@digestrange'.
+ Sets '@sflags0' and '@sflags1' to store summaries of range
  Any error messages are stored in @error.
  **************************************/
 sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
@@ -68,6 +69,8 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
   Rec = SealDel(Rec,"@digestrange");
   Rec = SealDel(Rec,"@digest1");
   Rec = SealDel(Rec,"@digest2");
+  Rec = SealDel(Rec,"@sflags0");
+  Rec = SealDel(Rec,"@sflags1");
 
   // Load parameters
   s = SealGetIarray(Rec,"@s"); // should always be set
@@ -143,45 +146,97 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
       else { sum[1] += acc*Addsym; state=5; }
       Addsym=-1; acc=0;
       }
+
     else if (b[i]=='S') // start of current signature
       {
-      if (state < 3) { sum[0] += s[0]*Addsym; state=1; }
-      else { sum[1] += s[0]*Addsym; state=4; }
+      if (state < 3)
+	{
+	sum[0] += s[0]*Addsym; state=1;
+	Rec = SealAddC(Rec,"@sflags0",'S');
+	}
+      else
+	{
+	sum[1] += s[0]*Addsym; state=4;
+	Rec = SealAddC(Rec,"@sflags1",'S');
+	}
       acc=0;
       }
+
     else if (b[i]=='s') // end of current signature
       {
-      if (state < 3) { sum[0] += s[1]*Addsym; state=1; }
-      else { sum[1] += s[1]*Addsym; state=4; }
+      if (state < 3)
+	{
+	sum[0] += s[1]*Addsym; state=1;
+	Rec = SealAddC(Rec,"@sflags0",'s');
+	}
+      else
+	{
+	sum[1] += s[1]*Addsym; state=4;
+	Rec = SealAddC(Rec,"@sflags1",'s');
+	}
       acc=0;
       }
+
     else if (b[i]=='P') // start of previous signature
       {
-      if (state < 3) { sum[0] += p[0]*Addsym; state=1; }
-      else { sum[1] += p[0]*Addsym; state=4; }
-      Rec = SealSetCindex(Rec,"@sflags",2,'P'); // sig covers previous signature
+      if (state < 3)
+	{
+	sum[0] += p[0]*Addsym; state=1;
+	Rec = SealAddC(Rec,"@sflags0",'P');
+	}
+      else
+	{
+	sum[1] += p[0]*Addsym; state=4;
+	Rec = SealAddC(Rec,"@sflags1",'P');
+	}
       acc=0;
       }
+
     else if (b[i]=='p') // end of previous signature
       {
-      if (state < 3) { sum[0] += p[1]*Addsym; state=1; }
-      else { sum[1] += p[1]*Addsym; state=4; }
+      if (state < 3)
+	{
+	sum[0] += p[1]*Addsym; state=1;
+	Rec = SealAddC(Rec,"@sflags0",'p');
+	}
+      else
+	{
+	sum[1] += p[1]*Addsym; state=4;
+	Rec = SealAddC(Rec,"@sflags1",'p');
+	}
       acc=0;
       }
+
     else if (b[i]=='F') // start of file
       {
-      if (state < 3) { sum[0] += 0*Addsym; state=1; }
-      else { sum[1] += 0*Addsym; state=4; }
-      Rec = SealSetCindex(Rec,"@sflags",0,'F'); // sig covers start
+      if (state < 3)
+	{
+	sum[0] += 0*Addsym; state=1;
+	Rec = SealAddC(Rec,"@sflags0",'F');
+	}
+      else // end is relative to start?
+	{
+	sum[1] += 0*Addsym; state=4;
+	Rec = SealAddC(Rec,"@sflags1",'F');
+	}
       acc=0;
       }
+
     else if (b[i]=='f') // end of file
       {
-      if (state < 3) { sum[0] += Mmap->memsize*Addsym; state=1; }
-      else { sum[1] += Mmap->memsize*Addsym; state=4; }
-      Rec = SealSetCindex(Rec,"@sflags",1,'f'); // sig covers end
+      if (state < 3)
+	{
+	sum[0] += Mmap->memsize*Addsym; state=1;
+	Rec = SealAddC(Rec,"@sflags0",'f');
+	}
+      else
+	{
+	sum[1] += Mmap->memsize*Addsym; state=4;
+	Rec = SealAddC(Rec,"@sflags1",'f');
+	}
       acc=0;
       }
+
     else if (isdigit(b[i])) // numeric offset
       {
       // add digit to accumulator
@@ -296,11 +351,6 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 
 Abort:
   EVP_MD_CTX_free(ctx64);
-#if 0
-  DEBUGSHOW("s",SealSearch(Rec,"@s"));
-  DEBUGSHOW("p",SealSearch(Rec,"@p"));
-  DEBUGSHOW(b,SealSearch(Rec,"@digestrange"));
-#endif
   return(Rec);
 } /* SealDigest() */
 
