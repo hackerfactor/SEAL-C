@@ -34,9 +34,9 @@ digest=$(bin/sealtool -v "$Fname" | grep -e '^ *Digest: ' | awk '{print $2}')
 
 # get the record with the signature
 rec2=$(bin/sealtool -M "$digest")
-if [[ "$Field" == *XMP:* ]] ; then
-  rec2="${rec2:6:-2}"
-fi
+#if [[ "$Field" == *XMP:* ]] ; then
+#  rec2="${rec2}"
+#fi
 #echo "Rec2: $rec2"
 
 # re-insert

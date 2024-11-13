@@ -3,13 +3,15 @@
  See LICENSE
 
  Parsing a SEAL record.
- These are in the form:
+ These are in text the form:
    <seal ... />
- or
-   <*:seal>seal ... </\*:seal>
-   <*:seal seal ... />
-   where '*' is a namespace
+ or in XML form:
+   <*:seal>&lt;seal ... /&gt;</\*:seal>
+   <*:seal seal='&lt;seal .../&gt;' />
+ Where '*' is a namespace
  Where "..." are attributes in the format: field=value.
+
+ The first attribute MUST be "seal=" and a version.
  ************************************************/
 // C headers
 #include <stdlib.h>
@@ -406,6 +408,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 {
   sealfield *Rec=NULL;
   char *Str;
+  bool IsXML=false;
   int State=0; // finite state machine
   char Quote=0; // if tracking start/stop quotes
   size_t i; // index into data
@@ -430,16 +433,30 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
     // State 0: Looking for "<seal" or "<*:seal"
     if (State==0)
       {
-      // Must begin with "<"
-      if (Text[i] != '<') { continue; } // nope!
+      // Must begin with "<" or "&lt;"; quick check for speed
+      if ((Text[i]!='<') && (Text[i]!='&')) { continue; } // nope!
+
       // "<seal>" or "<seal "
-      if ((i+6 < TextLen) && !memcmp(Text+i,"<seal",5) && strchr("> ",Text[i+5]))
+      if ((i+6 < TextLen) && !memcmp(Text+i,"<seal ",6))
         {
 	// found a start!
-	i+=5;
+	i+=6;
 	State=1;
+	IsXML=false;
 	continue;
 	}
+
+      // "&lt;seal "
+      if ((i+9 < TextLen) && !memcmp(Text+i,"&lt;seal ",9))
+        {
+	// found a start!
+	i+=9;
+	State=1;
+	IsXML=true;
+	continue;
+	}
+
+#if 0
       // "<*:seal>" or "<*:seal "
       size_t j;
       for(j=i+1; (j+10 < TextLen) && isalnum(Text[j]); j++) { ; }
@@ -451,6 +468,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	State=1;
 	continue;
 	}
+#endif
       IsBad=true;
       }
 
@@ -459,11 +477,21 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       {
       if (isspace(Text[i])) { continue; }
       //DEBUGPRINT("Text: [%.*s]",(int)i,Text);
-      if (Text[i]=='>') { goto Done; } // no more values
-      if ((i+1 < TextLen) && !memcmp("/>",Text+i,2)) { goto Done; } // no more values (self-closing)
-      if ((i+1 < TextLen) && !memcmp("</",Text+i,2)) { goto Done; } // no more values (nested closing)
+      if (!IsXML)
+	{
+	if (Text[i]=='>') { goto Done; } // no more values
+	if ((i+1 <= TextLen) && !memcmp("/>",Text+i,2)) { goto Done; } // no more values (self-closing)
+	if ((i+1 <= TextLen) && !memcmp("</",Text+i,2)) { goto Done; } // no more values (nested closing)
+	if (Text[i]=='<') { i--; IsBad=true; } // bad start; recheck the character
+	}
+      else // XML encoding
+	{
+	if ((i+4 <= TextLen) && !memcmp("&gt;",Text+i,4)) { goto Done; }
+	if ((i+5 <= TextLen) && !memcmp("/&gt;",Text+i,5)) { goto Done; }
+	if ((i+5 <= TextLen) && !memcmp("&lt;/",Text+i,5)) { goto Done; }
+	if ((i+4 <= TextLen) && !memcmp("&lt;",Text+i,4)) { i--; IsBad=true; }
+	}
 
-      if (Text[i]=='<') { i--; IsBad=true; } // bad start; recheck the character
       if (!isalpha(Text[i])) { IsBad=true; } // bad start
       fs = i;
       while((i < TextLen) && isalnum(Text[i])) { i++; }
@@ -478,7 +506,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       // Value may be quoted
       Quote=0;
       if (strchr("\"'",Text[i])) { Quote=Text[i]; i++; }
-      if ((i+6 < TextLen) && !memcmp("&quot;",Text+i,6)) { Quote=1; i+=6; }
+      if (IsXML && (i+6 < TextLen) && !memcmp("&quot;",Text+i,6)) { Quote=1; i+=6; }
       // Scan for the end of the string
       vs=i;
       for( ; i < TextLen; i++)
@@ -549,7 +577,12 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	  {
 	  while((i < TextLen) && (Text[i] != '>')) { i++; }
 	  if (Text[i]=='>') { i++; }
-	  //DEBUGPRINT("State[%d]=[%.*s]",4,(int)(TextLen-i),(char*)Text+i);
+	  goto Done; // or "break;"
+	  }
+	else if (IsXML && i+4 <= TextLen && (!memcmp("&lt;",Text+i,4) || !memcmp("&gt;",Text+i,4))) // done!
+	  {
+	  while((i+4 <= TextLen) && memcmp("&gt;",Text+i,4)) { i++; }
+	  if ((i+4 <= TextLen) && !memcmp("&gt;",Text+i,4)) { i+=4; }
 	  goto Done; // or "break;"
 	  }
 	else { IsBad=true; } // unknown next character
