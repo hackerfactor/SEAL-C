@@ -529,6 +529,7 @@ int main (int argc, char *argv[])
     // Identify the filename format
     if (Seal_isPNG(Mmap)) { FileFormat='P'; } // PNG
     else if (Seal_isJPEG(Mmap)) { FileFormat='J'; } // JPEG
+    else if (Seal_isGIF(Mmap)) { FileFormat='G'; } // GIF
     else if (Seal_isRIFF(Mmap)) { FileFormat='R'; } // RIFF
     else if (Seal_isMatroska(Mmap)) { FileFormat='M'; } // Matroska
     else if (Seal_isBMFF(Mmap)) { FileFormat='B'; } // BMFF
@@ -557,6 +558,7 @@ int main (int argc, char *argv[])
     switch(FileFormat)
     	{
 	case 'B': Args = Seal_BMFF(Args,Mmap); break; // BMFF
+	case 'G': Args = Seal_GIF(Args,Mmap); break; // GIF
 	case 'J': Args = Seal_JPEG(Args,Mmap); break; // JPEG
 	case 'M': Args = Seal_Matroska(Args,Mmap); break; // Matroska
 	case 'm': Args = Seal_PPM(Args,Mmap); break; // PPM/PGM

@@ -24,7 +24,7 @@ This code currently supports static-files only. It does not support streaming da
 |XMP   |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Reads as a text field.|
 |TIFF  |Coming soon.|Coming soon.|
 |DICOM |Coming soon.|Coming soon.|
-|GIF   |TBD|TBD|
+|GIF   |Yes: Application Block|Yes: Application Blocks|
 |BMP   |No (no metadata support)|No (no metadata support)|
 |FAX   |No.|No. Seriously, just no.|
 
