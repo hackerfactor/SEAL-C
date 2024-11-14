@@ -141,7 +141,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	Txt = SealGetText(Rec,"@sigdate");
 	if (Txt && Txt[0])
 	  {
-	  if (ErrorMsg) { printf("  Altered after"); }
+	  if (ErrorMsg) { printf("  Unverified signed"); }
 	  else { printf("  Signed"); }
 	  printf(" on %.4s-%.2s-%.2s",Txt,Txt+4,Txt+6);
 	  printf(" at %.2s:%.2s:%.2s",Txt+8,Txt+10,Txt+12);
@@ -150,7 +150,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	  }
 
 	Txt = SealGetText(Rec,"d");
-	if (ErrorMsg) { printf("  Altered after signed by"); }
+	if (ErrorMsg) { printf("  Unverified signed by"); }
 	else { printf("  Signed by"); }
 	printf(" %s",Txt);
 
@@ -164,13 +164,17 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	Txt = SealGetText(Rec,"copyright");
 	if (Txt && Txt[0])
 	  {
-	  printf("  Copyright: %s\n",Txt);
+	  if (ErrorMsg) { printf("  Unverified copyright:"); }
+	  else { printf("  Copyright:"); }
+	  printf(" %s\n",Txt);
 	  }
 
 	Txt = SealGetText(Rec,"info");
 	if (Txt && Txt[0])
 	  {
-	  printf("  Comment: %s\n",Txt);
+	  if (ErrorMsg) { printf("  Unverified comment:"); }
+	  else { printf("  Comment:"); }
+	  printf(" %s\n",Txt);
 	  }
 	}
 } /* _SealVerifyShow() */
