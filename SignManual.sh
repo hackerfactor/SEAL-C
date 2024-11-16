@@ -16,9 +16,6 @@ cp regression/test-unsigned.jpg "$Fname"
 
 # get the record
 rec1=$(bin/sealtool -M '')
-if [[ "$Field" == *XMP:* ]] ; then
-  rec1="${rec1:6:-2}"
-fi
 #echo "Rec1: $rec2"
 
 # insert the record into the file
