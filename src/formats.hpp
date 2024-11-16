@@ -37,5 +37,8 @@ sealfield *	Seal_PDF	(sealfield *Args, mmapfile *MmapIn);
 bool		Seal_isPPM	(mmapfile *Mmap);
 sealfield *	Seal_PPM	(sealfield *Args, mmapfile *MmapIn);
 
+bool		Seal_isMPEG	(mmapfile *Mmap);
+sealfield *	Seal_MPEG	(sealfield *Args, mmapfile *MmapIn);
+
 #endif
 

@@ -14,46 +14,49 @@ This code currently supports static-files only. It does not support streaming da
 
 |Image Format|Write Support|Read Support|
 |------|-------------|------------|
-|JPEG  |Yes: SEAL blocks.|Yes: All SEAL and applicaton blocks.|
-|PNG   |Yes: SEAL or text chunks.|Yes: All SEAL and text chunks.|
-|GIF   |Yes: Application Block|Yes: Application Blocks|
-|WEBP  |Yes: SEAL blocks|Yes: All SEAL, XMP, and informational (INFO) blocks.|
-|HEIC  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|PNM/PPM/PGM|Yes: SEAL in comments|Yes: SEAL in comments.|
-|EXIF  |Yes: See [Manual Signing](BUILD.md#manualsigning)|Coming soon.|
-|XMP   |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Reads as a text field.|
-|TIFF  |Coming soon.|Coming soon.|
-|DICOM |Coming soon.|Coming soon.|
+|JPEG  |Yes: SEAL blocks|Yes: All SEAL and applicaton blocks|
+|PNG   |Yes: SEAL or text chunks|Yes: All SEAL and text chunks|
+|GIF   |Yes: Application block|Yes: Application blocks|
+|WEBP  |Yes: SEAL blocks|Yes: All SEAL, XMP, and informational (INFO) blocks|
+|HEIC  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|PNM/PPM/PGM|Yes: SEAL in comments|Yes: SEAL in comments|
+|EXIF  |Yes: See [Manual Signing](BUILD.md#manualsigning)|Coming soon|
+|XMP   |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Reads as a text field|
+|TIFF  |Coming soon|Coming soon|
+|DICOM |Coming soon|Coming soon|
 |BMP   |No (no metadata support)|No (no metadata support)|
-|FAX   |No.|No. Seriously, just no.|
+|FAX   |No|No. Seriously, just no.|
 
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
-|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|M4A   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|MKA   |Yes: SEAL blocks|Yes: All SEAL blocks.|
-|MP3   |Coming soon.|Coming soon.|
-|WAV   |Yes: SEAL blocks|Yes: All SEAL, XMP, and info blocks.|
+|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|M4A   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|MKA   |Yes: SEAL blocks|Yes: All SEAL blocks|
+|MP3   |Yes|Yes|
+|MP3+ID3|Yes|Yes|
+|MPEG  |Yes|Yes|
+|WAV   |Yes: SEAL blocks|Yes: All SEAL, XMP, and info blocks|
 
 |Video Format|Write Support|Read Support|
 |------|-------------|------------|
-|MP4   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|3GP   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|AVI   |Yes: SEAL blocks|Yes: All SEAL, XMP, and info blocks.|
-|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|HEIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|HEVC  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|MOV/Quicktime |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|
-|WEBM  |Yes: SEAL blocks|Yes: All SEAL blocks.|
-|MKV   |Yes: SEAL blocks|Yes: All SEAL blocks.|
+|MP4   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|3GP   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|AVI   |Yes: SEAL blocks|Yes: All SEAL, XMP, and info blocks|
+|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|HEIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|HEVC  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|MKV   |Yes: SEAL blocks|Yes: All SEAL blocks|
+|MOV/Quicktime |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|MPEG  |Yes|Yes|
+|WEBM  |Yes: SEAL blocks|Yes: All SEAL blocks|
 
 |Documentation Format|Write Support|Read Support|
 |------|-------------|------------|
-|OpenDocument (docx, pptx, etc.)|Coming soon.|Coming soon.|
+|OpenDocument (docx, pptx, etc.)|Coming soon|Coming soon|
 |PDF |Yes: SEAL records in PDF comments|Yes: SEAL records in PDF comments|
-|HTML |Coming soon.|Coming soon.|
-|Plain Text |Coming soon.|Coming soon.|
+|HTML |Coming soon|Coming soon|
+|Plain Text |Coming soon|Coming soon|
 
 `sealtool` will only parse containers if it recognizing the file format.
 

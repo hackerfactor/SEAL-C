@@ -535,6 +535,7 @@ int main (int argc, char *argv[])
     else if (Seal_isBMFF(Mmap)) { FileFormat='B'; } // BMFF
     else if (Seal_isPDF(Mmap)) { FileFormat='p'; } // PDF
     else if (Seal_isPPM(Mmap)) { FileFormat='m'; } // PPM/PGM
+    else if (Seal_isMPEG(Mmap)) { FileFormat='a'; } // MPEG
     else
 	{
 	fprintf(stdout," ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
@@ -557,6 +558,7 @@ int main (int argc, char *argv[])
     // Process based on file format
     switch(FileFormat)
     	{
+	case 'a': Args = Seal_MPEG(Args,Mmap); break; // MPEG
 	case 'B': Args = Seal_BMFF(Args,Mmap); break; // BMFF
 	case 'G': Args = Seal_GIF(Args,Mmap); break; // GIF
 	case 'J': Args = Seal_JPEG(Args,Mmap); break; // JPEG
