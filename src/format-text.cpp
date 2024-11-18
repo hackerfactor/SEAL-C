@@ -132,7 +132,7 @@ sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
    For append:
    - Inserts at the end.
 
-   XML records use "<!seal ....>".
+   XML records use "<?seal ....>".
    Text records use "<seal ...>".
    And in both cases, maintain the newline characters!
      CR or CRLF.
@@ -255,9 +255,9 @@ sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
 	{
 	Args = SealAddText(Args,"b",",s~f");
 	}
-  else
+  else // if appending
 	{
-	// Text doesn't support true appending.
+	InsertOffset = MmapIn->memsize; // append always goes at the end
 	Args = SealAddText(Args,"b",",s~s+3"); // +3 for '"/>' or '"?>'
 	//fprintf(stderr," ERROR: This format (Text) does not support appending. Skipping.\n");
 	}

@@ -436,7 +436,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
     if (State==0)
       {
       // Must begin with "<" or "&lt;"; quick check for speed
-      if ((Text[i]!='<') && (Text[i]!='&') && (Text[i]!='!')) { continue; } // nope!
+      if ((Text[i]!='<') && (Text[i]!='&')) { continue; } // nope!
 
       // "<seal>" or "<seal "
       if ((i+6 < TextLen) && !memcmp(Text+i,"<seal ",6))
