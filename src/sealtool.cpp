@@ -536,6 +536,7 @@ int main (int argc, char *argv[])
     else if (Seal_isPDF(Mmap)) { FileFormat='p'; } // PDF
     else if (Seal_isPPM(Mmap)) { FileFormat='m'; } // PPM/PGM
     else if (Seal_isMPEG(Mmap)) { FileFormat='a'; } // MPEG
+    else if (Seal_isText(Mmap)) { FileFormat='x'; } // Text
     else
 	{
 	fprintf(stdout," ERROR: Unknown file format '%s'. Skipping.\n",argv[optind]);
@@ -567,6 +568,7 @@ int main (int argc, char *argv[])
 	case 'P': Args = Seal_PNG(Args,Mmap); break; // PNG
 	case 'p': Args = Seal_PDF(Args,Mmap); break; // PDF
 	case 'R': Args = Seal_RIFF(Args,Mmap); break; // RIFF
+	case 'x': Args = Seal_Text(Args,Mmap); break; // Text
 	default: break; // should never happen
 	}
 

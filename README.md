@@ -21,6 +21,7 @@ This code currently supports static-files only. It does not support streaming da
 |HEIC  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
 |AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
 |PNM/PPM/PGM|Yes: SEAL in comments|Yes: SEAL in comments|
+|SVG   |Yes: SEAL processing instruction tags|Yes: SEAL processing instruction tags|
 |EXIF  |Yes: See [Manual Signing](BUILD.md#manualsigning)|Coming soon|
 |XMP   |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Reads as a text field|
 |TIFF  |Coming soon|Coming soon|
@@ -55,8 +56,9 @@ This code currently supports static-files only. It does not support streaming da
 |------|-------------|------------|
 |OpenDocument (docx, pptx, etc.)|Coming soon|Coming soon|
 |PDF |Yes: SEAL records in PDF comments|Yes: SEAL records in PDF comments|
-|HTML |Coming soon|Coming soon|
-|Plain Text |Coming soon|Coming soon|
+|XML|Yes: SEAL processing instruction tags|Yes: SEAL processing instruction tags|
+|HTML|Yes: SEAL processing instruction tags|Yes: SEAL processing instruction tags|
+|Plain Text|Yes|Yes|
 
 `sealtool` will only parse containers if it recognizing the file format.
 

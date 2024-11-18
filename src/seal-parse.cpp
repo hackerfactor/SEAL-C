@@ -5,11 +5,13 @@
  Parsing a SEAL record.
  These are in text the form:
    <seal ... />
- or in XML form:
+ or in XMP form:
    <*:seal>&lt;seal ... /&gt;</\*:seal>
    <*:seal seal='&lt;seal .../&gt;' />
- Where '*' is a namespace
- Where "..." are attributes in the format: field=value.
+   Where '*' is a namespace
+   Where "..." are attributes in the format: field=value.
+ or generic XML/SVG/HTML:
+   <?seal ... ?>
 
  The first attribute MUST be "seal=" and a version.
  ************************************************/
@@ -408,7 +410,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 {
   sealfield *Rec=NULL;
   char *Str;
-  bool IsXML=false;
+  char IsXML=0; // 0=not XML, 1=is XML, 2=is XML comment
   int State=0; // finite state machine
   char Quote=0; // if tracking start/stop quotes
   size_t i; // index into data
@@ -430,11 +432,11 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       }
     //DEBUGPRINT("State[%d]=[%.*s]",State,(int)(TextLen-i),(char*)Text+i);
 
-    // State 0: Looking for "<seal" or "<*:seal"
+    // State 0: Looking for "<seal" or "<*:seal" or "<?seal"
     if (State==0)
       {
       // Must begin with "<" or "&lt;"; quick check for speed
-      if ((Text[i]!='<') && (Text[i]!='&')) { continue; } // nope!
+      if ((Text[i]!='<') && (Text[i]!='&') && (Text[i]!='!')) { continue; } // nope!
 
       // "<seal>" or "<seal "
       if ((i+6 < TextLen) && !memcmp(Text+i,"<seal ",6))
@@ -442,7 +444,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	// found a start!
 	i+=6;
 	State=1;
-	IsXML=false;
+	IsXML=0;
 	continue;
 	}
 
@@ -452,11 +454,22 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	// found a start!
 	i+=9;
 	State=1;
-	IsXML=true;
+	IsXML=1;
+	continue;
+	}
+
+      // "<?seal "; XML is case-insensitive
+      if ((i+7 < TextLen) && !strncasecmp((const char*)Text+i,"<?seal ",7))
+        {
+	// found a start!
+	i+=7;
+	State=1;
+	IsXML=2;
 	continue;
 	}
 
 #if 0
+      // Generic: Match any namespace
       // "<*:seal>" or "<*:seal "
       size_t j;
       for(j=i+1; (j+10 < TextLen) && isalnum(Text[j]); j++) { ; }
@@ -483,6 +496,12 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	if ((i+1 <= TextLen) && !memcmp("/>",Text+i,2)) { goto Done; } // no more values (self-closing)
 	if ((i+1 <= TextLen) && !memcmp("</",Text+i,2)) { goto Done; } // no more values (nested closing)
 	if (Text[i]=='<') { i--; IsBad=true; } // bad start; recheck the character
+	}
+      else if (IsXML==2) // XML comment
+	{
+	if ((i+1 <= TextLen) && !memcmp("?>",Text+i,2)) { goto Done; } // no more values (self-closing)
+	if (Text[i]=='<') { i--; IsBad=true; } // bad start; recheck the character
+	if (Text[i]=='>') { IsBad=true; } // bad end
 	}
       else // XML encoding
 	{
@@ -578,6 +597,10 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	  while((i < TextLen) && (Text[i] != '>')) { i++; }
 	  if (Text[i]=='>') { i++; }
 	  goto Done; // or "break;"
+	  }
+	else if (IsXML==2) // XML comment
+	  {
+	  if ((i+2 <= TextLen) && !memcmp("?>",Text+i,2)) { i+=2; goto Done; } // done!
 	  }
 	else if (IsXML && i+4 <= TextLen && (!memcmp("&lt;",Text+i,4) || !memcmp("&gt;",Text+i,4))) // done!
 	  {

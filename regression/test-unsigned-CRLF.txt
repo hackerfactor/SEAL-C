@@ -1,0 +1,4 @@
+This is plain text.
+It uses DOS newline characters.
+
+One more line.

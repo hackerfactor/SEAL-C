@@ -40,5 +40,8 @@ sealfield *	Seal_PPM	(sealfield *Args, mmapfile *MmapIn);
 bool		Seal_isMPEG	(mmapfile *Mmap);
 sealfield *	Seal_MPEG	(sealfield *Args, mmapfile *MmapIn);
 
+bool		Seal_isText	(mmapfile *Mmap);
+sealfield *	Seal_Text	(sealfield *Args, mmapfile *MmapIn);
+
 #endif
 
