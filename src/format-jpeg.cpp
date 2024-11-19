@@ -122,6 +122,7 @@
 
 #include "seal.hpp"
 #include "files.hpp"
+#include "formats.hpp"
 #include "seal-parse.hpp"
 #include "sign.hpp"
 
@@ -640,8 +641,13 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
       // EXIF gets special handling
       if ((BlockSize > 8) && !memcmp(Mmap->mem+Offset+4,"Exif\0\0",6))
 	{
-	// TBD: Process exif which begins at Offset+10 and length is BlockSize-8
+	// Process exif which begins at Offset+10 and length is BlockSize-8
 	// EXIF can be large, spanning multiple apps! SEAL must be in first block.
+	// Process possible EXIF for SEAL record.
+	mmapfile MmapExif;
+	MmapExif.mem = Mmap->mem+Offset+10;
+	MmapExif.memsize = BlockSize-8;
+	Args = Seal_Exif(Args,&MmapExif);
 	goto NextBlock;
 	}
 

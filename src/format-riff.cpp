@@ -127,8 +127,11 @@ sealfield *	_RIFFwalk	(sealfield *Args, size_t PosStart, size_t PosEnd, int Dept
 	}
     else if (!memcmp(Data,"EXiF",4)) // Special case for EXIF processing
 	{
-	//DEBUGPRINT("%*s%.4s",Depth*2,"",Data);
-	; // TBD EXIF
+	// Process possible EXIF for SEAL record.
+	mmapfile MmapExif;
+	MmapExif.mem = Mmap->mem+PosStart+12;
+	MmapExif.memsize = size;
+	Args = Seal_Exif(Args,&MmapExif);
 	}
     else // any other field
 	{

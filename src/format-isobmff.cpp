@@ -245,6 +245,14 @@ sealfield *	_BMFFwalk	(sealfield *Args, size_t DataStart, size_t DataEnd, unsign
 	  {
 	  Args = SealVerifyBlock(Args, DataStart, DataStart+AtomLen, Mmap);
 	  }
+	else if (BMFFatoms[a].type=='e') // search EXIF for SEAL!
+	  {
+	  // Process possible EXIF for SEAL record.
+	  mmapfile MmapExif;
+	  MmapExif.mem = Mmap->mem+DataStart;
+	  MmapExif.memsize = AtomLen;
+	  Args = Seal_Exif(Args,&MmapExif);
+	  }
 	break;
 	}
 

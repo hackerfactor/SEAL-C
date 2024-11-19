@@ -43,5 +43,8 @@ sealfield *	Seal_MPEG	(sealfield *Args, mmapfile *MmapIn);
 bool		Seal_isText	(mmapfile *Mmap);
 sealfield *	Seal_Text	(sealfield *Args, mmapfile *MmapIn);
 
+// Exif isn't a standalone format. It's called by other formats.
+sealfield *	Seal_Exif	(sealfield *Args, mmapfile *MmapIn);
+
 #endif
 

@@ -22,8 +22,6 @@ This code currently supports static-files only. It does not support streaming da
 |AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
 |PNM/PPM/PGM|Yes: SEAL in comments|Yes: SEAL in comments|
 |SVG   |Yes: SEAL processing instruction tags|Yes: SEAL processing instruction tags|
-|EXIF  |Yes: See [Manual Signing](BUILD.md#manualsigning)|Coming soon|
-|XMP   |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Reads as a text field|
 |TIFF  |Coming soon|Coming soon|
 |DICOM |Coming soon|Coming soon|
 |BMP   |No (no metadata support)|No (no metadata support)|
@@ -64,7 +62,7 @@ This code currently supports static-files only. It does not support streaming da
 
 |Container Formats|Write Support|Read Support|About|
 |------|-------------|------------|-----|
-|EXIF |TBD |Coming soon.|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats.
+|EXIF  |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Reads 0xceal and comments|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats.
 |XMP |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Yes, treated as text|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files.
 |RIFF |Yes: SEAL blocks |Yes: All SEAL, XMP, and info blocks.|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files.|
 |ISO-BMFF |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
