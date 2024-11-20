@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 // Revise the version if there is any significant change
-#define SEAL_VERSION "0.0.7-beta"
+#define SEAL_VERSION "0.0.8-beta"
 
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE

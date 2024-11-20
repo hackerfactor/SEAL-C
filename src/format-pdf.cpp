@@ -32,7 +32,7 @@
    "stream"
    [binary data..]
    "endstream"
- The binary data will end with a '\n', '\r', or '\r\n' and the be followed
+ The binary data will end with a '\n', '\r', or '\r\n' and followed
  by the "endstream" literal.
 
  And that brings up whitespace...

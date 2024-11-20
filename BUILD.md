@@ -49,7 +49,7 @@ sealtool -S -D signmydata.com --id 12345 --apiurl 'https://signmydata.com/?sign'
 sealtool file-seal.jpg
 ```
 
-If you don't want to repeatedly enter the long set of command-line parameters, you can use a configuration file: $HOME/.seal.cfg
+If you don't want to repeatedly enter the long set of command-line parameters each time you sign a file, then you can use a configuration file to store the parameters: <code>\$XDG\_CONFIG\_HOME/seal/config</code>. (If \$XDG\_CONFIG\_HOME is undefined, then it will use <code>\$HOME/.config/seal/config</code>.)
 ```
 # Remote signing options (for use with -S)
 domain=signmydata.com
@@ -62,7 +62,7 @@ apikey=abcd1234
 id=12345
 outfile=./%b-seal%e
 ```
-(Or use: `sealtool [list of options] -W > $HOME/.seal.cfg`)
+(Or use: `sealtool [list of options] -W`)
 
 With the configuration file, you can use:
 ```

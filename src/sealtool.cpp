@@ -178,6 +178,113 @@ sealfield *	ReadCfg	(sealfield *Args)
 } /* ReadCfg() */
 
 /**************************************
+ _mkdir(): Recursive mkdir.
+ Directory path MUST be writable!
+ **************************************/
+void	_mkdir	(char *Path)
+{
+  char *p;
+  struct stat st;
+
+  p = strchr(Path,'/');
+  if (Path[0]=='/') // skip initial slash
+    {
+    p = strchr(p+1,'/');
+    }
+
+  while(p)
+    {
+    p[0]='\0'; // terminate path string
+    // Does it exist?
+    if (stat(Path, &st) == 0)
+      {
+      // Already exists as a directory? Good!
+      if (S_ISDIR(st.st_mode)) { ; }
+      else // Already exists as something else? (Nope!)
+        {
+	fprintf(stderr,"ERROR: '%s' is not a directory. Aborting.\n",Path);
+	exit(0x80);
+	}
+      }
+    else // Create the path
+      {
+      if (mkdir(Path,0770) != 0)
+        {
+	fprintf(stderr,"ERROR: Cannot create directory '%s'. Aborting.\n",Path);
+	exit(0x80);
+	}
+      }
+
+    // Check next path segment
+    p[0]='/'; // replace path string
+    p = strchr(p+1,'/');
+    }
+} /* _mkdir() */
+
+/**************************************
+ WriteCfg(): Create the config file.
+ NOTE: This exits!
+ **************************************/
+void	WriteCfg	(sealfield *Args)
+{
+  char *s;
+  FILE *Fout;
+
+  Fout = stdout;
+  s = SealGetText(Args,"config");
+  if (s && strcmp(s,"-")) // if config file and not stdout
+    {
+    // check if it already exists
+    if (access(s,F_OK)==0)
+      {
+      char buf[5];
+      memset(buf,0,5);
+      fprintf(stderr,"WARNING: Configuration file already exists. Overwrite (y/n)?\n");
+      if (!fgets(buf,5,stdin) || !strchr("Yy",buf[0]))
+        {
+	fprintf(stderr,"Aborting.\n");
+	exit(0x80);
+	}
+      }
+    else
+      {
+      _mkdir(s);
+      }
+    Fout = fopen(s,"wb");
+    }
+
+  fprintf(Fout,"# Common options\n");
+  s=SealGetText(Args,"domain"); if (s && s[0]) { fprintf(Fout,"domain=%s\n",s); } else { fprintf(Fout,"#domain=\n"); }
+  fprintf(Fout,"digestalg=%s\n",SealGetText(Args,"digestalg"));
+  fprintf(Fout,"keyalg=%s\n",SealGetText(Args,"keyalg"));
+  fprintf(Fout,"kv=%s\n",SealGetText(Args,"kv"));
+  fprintf(Fout,"sf=%s\n",SealGetText(Args,"sf"));
+  s=SealGetText(Args,"info"); if (s && s[0]) { fprintf(Fout,"comment=%s\n",s); } else { fprintf(Fout,"#comment=\n"); }
+  s=SealGetText(Args,"copyright"); if (s && s[0]) { fprintf(Fout,"copyright=%s\n",s); } else { fprintf(Fout,"#copyright=\n"); }
+  fprintf(Fout,"\n");
+  fprintf(Fout,"# Local signing options (for use with -s and -m)\n");
+  s=SealGetText(Args,"keyfile"); if (s && s[0]) { fprintf(Fout,"keyfile=%s\n",s); } else { fprintf(Fout,"#keyfile=\n"); }
+  fprintf(Fout,"\n");
+  fprintf(Fout,"# Remote signing options (for use with -S and -M)\n");
+  s=SealGetText(Args,"apiurl"); if (s && s[0]) { fprintf(Fout,"apiurl=%s\n",s); } else { fprintf(Fout,"#apiurl=\n"); }
+  s=SealGetText(Args,"apikey"); if (s && s[0]) { fprintf(Fout,"apikey=%s\n",s); } else { fprintf(Fout,"#apikey=\n"); }
+  s=SealGetText(Args,"id"); if (s && s[0]) { fprintf(Fout,"id=%s\n",s); } else { fprintf(Fout,"#id=\n"); }
+  s=SealGetText(Args,"outfile"); if (s && s[0]) { fprintf(Fout,"outfile=%s\n",s); } else { fprintf(Fout,"#outfile=\n"); }
+  fprintf(Fout,"\n");
+  fprintf(Fout,"# Generating signature options (for use with -g)\n");
+  s=SealGetText(Args,"dnsfile"); if (s && s[0]) { fprintf(Fout,"dnsfile=%s\n",s); } else { fprintf(Fout,"#dnsfile=\n"); }
+  s=SealGetText(Args,"uuid"); if (s && s[0]) { fprintf(Fout,"uuid=%s\n",s); } else { fprintf(Fout,"#uuid=\n"); }
+  fprintf(Fout,"\n");
+
+  if (Fout != stdout)
+    {
+    fclose(Fout);
+    fprintf(stderr,"Configuration file created: %s\n",SealGetText(Args,"config"));
+    }
+  exit(0);
+} /* WriteCfg() */
+
+/**************************************
  print_km_name(): Callback for OpenSSL listing key algorithms
  **************************************/
 void	print_km_name	(const char *name, void *param)
@@ -203,7 +310,7 @@ void	Usage	(const char *progname)
 {
   printf("Usage: %s [options] file [file...]\n",progname);
   printf("  -h, -?, --help    :: Show help; this usage\n");
-  printf("  --config file.cfg :: Optional configuration file (default: $HOME/.seal.cfg)\n");
+  printf("  --config file.cfg :: Optional configuration file (default: $XDG_CONFIG_HOME/seal/config)\n");
   printf("  -v                :: Verbose debugging (probably not what you want)\n");
   printf("  -V, --version     :: Show the code version and exit.\n");
   printf("\n");
@@ -309,9 +416,21 @@ int main (int argc, char *argv[])
 #endif
 
   // Set default config file based on user's home.
-  Args = SealSetText(Args,"config",getenv("HOME"));
-  Args = SealAddText(Args,"config","/.seal.cfg");
+  {
+  char *s;
+  s = getenv("XDG_CONFIG_HOME");
+  if (s)
+    {
+    Args = SealSetText(Args,"config",s);
+    }
+  else
+    {
+    Args = SealSetText(Args,"config",getenv("HOME"));
+    Args = SealAddText(Args,"config","/.config");
+    }
+  Args = SealAddText(Args,"config","/seal/config");
   Args = ReadCfg(Args);
+  }
 
   // p and s are used with b to generate the hash.
   Args = SealSetIindex(Args,"@s",2,0); // sig offset in file [0]=start, [1]=end, [2]=number of signatures; default:zeros
@@ -411,35 +530,7 @@ int main (int argc, char *argv[])
 
       case 'V': printf("%s\n",SEAL_VERSION); exit(0);
       case 'v': Verbose++; break;
-
-      case 'W': // write the data as a config file
-	{
-	char *s;
-	printf("# Common options\n");
-	s=SealGetText(Args,"domain"); if (s && s[0]) { printf("domain=%s\n",s); } else { printf("#domain=\n"); }
-	printf("digestalg=%s\n",SealGetText(Args,"digestalg"));
-	printf("keyalg=%s\n",SealGetText(Args,"keyalg"));
-	printf("kv=%s\n",SealGetText(Args,"kv"));
-	printf("sf=%s\n",SealGetText(Args,"sf"));
-	s=SealGetText(Args,"info"); if (s && s[0]) { printf("comment=%s\n",s); } else { printf("#comment=\n"); }
-	s=SealGetText(Args,"copyright"); if (s && s[0]) { printf("copyright=%s\n",s); } else { printf("#copyright=\n"); }
-	printf("\n");
-	printf("# Local signing options (for use with -s and -m)\n");
-	s=SealGetText(Args,"keyfile"); if (s && s[0]) { printf("keyfile=%s\n",s); } else { printf("#keyfile=\n"); }
-	printf("\n");
-	printf("# Remote signing options (for use with -S and -M)\n");
-	s=SealGetText(Args,"apiurl"); if (s && s[0]) { printf("apiurl=%s\n",s); } else { printf("#apiurl=\n"); }
-	s=SealGetText(Args,"apikey"); if (s && s[0]) { printf("apikey=%s\n",s); } else { printf("#apikey=\n"); }
-	s=SealGetText(Args,"id"); if (s && s[0]) { printf("id=%s\n",s); } else { printf("#id=\n"); }
-	s=SealGetText(Args,"outfile"); if (s && s[0]) { printf("outfile=%s\n",s); } else { printf("#outfile=\n"); }
-	printf("\n");
-	printf("# Generating signature options (for use with -g)\n");
-	s=SealGetText(Args,"dnsfile"); if (s && s[0]) { printf("dnsfile=%s\n",s); } else { printf("#dnsfile=\n"); }
-	s=SealGetText(Args,"uuid"); if (s && s[0]) { printf("uuid=%s\n",s); } else { printf("#uuid=\n"); }
-	printf("\n");
-	exit(0);
-	}
-	break;
+      case 'W': WriteCfg(Args); break; // write the data as a config file
       case 'h': // help
       case '?': // help
         Usage(argv[0]); SealFree(Args); exit(0);
