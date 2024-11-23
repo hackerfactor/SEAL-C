@@ -34,6 +34,9 @@ sealfield *	Seal_BMFF	(sealfield *Args, mmapfile *MmapIn);
 bool		Seal_isPDF	(mmapfile *Mmap);
 sealfield *	Seal_PDF	(sealfield *Args, mmapfile *MmapIn);
 
+int		Seal_isTIFF	(mmapfile *Mmap);
+sealfield *	Seal_TIFF	(sealfield *Args, mmapfile *MmapIn);
+
 bool		Seal_isPPM	(mmapfile *Mmap);
 sealfield *	Seal_PPM	(sealfield *Args, mmapfile *MmapIn);
 

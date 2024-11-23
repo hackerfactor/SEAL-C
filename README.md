@@ -14,51 +14,52 @@ This code currently supports static-files only. It does not support streaming da
 
 |Image Format|Write Support|Read Support|
 |------|-------------|------------|
-|JPEG  |Yes: SEAL blocks|Yes: All SEAL and applicaton blocks|
-|PNG   |Yes: SEAL or text chunks|Yes: All SEAL and text chunks|
-|GIF   |Yes: Application block|Yes: Application blocks|
-|WEBP  |Yes: SEAL blocks|Yes: All SEAL, XMP, and informational (INFO) blocks|
-|HEIC  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|PNM/PPM/PGM|Yes: SEAL in comments|Yes: SEAL in comments|
-|SVG   |Yes: SEAL processing instruction tags|Yes: SEAL processing instruction tags|
-|TIFF  |Coming soon|Coming soon|
+|JPEG  |Yes|Yes|
+|PNG   |Yes|Yes|
+|GIF   |Yes|Yes|
+|WEBP  |Yes|Yes|
+|HEIC  |Yes|Yes|
+|AVIF  |Yes|Yes|
+|PNM/PPM/PGM|Yes|Yes|
+|SVG   |Yes|Yes|
+|TIFFⁱ  |Yes|Yes|
 |DICOM |Coming soon|Coming soon|
 |BMP   |No (no metadata support)|No (no metadata support)|
 |FAX   |No|No. Seriously, just no.|
 
+ⁱ TIFF includes many camera-raw formats, including Adobe Digital Negative (DNG), Canon CRW and CR2, Hasselblad 3FR, Kodan KDC, Leica RAW, Nikon NEF, Panasonic Raw, and Sony ARW.
+
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
-|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|M4A   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|MKA   |Yes: SEAL blocks|Yes: All SEAL blocks|
+|AVIF  |Yes|Yes|
+|M4A   |Yes|Yes|
+|MKA   |Yes|Yes|
 |MP3   |Yes|Yes|
 |MP3+ID3|Yes|Yes|
 |MPEG  |Yes|Yes|
-|WAV   |Yes: SEAL blocks|Yes: All SEAL, XMP, and info blocks|
+|WAV   |Yes|Yes|
 
 |Video Format|Write Support|Read Support|
 |------|-------------|------------|
-|MP4   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|3GP   |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|AVI   |Yes: SEAL blocks|Yes: All SEAL, XMP, and info blocks|
-|AVIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|HEIF  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|HEVC  |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
-|MKV   |Yes: SEAL blocks|Yes: All SEAL blocks|
-|MOV/Quicktime |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info|
+|MP4   |Yes|Yes|
+|3GP   |Yes|Yes|
+|AVI   |Yes|Yes|
+|AVIF  |Yes|Yes|
+|HEIF  |Yes|Yes|
+|HEVC  |Yes|Yes|
+|DIVX  |Yes|Yes|
+|MKV   |Yes|Yes|
+|MOV/Quicktime |Yes|Yes|
 |MPEG  |Yes|Yes|
-|WEBM  |Yes: SEAL blocks|Yes: All SEAL blocks|
+|WEBM  |Yes|Yes|
 
 |Documentation Format|Write Support|Read Support|
 |------|-------------|------------|
-|OpenDocument (docx, pptx, etc.)|Coming soon|Coming soon|
-|PDF |Yes: SEAL records in PDF comments|Yes: SEAL records in PDF comments|
-|XML|Yes: SEAL processing instruction tags|Yes: SEAL processing instruction tags|
-|HTML|Yes: SEAL processing instruction tags|Yes: SEAL processing instruction tags|
+|PDF |Yes|Yes|
+|XML|Yes|Yes|
+|HTML|Yes|Yes|
 |Plain Text|Yes|Yes|
-
-`sealtool` will only parse containers if it recognizing the file format.
+|OpenDocument (docx, pptx, etc.)|Coming soon|Coming soon|
 
 |Container Formats|Write Support|Read Support|About|
 |------|-------------|------------|-----|
@@ -69,5 +70,7 @@ This code currently supports static-files only. It does not support streaming da
 |Matroska |Yes: SEAL blocks |Yes: All SEAL blocks.|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio).|
 |ZIP |Coming soon. |Coming soon.|ZIP is an archive container that can hold multiple files. The OpenDocument formats use ZIP.|
 
-Want other formats? Let us know!
+This is *not* every file format that `sealtool` supports! Many formats are based on other formats. (CR2 is based on TIFF, DIVX is based on RIFF, etc.). Similar formats are likely already supported. `sealtool` will only parse files when it recognizing the file format.
+
+Have a format you need that isn't supported? Let us know!
 
