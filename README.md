@@ -27,7 +27,7 @@ This code currently supports static-files only. It does not support streaming da
 |BMP   |No (no metadata support)|No (no metadata support)|
 |FAX   |No|No. Seriously, just no.|
 
-ⁱ TIFF includes many camera-raw formats, including Adobe Digital Negative (DNG), Canon CRW and CR2, Hasselblad 3FR, Kodan KDC, Leica RAW, Nikon NEF, Panasonic Raw, and Sony ARW.
+ⁱ TIFF includes many camera-raw formats, including Adobe Digital Negative (DNG), Canon CRW and CR2, Hasselblad 3FR, Kodan KDC, Leica RAW, Nikon NEF, Panasonic Raw, Sony ARW, and many more.
 
 |Audio Format|Write Support|Read Support|
 |------|-------------|------------|
