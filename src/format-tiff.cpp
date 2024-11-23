@@ -69,6 +69,13 @@
    3. Create a single record: type 0xcea1 (ceal for seal).
    4. Store the data after the IFD with 0x00 padding to the word.
 
+ HOWEVER!
+ There's a problem...
+ The "Next IFD" pointer is before the signature.
+ During an append, it will be changed, breaking the signature.
+ The solution?  Store the SEAL record BEFORE the IFD!
+
+
  With TIFF, unknown tags are ignored when processing, so this should work fine.
 
  NOTE: While this code always appends, some other tool could
@@ -198,8 +205,8 @@ sealfield *	_TIFFwalk	(sealfield *Args, int Endian, mmapfile *Mmap)
 		}
 		break;
 	  }
-	DataOffset = Read32(Mmap->mem + IFDoffset + 4);
-	DataSize = Read32(Mmap->mem + IFDoffset + 8);
+	DataSize = Read32(Mmap->mem + IFDoffset + 4);
+	DataOffset = Read32(Mmap->mem + IFDoffset + 8);
 	if (DataOffset+ DataSize > Mmap->memsize) // truncated!
 	  {
 	  long signum;
@@ -283,7 +290,7 @@ sealfield *	Seal_TIFFsign	(sealfield *Args, int Endian, mmapfile *MmapIn)
   sealfield *rec, *block; // SEAL record
   mmapfile *MmapOut;
   const char *fname;
-  uint32_t IFDlink;
+  uint32_t IFDlink,IFDoffset;
 
   /*****
    To insert:
@@ -350,40 +357,39 @@ sealfield *	Seal_TIFFsign	(sealfield *Args, int Endian, mmapfile *MmapIn)
   Args = SealAlloc(Args,"@BLOCK",18 + rec->ValueLen + (rec->ValueLen % 2),'x');
   block = SealSearch(Args,"@BLOCK");
 
-  // Make "@s" relative to the start of the block
-  Args = SealIncIindex(Args, "@s", 0, 18);
-  Args = SealIncIindex(Args, "@s", 1, 18);
+  // Store record *before* the IFD
+  memcpy(block->Value,rec->Value,rec->ValueLen);
+  // Make "@s" relative to the start of the block (Already done!)
+  IFDoffset = rec->ValueLen + (rec->ValueLen % 2);
 
   // Now fill it using the correct endian!
   if (Endian == 1234) // little endian
 	{
-	writele16(block->Value+0,1); // 1 entry in the IFD
-	writele16(block->Value+2,0xcea1); // tag 0xcea1
-	writele16(block->Value+4,2); // type 2: ascii text
-	writele32(block->Value+6,rec->ValueLen + (rec->ValueLen % 2)); // data size with padding
-	writele32(block->Value+10,MmapIn->memsize+18); // data offset is right after this IFD
+	writele16(block->Value+IFDoffset+0,1); // 1 entry in the IFD
+	writele16(block->Value+IFDoffset+2,0xcea1); // tag 0xcea1
+	writele16(block->Value+IFDoffset+4,2); // type 2: ascii text
+	writele32(block->Value+IFDoffset+6,rec->ValueLen + (rec->ValueLen % 2)); // data size with padding
+	writele32(block->Value+IFDoffset+10,MmapIn->memsize); // data offset is right after this IFD
 	// Don't need to write 0 for next IFD
 	}
   else // big endian
 	{
-	writebe16(block->Value+0,1); // 1 entry in the IFD
-	writebe16(block->Value+2,0xcea1); // tag 0xcea1
-	writebe16(block->Value+4,2); // type 2: ascii text
-	writebe32(block->Value+6,rec->ValueLen + (rec->ValueLen % 2)); // data size with padding
-	writebe32(block->Value+10,MmapIn->memsize+18); // data offset is right after this IFD
+	writebe16(block->Value+IFDoffset+0,1); // 1 entry in the IFD
+	writebe16(block->Value+IFDoffset+2,0xcea1); // tag 0xcea1
+	writebe16(block->Value+IFDoffset+4,2); // type 2: ascii text
+	writebe32(block->Value+IFDoffset+6,rec->ValueLen + (rec->ValueLen % 2)); // data size with padding
+	writebe32(block->Value+IFDoffset+10,MmapIn->memsize); // data offset is right after this IFD
 	// Don't need to write 0 for next IFD
 	}
-
-  // Store record after IFD
-  memcpy(block->Value+18,rec->Value,rec->ValueLen);
+  IFDoffset += MmapIn->memsize; // make the new offset relative to the new file
 
   // Write the output; append new record to the end of the file
   MmapOut = SealInsert(Args,MmapIn,MmapIn->memsize);
   if (MmapOut)
     {
     // Update previous "next IFD" with current IFD location
-    if (Endian == 1234) { writele32(MmapOut->mem + IFDlink, MmapIn->memsize); }
-    else { writebe32(MmapOut->mem + IFDlink, MmapIn->memsize); }
+    if (Endian == 1234) { writele32(MmapOut->mem + IFDlink, IFDoffset); }
+    else { writebe32(MmapOut->mem + IFDlink, IFDoffset); }
     // Sign it!
     SealSign(Args,MmapOut);
     MmapFree(MmapOut);
