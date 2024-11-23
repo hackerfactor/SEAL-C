@@ -197,7 +197,7 @@ sealfield *     _JPEGblock   (sealfield *Args, uint16_t Tag)
   Args = SealDel(Args,"@BLOCK");
 
   // Insert: Block name
-  Args = SealSetCindex(Args,"@BLOCK",0,0xff);
+  Args = SealSetBin(Args,"@BLOCK",1,(byte*)"\xff");
   Args = SealSetCindex(Args,"@BLOCK",1,Tag & 0xff);
 
   // Insert: Block size

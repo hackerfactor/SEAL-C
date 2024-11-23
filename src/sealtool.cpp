@@ -289,6 +289,7 @@ void	WriteCfg	(sealfield *Args)
  **************************************/
 void	print_km_name	(const char *name, void *param)
 {
+  (void)(param); // avoid unused variable warnings
   if (name && !isdigit(name[0]) && !strstr(name,"-old") && !strchr(name,' '))
     {
     printf("        %s\n",name);
@@ -300,6 +301,7 @@ void	print_km_name	(const char *name, void *param)
  **************************************/
 void	print_km	(EVP_KEYMGMT *km, void *param)
 {
+  (void)(param); // avoid unused variable warnings
   EVP_KEYMGMT_names_do_all(km, print_km_name, NULL);
 } /* print_km() */
 
@@ -505,7 +507,8 @@ int main (int argc, char *argv[])
       case 'u': Args = SealSetText(Args,"apiurl",optarg); break;
 
       case 'G': // generate password (not in usage; really insecure)
-	Args = SealSetText(Args,"@genpass",optarg); break;
+	Args = SealSetText(Args,"@genpass",optarg);
+	break;
 
       case 'M': // manual remote signing
       case 'm': // manual local signing
@@ -517,6 +520,7 @@ int main (int argc, char *argv[])
 	  }
 	}
 	// fall through to Mode check
+	__attribute__ ((fallthrough));
       case 'g': // generate flag
       case 'S': // signing flag: remote
       case 's': // signing flag: local

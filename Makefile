@@ -24,6 +24,7 @@ endif
 ifeq ($(DEBUG),2)
   CXXFLAGS += -pg
 endif
+CXXFLAGS += -Wextra -Wpedantic
 
 INC = -Isrc -I/usr/local/include
 LIB = -L/usr/local/lib -static-libgcc -lresolv -lcrypto -lssl -lcurl
