@@ -137,6 +137,13 @@ sealfield *	SealSignURL	(sealfield *Args)
     Args = SealAddText(Args,"@post",Str);
     }
 
+  Str = SealGetText(Args,"da"); // add digest algorithm
+  if (Str && Str[0])
+    {
+    Args = SealAddText(Args,"@post","&da=");
+    Args = SealAddText(Args,"@post",Str);
+    }
+
   Str = SealGetText(Args,"sf"); // add signing format
   if (Str && Str[0])
     {

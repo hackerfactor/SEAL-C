@@ -21,6 +21,7 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
+#include <openssl/obj_mac.h>
 
 // for SEAL
 #include "seal.hpp"
@@ -76,6 +77,18 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
   // Show digest (if verbose)
   if (Verbose)
 	{
+	vf = SealSearch(Rec,"@PublicAlgName");
+	if (vf)
+	  {
+	  printf("  Signature Algorithm: %s, %u bits\n",vf->Value,(unsigned int)SealGetIindex(Rec,"@PublicAlgBits",0));
+	  }
+
+	vf = SealSearch(Rec,"da");
+	if (vf)
+	  {
+	  printf("  Digest Algorithm: %s\n",vf->Value);
+	  }
+
 	vf = SealSearch(Rec,"@digest1");
 	if (vf)
 	  {
@@ -98,7 +111,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 
 	  rangeval = (size_t*)(vf->Value);
 	  MaxRange = vf->ValueLen / sizeof(size_t);
-	  printf("  Signed bytes: ");
+	  printf("  Signed Bytes: ");
 	  for(i=0; i < MaxRange; i++)
 	    {
 	    if (i%2) { printf("-%lu",(unsigned long)(rangeval[i])-1); } // end
@@ -116,7 +129,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
   Txt = SealGetText(Rec,"@sflags0");
   if (Txt)
 	{
-	printf("  Signature spans: ");
+	printf("  Signature Spans: ");
 	if (strchr(Txt,'F')) { printf("Start of file"); }
 	else if (strchr(Txt,'P')) { printf("Start of previous signature"); }
 	else if (strchr(Txt,'p')) { printf("End of previous signature"); }
@@ -141,7 +154,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	Txt = SealGetText(Rec,"@sigdate");
 	if (Txt && Txt[0])
 	  {
-	  if (ErrorMsg) { printf("  Unverified signed"); }
+	  if (ErrorMsg) { printf("  Unverified Signed"); }
 	  else { printf("  Signed"); }
 	  printf(" on %.4s-%.2s-%.2s",Txt,Txt+4,Txt+6);
 	  printf(" at %.2s:%.2s:%.2s",Txt+8,Txt+10,Txt+12);
@@ -150,8 +163,8 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	  }
 
 	Txt = SealGetText(Rec,"d");
-	if (ErrorMsg) { printf("  Unverified signed by"); }
-	else { printf("  Signed by"); }
+	if (ErrorMsg) { printf("  Unverified Signed By:"); }
+	else { printf("  Signed By:"); }
 	printf(" %s",Txt);
 
 	Txt = SealGetText(Rec,"id");
@@ -164,7 +177,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	Txt = SealGetText(Rec,"copyright");
 	if (Txt && Txt[0])
 	  {
-	  if (ErrorMsg) { printf("  Unverified copyright:"); }
+	  if (ErrorMsg) { printf("  Unverified Copyright:"); }
 	  else { printf("  Copyright:"); }
 	  printf(" %s\n",Txt);
 	  }
@@ -172,7 +185,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	Txt = SealGetText(Rec,"info");
 	if (Txt && Txt[0])
 	  {
-	  if (ErrorMsg) { printf("  Unverified comment:"); }
+	  if (ErrorMsg) { printf("  Unverified Comment:"); }
 	  else { printf("  Comment:"); }
 	  printf(" %s\n",Txt);
 	  }
@@ -738,6 +751,10 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 	Rec = SealAddText(Rec,"@error",")");
 	exit(0x80);
 	}
+
+  // Record info about the crypto
+  Rec = SealSetText(Rec,"@PublicAlgName",EVP_PKEY_get0_type_name(PubKey));
+  Rec = SealSetIindex(Rec,"@PublicAlgBits",0,(size_t)EVP_PKEY_get_bits(PubKey));
 
   // RSA needs padding
   if (!strcmp(keyalg,"rsa"))

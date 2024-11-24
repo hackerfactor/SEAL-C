@@ -17,6 +17,7 @@ done # ka
 if [ 1 == 1 ] ; then
 echo ""
 echo "##### Format Test"
+for da in sha256 sha384 sha512 ; do
 for ka in rsa ec ; do
   # iterate over signing formats
   for sf in 'hex' 'HEX' 'base64' 'date3:hex' 'date3:HEX' 'date3:base64' ; do
@@ -24,34 +25,35 @@ for ka in rsa ec ; do
 
     # Test with local signing
     echo ""
-    echo "#### Local Signing $ka $sf"
+    echo "#### Local Signing $da $ka $sf"
     echo ""
     for i in regression/test-unsigned*"$FMT" ; do
       j=${i/regression/test}
-      out=${j/-unsigned/-signed-local-$ka-$sfname}
-      bin/sealtool -s -k "test/sign-$ka.key" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
+      out=${j/-unsigned/-signed-local-$da-$ka-$sfname}
+      bin/sealtool -s -k "test/sign-$ka.key" --ka "$ka" --da "$da" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
     done
 
     # Verify local signing
     echo ""
-    echo "#### Verify Local $ka $sf"
-    bin/sealtool --ka "$ka" --dnsfile "test/sign-$ka.dns" test/test-*local-$ka-$sfname*
+    echo "#### Verify Local $da $ka $sf"
+    bin/sealtool --ka "$ka" --dnsfile "test/sign-$ka.dns" test/test-*local-$da-$ka-$sfname*
 
     # Test with remote signing
     echo ""
-    echo "#### Remote Signing $ka $sf"
+    echo "#### Remote Signing $da $ka $sf"
     for i in regression/test-unsigned*"$FMT" ; do
       j=${i/regression/test}
-      out=${j/-unsigned/-signed-remote-$ka-$sfname}
-      bin/sealtool -S --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
+      out=${j/-unsigned/-signed-remote-$da-$ka-$sfname}
+      bin/sealtool -S --da "$da" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
     done
 
     # Verify remote signing
     echo ""
-    echo "#### Verify Remote $ka $sf"
-    bin/sealtool test/test-*remote-$ka-$sfname*
+    echo "#### Verify Remote $da $ka $sf"
+    bin/sealtool test/test-*remote-$da-$ka-$sfname*
   done #sf
 done # ka
+done # da
 fi
 
 ### PNG options
