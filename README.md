@@ -12,7 +12,7 @@ See the [BUILD](BUILD.md) file for compiling and usage.
 
 This code currently supports static-files only. It does not support streaming data. (The SEAL protocol supports streaming data, but this implementation does not (yet).)
 
-|Image Format|Write Support|Read Support|
+|Image Format|Read Support|Write Support|
 |------|-------------|------------|
 |JPEG  |Yes|Yes|
 |PNG   |Yes|Yes|
@@ -29,7 +29,7 @@ This code currently supports static-files only. It does not support streaming da
 
 ⁱ TIFF includes many camera-raw formats, including Adobe Digital Negative (DNG), Canon CRW and CR2, Hasselblad 3FR, Kodan KDC, Leica RAW, Nikon NEF, Panasonic Raw, Sony ARW, and many more.
 
-|Audio Format|Write Support|Read Support|
+|Audio Format|Read Support|Write Support|
 |------|-------------|------------|
 |AVIF  |Yes|Yes|
 |M4A   |Yes|Yes|
@@ -39,7 +39,7 @@ This code currently supports static-files only. It does not support streaming da
 |MPEG  |Yes|Yes|
 |WAV   |Yes|Yes|
 
-|Video Format|Write Support|Read Support|
+|Video Format|Read Support|Write Support|
 |------|-------------|------------|
 |MP4   |Yes|Yes|
 |3GP   |Yes|Yes|
@@ -53,7 +53,7 @@ This code currently supports static-files only. It does not support streaming da
 |MPEG  |Yes|Yes|
 |WEBM  |Yes|Yes|
 
-|Documentation Format|Write Support|Read Support|
+|Document Format|Read Support|Write Support|
 |------|-------------|------------|
 |PDF |Yes|Yes|
 |XML|Yes|Yes|
@@ -61,13 +61,13 @@ This code currently supports static-files only. It does not support streaming da
 |Plain Text|Yes|Yes|
 |OpenDocument (docx, pptx, etc.)|Coming soon|Coming soon|
 
-|Container Formats|Write Support|Read Support|About|
+|Container Format|Read Support|Write Support|About|
 |------|-------------|------------|-----|
-|EXIF  |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Reads 0xceal and comments|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats.
-|XMP |Yes: See [Manual Signing](BUILD.md#manualsigning)|Yes: Yes, treated as text|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files.
-|RIFF |Yes: SEAL blocks |Yes: All SEAL, XMP, and info blocks.|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files.|
-|ISO-BMFF |Yes: SEAL blocks|Yes: SEAL blocks, or any top-level XML or info.|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
-|Matroska |Yes: SEAL blocks |Yes: All SEAL blocks.|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio).|
+|EXIF  |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats.
+|XMP |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files.
+|RIFF |Yes|Yes|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files.|
+|ISO-BMFF |Yes|Yes|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
+|Matroska |Yes|Yes|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio).|
 |ZIP |Coming soon. |Coming soon.|ZIP is an archive container that can hold multiple files. The OpenDocument formats use ZIP.|
 
 This is *not* every file format that `sealtool` supports! Many formats are based on other formats. (CR2 is based on TIFF, DIVX is based on RIFF, etc.). Similar formats are likely already supported. `sealtool` will only parse files when it recognizing the file format.
