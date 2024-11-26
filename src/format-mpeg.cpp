@@ -206,20 +206,6 @@ bool	Seal_isMPEG	(mmapfile *Mmap)
  **************************************/
 sealfield *	Seal_MPEGsign	(sealfield *Args, mmapfile *MmapIn)
 {
-  /*****
-   Signing a MPEG:
-   It's easy to insert since the data is plain text.
-   It's a 2f.ff block ("SEAL1.0" + data)
-
-   HOWEVER:
-   The block length is limited to 255 characters.
-   If the length is greater than 255, then use the next character
-   in the text stream as the length.
-
-   The problem is, I don't know the last character until the signature
-   is generated. The solution is to insert a slope that catches the
-   end length.
-   *****/
   const char *fname;
   sealfield *rec; // SEAL record
   char *Opt;

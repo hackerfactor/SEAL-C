@@ -632,6 +632,7 @@ int main (int argc, char *argv[])
     else if (Seal_isTIFF(Mmap)) { FileFormat='T'; } // TIFF
     else if (Seal_isPPM(Mmap)) { FileFormat='m'; } // PPM/PGM
     else if (Seal_isMPEG(Mmap)) { FileFormat='a'; } // MPEG
+    else if (Seal_isAAC(Mmap)) { FileFormat='A'; } // AAC
     else if (Seal_isText(Mmap)) { FileFormat='x'; } // Text
     else
 	{
@@ -655,6 +656,7 @@ int main (int argc, char *argv[])
     // Process based on file format
     switch(FileFormat)
     	{
+	case 'A': Args = Seal_AAC(Args,Mmap); break; // AAC
 	case 'a': Args = Seal_MPEG(Args,Mmap); break; // MPEG
 	case 'B': Args = Seal_BMFF(Args,Mmap); break; // BMFF
 	case 'G': Args = Seal_GIF(Args,Mmap); break; // GIF

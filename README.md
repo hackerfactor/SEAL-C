@@ -31,6 +31,7 @@ This code currently supports static-files only. It does not support streaming da
 
 |Audio Format|Read Support|Write Support|
 |------|-------------|------------|
+|AAC   |Yes|Yes|
 |AVIF  |Yes|Yes|
 |M4A   |Yes|Yes|
 |MKA   |Yes|Yes|
