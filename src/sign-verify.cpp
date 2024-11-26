@@ -226,6 +226,7 @@ sealfield *	SealGetDNSfile	(sealfield *Rec)
   Reply = SealMove(Reply,"@public","p");
   for(R=Reply; R; R=R->Next)
     {
+    if (!strcmp(R->Field,"@RecEnd")) { continue; }
     Rec = SealCopy2(Rec,R->Field,R,R->Field);
     }
   SealFree(Reply);
@@ -933,7 +934,6 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     {
     Rec = SealParse(BlockEnd-BlockStart, Mmap->mem+BlockStart, BlockStart, Args);
     if (!Rec) { return(Args); } // Nothing found
-    Rec = SealCopy2(Rec,"dnsfile",Args,"dnsfile"); // store any cached DNS
 
     // Found a signature!  Verify the data!
     Rec = SealVerify(Rec,Mmap);
@@ -942,6 +942,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     RecEnd = SealGetIindex(Rec,"@RecEnd",0);
     if (RecEnd <= 0) { RecEnd=1; } // should never happen, but if it does, stop infinite loops
     BlockStart += RecEnd;
+    Rec = SealDel(Rec,"@RecEnd");
  
     // Retain state
     Args = SealCopy2(Args,"@s",Rec,"@s");
@@ -950,6 +951,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
     Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
     Args = SealAddText(Args,"@sflags",SealGetText(Rec,"@sflags"));
+    Args = SealDel(Args,"@RecEnd");
 
     // Clean up
     SealFree(Rec); Rec=NULL;

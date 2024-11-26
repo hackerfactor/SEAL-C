@@ -442,7 +442,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       if ((i+6 < TextLen) && !memcmp(Text+i,"<seal ",6))
         {
 	// found a start!
-	i+=6;
+	i+=5;
 	State=1;
 	IsXML=0;
 	continue;
@@ -452,7 +452,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       if ((i+9 < TextLen) && !memcmp(Text+i,"&lt;seal ",9))
         {
 	// found a start!
-	i+=9;
+	i+=8;
 	State=1;
 	IsXML=1;
 	continue;
@@ -462,7 +462,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       if ((i+7 < TextLen) && !strncasecmp((const char*)Text+i,"<?seal ",7))
         {
 	// found a start!
-	i+=7;
+	i+=6;
 	State=1;
 	IsXML=2;
 	continue;

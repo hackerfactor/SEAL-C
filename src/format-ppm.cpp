@@ -141,7 +141,6 @@ sealfield *	Seal_PPMsign	(sealfield *Args, mmapfile *MmapIn)
   fname = SealGetText(Args,"@FilenameOut");
   if (!fname || !fname[0] || !MmapIn) { return(Args); } // not signing
 
-  Args = _SealWalkPPM(Args,MmapIn);
   InsertOffset = SealGetIindex(Args,"@InsertOffset",0);
   Args = SealDel(Args,"@InsertOffset");
   if (InsertOffset < 3) { return(Args); } // should never happen
