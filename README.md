@@ -63,11 +63,11 @@ This code currently supports static-files only. It does not support streaming da
 
 |Container Format|Read Support|Write Support|About|
 |------|-------------|------------|-----|
-|EXIF  |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats.
-|XMP |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files.
-|RIFF |Yes|Yes|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files.|
-|ISO-BMFF |Yes|Yes|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used MP4, 3GP, HEIF, HEIC, AVIF, and other common media files.|
-|Matroska |Yes|Yes|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio).|
+|EXIF  |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats. SEAL supports all top-level EXIF records. (Nested EXIF records are unsupported due to the ambiguous scope.)
+|XMP |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files. SEAL supports all top-level XMP records. (Nested XMP records are unsupported due to the ambiguous scope.)
+|RIFF |Yes|Yes|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files. SEAL supports *all* RIFF-based files.|
+|ISO-BMFF |Yes|Yes|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used by MP4, 3GP, HEIF, HEIC, AVIF, DIVX, and many other common media files. SEAL supports *all* ISO-MBFF files.|
+|Matroska |Yes|Yes|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio). SEAL supports all Matroska-based media files.|
 |ZIP |Coming soon. |Coming soon.|ZIP is an archive container that can hold multiple files. The OpenDocument formats use ZIP.|
 
 This is *not* every file format that `sealtool` supports! Many formats are based on other formats. (CR2 is based on TIFF, DIVX is based on RIFF, etc.). Similar formats are likely already supported. `sealtool` will only parse files when it recognizing the file format.
