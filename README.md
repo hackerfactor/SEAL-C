@@ -23,7 +23,7 @@ This code currently supports static-files only. It does not support streaming da
 |PNM/PPM/PGM|Yes|Yes|
 |SVG   |Yes|Yes|
 |TIFFⁱ  |Yes|Yes|
-|DICOM |Coming soon|Coming soon|
+|DICOM |Yes|Yes|
 |BMP   |No (no metadata support)|No (no metadata support)|
 |FAX   |No|No. Seriously, just no.|
 
