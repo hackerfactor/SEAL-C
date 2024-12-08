@@ -129,7 +129,7 @@ sealfield *	Seal_PPMsign	(sealfield *Args, mmapfile *MmapIn)
 {
   /*****
    Signing a PPM is really easy:
-   Add the signed block the the end.
+   Add the signed block to the end.
    The only hard part is computing the encoded integers for tag and length.
    *****/
   const char *fname;

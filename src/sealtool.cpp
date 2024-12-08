@@ -631,6 +631,7 @@ int main (int argc, char *argv[])
     else if (Seal_isPDF(Mmap)) { FileFormat='p'; } // PDF
     else if (Seal_isTIFF(Mmap)) { FileFormat='T'; } // TIFF
     else if (Seal_isPPM(Mmap)) { FileFormat='m'; } // PPM/PGM
+    else if (Seal_isDICOM(Mmap)) { FileFormat='D'; } // DICOM
     else if (Seal_isMPEG(Mmap)) { FileFormat='a'; } // MPEG
     else if (Seal_isAAC(Mmap)) { FileFormat='A'; } // AAC
     else if (Seal_isText(Mmap)) { FileFormat='x'; } // Text
@@ -659,6 +660,7 @@ int main (int argc, char *argv[])
 	case 'A': Args = Seal_AAC(Args,Mmap); break; // AAC
 	case 'a': Args = Seal_MPEG(Args,Mmap); break; // MPEG
 	case 'B': Args = Seal_BMFF(Args,Mmap); break; // BMFF
+	case 'D': Args = Seal_DICOM(Args,Mmap); break; // DICOM
 	case 'G': Args = Seal_GIF(Args,Mmap); break; // GIF
 	case 'J': Args = Seal_JPEG(Args,Mmap); break; // JPEG
 	case 'M': Args = Seal_Matroska(Args,Mmap); break; // Matroska
