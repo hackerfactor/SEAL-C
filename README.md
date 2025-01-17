@@ -23,11 +23,14 @@ This code currently supports static-files only. It does not support streaming da
 |PNM/PPM/PGM|Yes|Yes|
 |SVG   |Yes|Yes|
 |TIFFⁱ  |Yes|Yes|
+|JPEG XLⁱⁱ|Yes|Yes|
 |DICOM |Yes|Yes|
 |BMP   |No (no metadata support)|No (no metadata support)|
 |FAX   |No|No. Seriously, just no.|
 
 ⁱ TIFF includes many camera-raw formats, including Adobe Digital Negative (DNG), Canon CRW and CR2, Hasselblad 3FR, Kodan KDC, Leica RAW, Nikon NEF, Panasonic Raw, Sony ARW, and many more.
+
+ⁱⁱ JPEG XL uses ISO-BMFF for storing metadata and can be signed using SEAL. The raw JPEG XL stream does not support metadata and cannot be signed by SEAL.
 
 |Audio Format|Read Support|Write Support|
 |------|-------------|------------|
