@@ -53,7 +53,7 @@ bool		Seal_isText	(mmapfile *Mmap);
 sealfield *	Seal_Text	(sealfield *Args, mmapfile *MmapIn);
 
 // Exif isn't a standalone format. It's called by other formats.
-sealfield *	Seal_Exif	(sealfield *Args, mmapfile *MmapIn);
+sealfield *	Seal_Exif	(sealfield *Args, mmapfile *MmapIn, uint32_t ExifStart, uint32_t ExifSize);
 
 #endif
 

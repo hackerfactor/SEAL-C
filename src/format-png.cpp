@@ -359,10 +359,7 @@ sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
     else if (!strncasecmp(FourCC,"exif",4))
 	{
 	// Process possible EXIF for SEAL record.
-	mmapfile MmapExif;
-	MmapExif.mem = Mmap->mem+Offset+8;
-	MmapExif.memsize = ChunkSize;
-	Args = Seal_Exif(Args,&MmapExif);
+	Args = Seal_Exif(Args,Mmap,Offset+8,ChunkSize);
 	}
 
     // On to the next chunk!

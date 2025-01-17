@@ -644,10 +644,7 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
 	// Process exif which begins at Offset+10 and length is BlockSize-8
 	// EXIF can be large, spanning multiple apps! SEAL must be in first block.
 	// Process possible EXIF for SEAL record.
-	mmapfile MmapExif;
-	MmapExif.mem = Mmap->mem+Offset+10;
-	MmapExif.memsize = BlockSize-8;
-	Args = Seal_Exif(Args,&MmapExif);
+	Args = Seal_Exif(Args,Mmap,Offset+10,BlockSize-8);
 	goto NextBlock;
 	}
 
