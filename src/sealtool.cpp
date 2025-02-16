@@ -259,18 +259,25 @@ void	WriteCfg	(sealfield *Args)
   fprintf(Fout,"keyalg=%s\n",SealGetText(Args,"keyalg"));
   fprintf(Fout,"kv=%s\n",SealGetText(Args,"kv"));
   fprintf(Fout,"sf=%s\n",SealGetText(Args,"sf"));
-  s=SealGetText(Args,"info"); if (s && s[0]) { fprintf(Fout,"comment=%s\n",s); } else { fprintf(Fout,"#comment=\n"); }
+  fprintf(Fout,"\n");
+
+  fprintf(Fout,"# Informational options\n");
+  s=SealGetText(Args,"info"); if (s && s[0]) { fprintf(Fout,"info=%s\n",s); } else { fprintf(Fout,"#info=\n"); }
+  s=SealGetText(Args,"comment"); if (s && s[0]) { fprintf(Fout,"comment=%s\n",s); } else { fprintf(Fout,"#comment=\n"); }
   s=SealGetText(Args,"copyright"); if (s && s[0]) { fprintf(Fout,"copyright=%s\n",s); } else { fprintf(Fout,"#copyright=\n"); }
   fprintf(Fout,"\n");
+
   fprintf(Fout,"# Local signing options (for use with -s and -m)\n");
   s=SealGetText(Args,"keyfile"); if (s && s[0]) { fprintf(Fout,"keyfile=%s\n",s); } else { fprintf(Fout,"#keyfile=\n"); }
   fprintf(Fout,"\n");
+
   fprintf(Fout,"# Remote signing options (for use with -S and -M)\n");
   s=SealGetText(Args,"apiurl"); if (s && s[0]) { fprintf(Fout,"apiurl=%s\n",s); } else { fprintf(Fout,"#apiurl=\n"); }
   s=SealGetText(Args,"apikey"); if (s && s[0]) { fprintf(Fout,"apikey=%s\n",s); } else { fprintf(Fout,"#apikey=\n"); }
   s=SealGetText(Args,"id"); if (s && s[0]) { fprintf(Fout,"id=%s\n",s); } else { fprintf(Fout,"#id=\n"); }
   s=SealGetText(Args,"outfile"); if (s && s[0]) { fprintf(Fout,"outfile=%s\n",s); } else { fprintf(Fout,"#outfile=\n"); }
   fprintf(Fout,"\n");
+
   fprintf(Fout,"# Generating signature options (for use with -g)\n");
   s=SealGetText(Args,"dnsfile"); if (s && s[0]) { fprintf(Fout,"dnsfile=%s\n",s); } else { fprintf(Fout,"#dnsfile=\n"); }
   s=SealGetText(Args,"uuid"); if (s && s[0]) { fprintf(Fout,"uuid=%s\n",s); } else { fprintf(Fout,"#uuid=\n"); }
@@ -341,8 +348,10 @@ void	Usage	(const char *progname)
   printf("  -a, --apikey id      :: For remote signers (default: no API key)\n");
   printf("  -i, --id id          :: User-specific identifier (default: no identifier)\n");
   printf("  --cacert file.crl    :: Use file.crl for trusted root certificates.");
-#ifdef __CYGWIN__
   printf(" (default: ./cacert.crl)");
+  printf("\n");
+  printf("\n");
+#ifdef __CYGWIN__
 #else
   printf(" (default: unset; uses operating system defaults)");
 #endif
@@ -367,12 +376,20 @@ void	Usage	(const char *progname)
   printf("        append  :: This is an appending signature; not final signature.\n");
   printf("        seAl,SEAL,teXt,tEXt,...  :: PNG: chunk name to use.\n");
   printf("  -K, --keyalg alg     :: Key algorithm  (default: rsa)\n");
-  printf("  -A, --digestalg alg    :: Digest (hash) algorithm  (default: sha256)\n");
+  printf("  -A, --digestalg alg  :: Digest (hash) algorithm  (default: sha256)\n");
   printf("               Supports: sha224, sha256, sha384, sha512\n");
-  printf("  -C, --copyright text :: Copyright text (default: no added text)\n");
-  printf("  -c, --comment text   :: Informational/comment text (default: no added text)\n");
   printf("  --kv number          :: Unique key version (default: 1)\n");
   printf("  --sf text            :: Signing format (default: HEX)\n");
+  printf("\n");
+  printf("  Informational fields:\n");
+  printf("  -C, --copyright text :: Copyright text (default: no added text)\n");
+  printf("  -c, --comment text   :: Generic comment text (default: no added text)\n");
+  printf("  --info text          :: Informational comment text (default: no added text)\n");
+  printf("\n");
+  printf("  External source reference:\n");
+  printf("  --src url            :: URL to remote source (default: no url)\n");
+  printf("  --srca sha256:base64 :: Encoding for source digest (default: sha256:base64 if srcd is used)\n");
+  printf("  --srcd digest        :: Digest of remote source (default: no digest)\n");
   printf("\n");
   printf("  Return codes:\n");
   printf("    0x00 All files have valid signatures.\n");
@@ -457,8 +474,6 @@ int main (int argc, char *argv[])
     {"apiurl",    required_argument, NULL, 1},
     {"cacert",    required_argument, NULL, 1}, // for specifying root PEMs
     {"cert-insecure", no_argument, NULL, 0}, // for ignoring TLS verification
-    {"comment",   required_argument, NULL, 'c'},
-    {"copyright", required_argument, NULL, 'C'},
     {"dnsfile",   required_argument, NULL, 'D'},
     {"domain",    required_argument, NULL, 'd'},
     {"id",        required_argument, NULL, 'i'},
@@ -476,6 +491,14 @@ int main (int argc, char *argv[])
     {"sf",        required_argument, NULL, 1},
     {"kv",        required_argument, NULL, 1}, // must be numeric >= 0
     {"uid",       required_argument, NULL, 1},
+    // informational
+    {"info",      required_argument, NULL, 1},
+    {"comment",   required_argument, NULL, 'c'},
+    {"copyright", required_argument, NULL, 'C'},
+    // source referencing
+    {"src",       required_argument, NULL, 1}, // source url
+    {"srca",      required_argument, NULL, 1}, // source digest encoding
+    {"srcd",      required_argument, NULL, 1}, // source digest
     // modes
     {NULL,0,NULL,0}
     };

@@ -39,8 +39,11 @@ sealfield *	SealRecord	(sealfield *Args)
     "da",
     "sf",
     "comment",
-    "info",
     "copyright",
+    "info",
+    "src",
+    "srca",
+    "srcd",
     "id",
     "b",
     NULL
