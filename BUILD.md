@@ -34,7 +34,7 @@ Second, sign a picture. I have some regression testing pictures in the regressio
 Finally, you can test the signature. If you have DNS configured, then you can use:
   `bin/sealtool ./test-unsigned-seal.png`
 If you don't have DNS configured, then you can test with your public key:
-  `bin/sealtool --pubkeyfile ./seal-rsa.dns ./test-unsigned-seal.png`
+  `bin/sealtool --dnsfile ./seal-rsa.dns ./test-unsigned-seal.png`
 
 ## Remote Signing
 1. Create an account on a signing service, such as signmydata.com. It will assign you an ID, URL for signing, and API key.
