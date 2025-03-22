@@ -70,7 +70,7 @@ This code currently supports static-files only. It does not support streaming da
 |EXIF  |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats. SEAL supports all top-level EXIF records. (Nested EXIF records are unsupported due to the ambiguous scope.)
 |XMP |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files. SEAL supports all top-level XMP records. (Nested XMP records are unsupported due to the ambiguous scope.)
 |RIFF |Yes|Yes|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files. SEAL supports *all* RIFF-based files.|
-|ISO-BMFF |Yes|Yes|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used by MP4, 3GP, HEIF, HEIC, AVIF, DIVX, and many other common media files. SEAL supports *all* ISO-MBFF files.|
+|ISO-BMFF |Yes|Yes|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used by MP4, 3GP, HEIF, HEIC, AVIF, DIVX, and many other common media files. SEAL supports *all* ISO-BMFF files.|
 |Matroska |Yes|Yes|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio). SEAL supports all Matroska-based media files.|
 |ZIP |Coming soon. |Coming soon.|ZIP is an archive container that can hold multiple files. The OpenDocument formats use ZIP.|
 
