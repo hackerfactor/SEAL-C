@@ -1,7 +1,7 @@
 # SEAL-C
-SEAL is a Secure Evidence Attribution Label. It permits signing media for attribution. The specifications are at: https://github.com/hackerfactor/SEAL
+SEAL is a Secure Evidence Attribution Label. It permits signing media for attribution.
 
-This is an implementation of SEAL in C.
+This is an implementation of SEAL in C. The specifications are at: https://github.com/hackerfactor/SEAL
 
 This code:
 1. Generates keys. The private key should be kept private. The public key is ready to be uploaded to your DNS TXT record.
