@@ -136,7 +136,7 @@ sealfield *	_RIFFwalk	(sealfield *Args, size_t PosStart, size_t PosEnd, int Dept
 	for(r=0; _RIFFvalidate[r]; r++)
 	  {
 	  if (memcmp(_RIFFvalidate[r],Data,4)) { continue; }// Can it contain a SEAL record?
-	  Args = SealVerifyBlock(Args, PosStart+8, PosStart+8+size, Mmap);
+	  Args = SealVerifyBlock(Args, PosStart+8, PosStart+8+size, Mmap, NULL);
 	  } // foreach possible chunk
 	}
 
@@ -254,7 +254,7 @@ sealfield *	Seal_RIFFsign	(sealfield *Args, mmapfile *MmapIn)
     // Update file (initial RIFF block) with new size
     writele32(MmapOut->mem + 4, MmapOut->memsize - 8);
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

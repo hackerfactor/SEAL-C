@@ -124,13 +124,13 @@ sealfield *	_SealWalkAAC	(sealfield *Args, mmapfile *Mmap)
     else
 	{
 	// verify data between frames
-	if (scanStart < offset) { Args = SealVerifyBlock(Args, scanStart, offset, Mmap); }
+	if (scanStart < offset) { Args = SealVerifyBlock(Args, scanStart, offset, Mmap, NULL); }
 	offset += u16;
 	scanStart = offset;
 	}
     }
   // Scan to end of file
-  if (scanStart < Mmap->memsize) { Args = SealVerifyBlock(Args, scanStart, Mmap->memsize, Mmap); }
+  if (scanStart < Mmap->memsize) { Args = SealVerifyBlock(Args, scanStart, Mmap->memsize, Mmap, NULL); }
   // Truncated file? Insert after the last frame!
   Args = SealSetIindex(Args,"@InsertOffset",0,(offset > Mmap->memsize) ? offset : Mmap->memsize);
   return(Args);
@@ -229,7 +229,7 @@ sealfield *	Seal_AACsign	(sealfield *Args, mmapfile *MmapIn)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

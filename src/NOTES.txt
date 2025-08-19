@@ -1,4 +1,17 @@
 ================================
+Although the source files say cpp and hpp, and it uses g++ to compile, the code itself is written in C, not C++.
+Why?
+1. I like the more verbose error messages that come from g++ instead of gcc.
+2. Maximum portability. Some C++ features don't transfer well between different C++ compilers.
+3. It grants the ability to link to both C and C++ libraries (if there are any future dependencies).
+
+In particular, this code contains no classes, no templates, and no overloading.
+  - Complex templates often have a portability problem between compilers.
+  - Complex classes can become a readability nightmare due to deep nesting.
+  - Overloading can create debugging and readability problems if the remapping is not a direct comparison. (E.g., does "string + string" contatenate, add, or do something else? Yes -- it all depends on who defined the overloading.)
+
+
+================================
 The different types of output:
 
 ERROR: to stderr = fatal and an abort.

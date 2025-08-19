@@ -320,12 +320,14 @@ void	Usage	(const char *progname)
   printf("Usage: %s [options] file [file...]\n",progname);
   printf("  -h, -?, --help    :: Show help; this usage\n");
   printf("  --config file.cfg :: Optional configuration file (default: $XDG_CONFIG_HOME/seal/config)\n");
+  printf("  --no-net          :: Optional: disable all network access (for use in an offline environment)\n");
   printf("  -v                :: Verbose debugging (probably not what you want)\n");
   printf("  -V, --version     :: Show the code version and exit.\n");
   printf("\n");
   printf("  Verifying:\n");
   printf("  Verify any SEAL signature in the file(s)\n");
   printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (default: unset; use DNS)\n");
+  printf("  -I, --src name       :: Optional: For validating srcd, use this URL or file as the source.\n");
   printf("\n");
   printf("  Generate signature:\n");
   printf("  -g, --generate       :: Required: generate a signature\n");
@@ -341,6 +343,11 @@ void	Usage	(const char *progname)
   printf("  Signing with a local private key:\n");
   printf("  -s, --sign           :: Required: Enable signing (requires lowercase 's')\n");
   printf("  -k, --keyfile fname  :: File for storing the private key in PEM format (default: ./seal-private.pem)\n");
+  printf("  --sidecar fname      :: Optional: generate a sidecar signature (src or srcd required)\n");
+  printf("  -I, --src URL        :: Optional: Specify a source URL for validation. This will retrieve the file and compute the checksum. The URL will be included in the SEAL record.\n");
+  printf("  -I, --src file       :: Optional: Specify a source file for validation. This will access the file and compute the checksum. The filename will NOT be included in the SEAL record.\n");
+  printf("  --srca text          :: Optional: Specify the source digest encoding. (default: sha256:hex)\n");
+  printf("  --srcd text          :: Optional: Specify the source digest value. Must match the srca encoding. When present, src is not accessed.\n");
   printf("\n");
   printf("  Signing with a remote signing service:\n");
   printf("  -S, --Sign           :: Required: Enable signing (requires uppercase 'S')\n");
@@ -405,11 +412,13 @@ void	Usage	(const char *progname)
 int main (int argc, char *argv[])
 {
   sealfield *Args=NULL, *CleanArgs;
+  mmapfile *Mmap=NULL;
   int c;
   int Mode='v';
   int FileFormat='@';
   bool IsURL=false; // for signing, use URL?
   bool IsLocal=false; // for signing, use local?
+  bool IsSidecar=false; // for signing, generate sidecar?
 
   // Set default values
   Args = SealSetText(Args,"seal","1"); // SEAL version; currently always '1'
@@ -430,6 +439,7 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"id","");
   Args = SealSetText(Args,"apiurl","");
   Args = SealSetText(Args,"apikey","");
+  Args = SealSetText(Args,"srca","sha256:hex");
 #ifdef __CYGWIN__
   Args = SealSetText(Args,"cacert","./cacert.crt");
 #endif
@@ -496,13 +506,14 @@ int main (int argc, char *argv[])
     {"comment",   required_argument, NULL, 'c'},
     {"copyright", required_argument, NULL, 'C'},
     // source referencing
-    {"src",       required_argument, NULL, 1}, // source url
+    {"sidecar",   required_argument, NULL, 1}, // generate a sidecar
+    {"src",       required_argument, NULL, 'I'}, // source url or file
     {"srca",      required_argument, NULL, 1}, // source digest encoding
     {"srcd",      required_argument, NULL, 1}, // source digest
     // modes
     {NULL,0,NULL,0}
     };
-  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghi:K:k:M:m:o:O:Ssu:VvW?",long_options,&long_option_index)) != -1)
+  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghI:i:K:k:M:m:o:O:Ssu:VvW?",long_options,&long_option_index)) != -1)
     {
     switch(c)
       {
@@ -523,6 +534,7 @@ int main (int argc, char *argv[])
       case 'D': Args = SealSetText(Args,"dnsfile",optarg); break;
       case 'd': Args = SealSetText(Args,"domain",optarg); break;
       case 'i': Args = SealSetText(Args,"id",optarg); break;
+      case 'I': Args = SealSetText(Args,"src",optarg); break;
       case 'K': Args = SealSetText(Args,"keyalg",optarg); break;
       case 'k': Args = SealSetText(Args,"keyfile",optarg); break;
       case 'o': Args = SealSetText(Args,"outfile",optarg); break;
@@ -570,6 +582,7 @@ int main (int argc, char *argv[])
   Args = SealParmCheck(Args);
   IsURL = SealIsURL(Args);
   IsLocal = SealIsLocal(Args);
+  IsSidecar = SealGetText(Args,"sidecar") ? true : false;
 
   if (Mode=='g') // if generating keys
     {
@@ -629,6 +642,7 @@ int main (int argc, char *argv[])
     // Start off with a clean set of parameters
     if (Args) { SealFree(Args); Args=NULL; }
     Args = SealClone(CleanArgs);
+    Args = SealSetText(Args,"@SourceMedia",argv[optind]);
 
     // Show file being processed.
     if (First) { First=false; } else { printf("\n"); }
@@ -636,7 +650,6 @@ int main (int argc, char *argv[])
     fflush(stdout);
 
     // Memory map the file; needed for finding the SEAL record's location.
-    mmapfile *Mmap=NULL;
     Mmap = MmapFile(argv[optind],PROT_READ); // read-only
     if (!Mmap)
 	{
@@ -645,7 +658,8 @@ int main (int argc, char *argv[])
 	}
 
     // Identify the filename format
-    if (Seal_isPNG(Mmap)) { FileFormat='P'; } // PNG
+    if (IsSidecar) { FileFormat='@'; } // Ignore format and use a sidecar
+    else if (Seal_isPNG(Mmap)) { FileFormat='P'; } // PNG
     else if (Seal_isJPEG(Mmap)) { FileFormat='J'; } // JPEG
     else if (Seal_isGIF(Mmap)) { FileFormat='G'; } // GIF
     else if (Seal_isRIFF(Mmap)) { FileFormat='R'; } // RIFF
@@ -667,10 +681,13 @@ int main (int argc, char *argv[])
 	}
 
     // File exists! Now process it!
-    if (strchr("sS",Mode)) // if signing local/remote
+
+    // Sign it!
+    if (strchr("sS",Mode)) // if signing local/remote, set output filename
       {
       char *Outname, *Template;
-      Template = (char*)(SealSearch(Args,"outfile")->Value);
+      if (IsSidecar) { Template = (char*)(SealSearch(Args,"sidecar")->Value); }
+      else { Template = (char*)(SealSearch(Args,"outfile")->Value); }
       Outname = MakeFilename(Template,(char*)argv[optind]);
       if (!Outname) { continue; }
       Args = SealSetText(Args,"@FilenameOut",Outname);
@@ -692,7 +709,8 @@ int main (int argc, char *argv[])
 	case 'p': Args = Seal_PDF(Args,Mmap); break; // PDF
 	case 'R': Args = Seal_RIFF(Args,Mmap); break; // RIFF
 	case 'T': Args = Seal_TIFF(Args,Mmap); break; // TIFF
-	case 'x': Args = Seal_Text(Args,Mmap); break; // Text
+	case 'x': Args = Seal_Text(Args,Mmap,NULL); break; // Text
+	case '@': Args = Seal_Sidecar(Args,Mmap); break; // Text
 	default: break; // should never happen
 	}
 

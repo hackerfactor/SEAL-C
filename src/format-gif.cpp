@@ -147,7 +147,7 @@ sealfield *	_SealWalkGIF	(sealfield *Args, mmapfile *Mmap)
 	if (subtag == 0xff)
 	  {
 	  if (offset >= Mmap->memsize) { break; }
-	  Args = SealVerifyBlock(Args, subtagStart, offset, Mmap);
+	  Args = SealVerifyBlock(Args, subtagStart, offset, Mmap, NULL);
 	  }
 	}
 
@@ -275,7 +275,7 @@ sealfield *	Seal_GIFsign	(sealfield *Args, mmapfile *MmapIn)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

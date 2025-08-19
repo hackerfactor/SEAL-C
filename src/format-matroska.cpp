@@ -141,7 +141,7 @@ sealfield *	_Matroskawalk	(sealfield *Args, mmapfile *Mmap)
     else if (iTag == 0x5345414C) // if SEAL chunk
 	{
 	// Process possible SEAL record.
-	Args = SealVerifyBlock(Args, Offset, Offset+iLen, Mmap);
+	Args = SealVerifyBlock(Args, Offset, Offset+iLen, Mmap, NULL);
 	Args = SealSetIindex(Args,"@MatInsert",0,Offset+iLen);
 	}
 
@@ -247,7 +247,7 @@ sealfield *	Seal_Matroskasign	(sealfield *Args, mmapfile *MmapIn)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

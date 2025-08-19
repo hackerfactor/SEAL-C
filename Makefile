@@ -54,3 +54,10 @@ libcurl:
 	(cd curl-8.10.1 ; LDFLAGS=-L/usr/local/lib64 ./configure --with-openssl)
 	(cd curl-8.10.1 ; make -j 4)
 
+test:
+	./TEST.sh
+
+test-clean:
+	rm -rf test
+	mkdir test
+

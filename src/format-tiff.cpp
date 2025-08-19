@@ -217,7 +217,7 @@ sealfield *	_TIFFwalk	(sealfield *Args, int Endian, mmapfile *Mmap)
 	else
 	  {
 	  // Verify record!
-	  Args = SealVerifyBlock(Args, DataOffset, DataOffset+DataSize, Mmap);
+	  Args = SealVerifyBlock(Args, DataOffset, DataOffset+DataSize, Mmap, NULL);
 	  }
 	} // if SEAL tag
       IFDoffset += 12;
@@ -391,7 +391,7 @@ sealfield *	Seal_TIFFsign	(sealfield *Args, int Endian, mmapfile *MmapIn)
     if (Endian == 1234) { writele32(MmapOut->mem + IFDlink, IFDoffset); }
     else { writebe32(MmapOut->mem + IFDlink, IFDoffset); }
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

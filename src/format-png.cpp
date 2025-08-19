@@ -280,7 +280,7 @@ sealfield *	Seal_PNGsign	(sealfield *Rec, mmapfile *MmapIn, size_t IEND_offset)
   MmapOut = SealInsert(Rec,MmapIn,IEND_offset); // Write to file!!!
   if (MmapOut)
     {
-    SealSign(Rec,MmapOut); // Sign it!!!
+    SealSign(Rec,MmapOut,NULL); // Sign it!!!
 
     // Fix CRC after creating the signature
     uint32_t u32;
@@ -354,7 +354,7 @@ sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
 	     !strncasecmp(FourCC,"seal",4))
 	{
 	// Process possible SEAL record.
-	Args = SealVerifyBlock(Args, Offset+8, Offset+8+ChunkSize, Mmap);
+	Args = SealVerifyBlock(Args, Offset+8, Offset+8+ChunkSize, Mmap, NULL);
 	}
     else if (!strncasecmp(FourCC,"exif",4))
 	{

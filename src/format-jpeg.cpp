@@ -526,7 +526,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *MmapIn, size_t FFDAo
   // Insert new signature
   mmapfile *MmapOut;
   MmapOut = MmapFile(fname,PROT_WRITE);
-  SealSign(Rec,MmapOut);
+  SealSign(Rec,MmapOut,NULL);
   MmapFree(MmapOut);
 
   return(Rec);
@@ -708,11 +708,11 @@ sealfield *	Seal_JPEG	(sealfield *Args, mmapfile *Mmap)
 
        And if the nested media is finalized, then this file cannot be signed.
        *****/
-      Args = SealVerifyBlock(Args, Offset+2, Offset+2+BlockSize, Mmap);
+      Args = SealVerifyBlock(Args, Offset+2, Offset+2+BlockSize, Mmap, NULL);
       } // if APP block
     else if (BlockType == 0xfffe)
       {
-      Args = SealVerifyBlock(Args, Offset+2, Offset+2+BlockSize, Mmap);
+      Args = SealVerifyBlock(Args, Offset+2, Offset+2+BlockSize, Mmap, NULL);
       } // if comment block
 
 NextBlock:

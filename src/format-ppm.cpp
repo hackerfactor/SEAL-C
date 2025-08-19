@@ -87,7 +87,7 @@ sealfield *	_SealWalkPPM	(sealfield *Args, mmapfile *Mmap)
 	if (iend >= Mmap->memsize) { return(NULL); }
 	if (Args)
 	  {
-	  Args = SealVerifyBlock(Args, i, iend, Mmap);
+	  Args = SealVerifyBlock(Args, i, iend, Mmap, NULL);
 	  }
 	i=iend+1;
 	}
@@ -198,7 +198,7 @@ sealfield *	Seal_PPMsign	(sealfield *Args, mmapfile *MmapIn)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

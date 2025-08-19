@@ -225,6 +225,27 @@ void	SealFileWrite   (FILE *Fout, size_t Len, byte *Data)
 } /* SealFileWrite() */
 
 /**************************************
+ SealIsFileNo(): Check if this is a regular file.
+ Returns: -1 on error, or file size
+ **************************************/
+int64_t	SealIsFileNo	(int FileHandle)
+{
+  stat_t Stat;
+  if ((fstat64(FileHandle,&Stat) == -1) || !S_ISREG(Stat.st_mode)) { return(-1); }
+  return(Stat.st_size);
+} /* SealIsFileNo() */
+
+/**************************************
+ SealIsFile(): Return true if src is a regular file.
+ **************************************/
+bool	SealIsFile	(const char *Filename)
+{
+  stat_t Stat;
+  if ((stat64(Filename,&Stat) == -1) || !S_ISREG(Stat.st_mode)) { return(false); }
+  return(true);
+} /* SealIsFile() */
+
+/**************************************
  MmapFile(): memory map the file for quick access.
  Used for rapidly computing checksums, scanning, and
  changing values.
@@ -269,16 +290,17 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
     exit(0x80);
     }
 
-  stat_t Stat;
-  if ((fstat64(FileHandle,&Stat) == -1) || !S_ISREG(Stat.st_mode))
+  int64_t fsize;
+  fsize = SealIsFileNo(FileHandle);
+  if (fsize < 0)
     {
     fprintf(stderr," ERROR: Not a regular file (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
     exit(0x80);
     }
+  Mmap->memsize = fsize;
 
-  Mmap->memsize = Stat.st_size;
   Mmap->mem = (byte *)mmap64(0,Mmap->memsize,Prot,MAP_SHARED,FileHandle,0);
   if (!Mmap->mem || (Mmap->mem == MAP_FAILED)) // should never happen
     {

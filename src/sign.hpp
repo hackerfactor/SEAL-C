@@ -28,12 +28,12 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args);
 sealfield *	SealRecord	(sealfield *Args);
 
 // Compute digest
-sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap);
+sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre);
 sealfield *	SealDoubleDigest	(sealfield *Rec);
 
 // Sign (generic)
 mmapfile *	SealInsert	(sealfield *Rec, mmapfile *MmapIn, size_t InsertOffset);
-bool	SealSign	(sealfield *Rec, mmapfile *MmapOut);
+bool	SealSign	(sealfield *Rec, mmapfile *MmapOut, mmapfile *MmapPre);
 
 // Sign Local
 bool	SealIsLocal	(sealfield *Args);
@@ -45,8 +45,8 @@ sealfield *	SealSignURL	(sealfield *Args);
 
 // Verify
 sealfield *	SealGetDNS	(sealfield *Rec);
-sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap);
+sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre);
 bool	SealVerifyFinal	(sealfield *Rec);
-sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd, mmapfile *Mmap);
+sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd, mmapfile *Mmap, mmapfile *MmapPre);
 
 #endif

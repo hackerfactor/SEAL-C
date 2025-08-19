@@ -104,14 +104,14 @@ sealfield *	_SealWalkMPEG	(sealfield *Args, mmapfile *Mmap)
 	}
     else if ((u32 >= 0x000001b7) && (u32 <= 0x000001ef)) // MPEG header
 	{
-	if (!InHeader) { Args = SealVerifyBlock(Args, scanStart, offset, Mmap); }
+	if (!InHeader) { Args = SealVerifyBlock(Args, scanStart, offset, Mmap, NULL); }
 	offset += 4;
 	InHeader=true;
 	if (u32 == 0x000001b9) { InHeader=false; } // 0x000001b7 = end of data
 	}
     else if ((u32&0xffe00000)==0xffe00000) // raw MP3
 	{
-	if (!InHeader) { Args = SealVerifyBlock(Args, scanStart, offset, Mmap); }
+	if (!InHeader) { Args = SealVerifyBlock(Args, scanStart, offset, Mmap, NULL); }
 	InHeader=false;
 	if (((u32 & 0x180000) == 0x080000) || // 01 is a reserved version ID
 	    ((u32 & 0x060000) == 0x000000) || // 00 is a reserved layer description
@@ -127,7 +127,7 @@ sealfield *	_SealWalkMPEG	(sealfield *Args, mmapfile *Mmap)
 	}
     else { offset++; }
     }
-  if (!InHeader) { Args = SealVerifyBlock(Args, scanStart, offset, Mmap); }
+  if (!InHeader) { Args = SealVerifyBlock(Args, scanStart, offset, Mmap, NULL); }
 
   Args = SealSetIindex(Args,"@InsertOffset",0,Mmap->memsize);
   return(Args);
@@ -279,7 +279,7 @@ sealfield *	Seal_MPEGsign	(sealfield *Args, mmapfile *MmapIn)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

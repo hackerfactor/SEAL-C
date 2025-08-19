@@ -282,7 +282,7 @@ sealfield *	_PDFwalk	(sealfield *Args, mmapfile *Mmap)
 	{
 	size_t pend; // end of the comment line
 	for(pend=Pos+1; (pend < Mmap->memsize) && !strchr("\r\n",Mmap->mem[pend]); pend++) { ; }
-	Args = SealVerifyBlock(Args, Pos, pend, Mmap);
+	Args = SealVerifyBlock(Args, Pos, pend, Mmap, NULL);
 	Pos=pend;
 	}
     else { Pos++; }
@@ -394,7 +394,7 @@ sealfield *	Seal_PDFsign	(sealfield *Rec, mmapfile *MmapIn, size_t EOF_offset)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Rec,MmapOut);
+    SealSign(Rec,MmapOut,NULL);
     MmapFree(MmapOut);
     }
 

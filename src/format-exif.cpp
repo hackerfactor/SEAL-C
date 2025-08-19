@@ -100,7 +100,7 @@ sealfield *	Seal_Exif	(sealfield *Args, mmapfile *MmapFile, uint32_t ExifStart, 
 	(Tag == 0x9286) || // User Comment (deprecated)
 	(Tag == 0xfffe)) // generic Comment
 	{
-	Args = SealVerifyBlock(Args, ExifStart+EntryValue, ExifStart+EntryValue+EntrySize, MmapFile);
+	Args = SealVerifyBlock(Args, ExifStart+EntryValue, ExifStart+EntryValue+EntrySize, MmapFile, NULL);
 	}
     }
 

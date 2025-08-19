@@ -201,7 +201,7 @@ sealfield *	_DICOMwalk	(sealfield *Args, mmapfile *Mmap)
 #if DEBUGDICOMWALK
 	  printf("Scanning...\n");
 #endif
-	  Args = SealVerifyBlock(Args, Offset, Offset+VL, Mmap);
+	  Args = SealVerifyBlock(Args, Offset, Offset+VL, Mmap, NULL);
 	  }
 	break;
       default: break;
@@ -338,7 +338,7 @@ sealfield *	Seal_DICOMsign	(sealfield *Args, mmapfile *MmapIn)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

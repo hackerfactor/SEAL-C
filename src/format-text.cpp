@@ -3,6 +3,7 @@
  See LICENSE
 
  Functions for handling Text, XML, and SVG.
+ Also handles sidecars.
  ************************************************/
 #include <stdlib.h>
 #include <ctype.h>
@@ -115,8 +116,9 @@ bool	Seal_isText	(mmapfile *Mmap)
 /**************************************
  Seal_Textsign(): Sign a Text.
  Insert a Text signature.
+ MmapPre denotes the prefaced data (sidecar source media file)
  **************************************/
-sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
+sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn, mmapfile *MmapPre)
 {
   /*****
    WHERE to insert the signature is dependent on the type of text.
@@ -136,6 +138,11 @@ sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
    Text records use "<seal ...>".
    And in both cases, maintain the newline characters!
      CR or CRLF.
+
+   =====
+   This code also handles sidecars.
+   A sidecar is just a text file containing one or more SEAL records.
+   MmapPre denotes the source media covered by the sidecar.
    *****/
   const char *fname;
   sealfield *rec; // SEAL record
@@ -159,7 +166,7 @@ sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
   // Check if it's XML, HTML, SVG, etc.
   IsRoot=0; // haven't found a root tag yet
   IsXML=false; // assume text
-  if (MmapIn->mem[i]=='<') { IsXML=true; } // could be XML!
+  if (!MmapPre && (MmapIn->mem[i]=='<')) { IsXML=true; } // could be XML!
 
   // Scan XML and see if it really looks like XML.
   // NOTE: This is NOT a full XML parser! It assumes the XML is well-formed.
@@ -216,15 +223,19 @@ sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
     }
 
   // Find type of newline
-  for(i=0,CRLF=0; i < MmapIn->memsize; i++)
+  if (MmapPre) { CRLF=1; } // sidecars use \n at end, but not at start
+  else
     {
-    if (!CRLF && isspace(MmapIn->mem[i])) { CRLF=MmapIn->mem[i]; }
-    if (MmapIn->mem[i]=='\n')
+    for(i=0,CRLF=0; i < MmapIn->memsize; i++)
+      {
+      if (!CRLF && isspace(MmapIn->mem[i])) { CRLF=MmapIn->mem[i]; }
+      if (MmapIn->mem[i]=='\n')
 	{
 	if ((i > 0) && (MmapIn->mem[i-1]=='\r')) { CRLF='\r'; }
 	else { CRLF='\n'; }
 	break;
 	}
+      }
     }
 
   // Set the range
@@ -273,6 +284,7 @@ sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
       {
       case '\r': Args = SealSetText(Args,"@BLOCK","\r\n"); break;
       case '\n': Args = SealSetText(Args,"@BLOCK","\n"); break;
+      case 1: break; // do nothing
       case 0: break; // do nothing
       // default? Whatever whitespace they used.
       default: Args = SealAddC(Args,"@BLOCK",CRLF); break;
@@ -301,6 +313,7 @@ sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
     {
     case '\r': Args = SealAddText(Args,"@BLOCK","\r\n"); break;
     case '\n': Args = SealAddText(Args,"@BLOCK","\n"); break;
+    case 1: Args = SealAddText(Args,"@BLOCK","\n"); break; // terminate sidecar with newline
     default: break; // no newline
     }
   SealSetType(Args,"@BLOCK",'x');
@@ -309,30 +322,29 @@ sealfield *	Seal_Textsign	(sealfield *Args, mmapfile *MmapIn)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,MmapPre);
     MmapFree(MmapOut);
     }
-  
+
   return(Args);
 } /* Seal_Textsign() */
 
 /**************************************
  Seal_Text(): Process a Text.
  Reads every seal signature.
- If signing, add the signature before the IEND tag.
  **************************************/
-sealfield *	Seal_Text	(sealfield *Args, mmapfile *Mmap)
+sealfield *	Seal_Text	(sealfield *Args, mmapfile *Mmap, mmapfile *MmapPre)
 {
   // Make sure it's a Text.
-  if (!_isUTF8(Mmap)) { return(Args); }
+  if (!MmapPre && !_isUTF8(Mmap)) { return(Args); }
 
   // Scan text for any/all SEAL records
-  Args = SealVerifyBlock(Args, 0, Mmap->memsize, Mmap);
+  Args = SealVerifyBlock(Args, 0, Mmap->memsize, Mmap, MmapPre);
 
   /*****
    Sign as needed
    *****/
-  Args = Seal_Textsign(Args,Mmap); // Add a signature as needed
+  Args = Seal_Textsign(Args,Mmap,MmapPre); // Add a signature as needed
   if (SealGetIindex(Args,"@s",2)==0) // no signatures
     {
     printf(" No SEAL signatures found.\n");

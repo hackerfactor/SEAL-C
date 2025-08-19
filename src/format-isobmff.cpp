@@ -243,7 +243,7 @@ sealfield *	_BMFFwalk	(sealfield *Args, size_t DataStart, size_t DataEnd, unsign
 #endif
 	else if (BMFFatoms[a].type=='s') // search for SEAL!
 	  {
-	  Args = SealVerifyBlock(Args, DataStart, DataStart+AtomLen, Mmap);
+	  Args = SealVerifyBlock(Args, DataStart, DataStart+AtomLen, Mmap, NULL);
 	  }
 	else if (BMFFatoms[a].type=='e') // search EXIF for SEAL!
 	  {
@@ -349,7 +349,7 @@ sealfield *	Seal_BMFFsign	(sealfield *Args, mmapfile *MmapIn)
   if (MmapOut)
     {
     // Sign it!
-    SealSign(Args,MmapOut);
+    SealSign(Args,MmapOut,NULL);
     MmapFree(MmapOut);
     }
   

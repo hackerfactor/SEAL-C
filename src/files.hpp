@@ -34,6 +34,7 @@ unsigned char *	GetPassword	();
 char *	MakeFilename	(char *Template, const char *Filename);
 bool	CopyFile	(const char *dst, const char *src);
 
+bool	SealIsFile	(const char *src);
 FILE *	SealFileOpen	(const char *fname, const char *mode);
 #define SealFileClose(x)	fclose(x)
 void	SealFileWrite	(FILE *Fout, size_t Len, byte *Data);

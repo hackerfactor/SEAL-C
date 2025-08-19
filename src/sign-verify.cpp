@@ -803,9 +803,10 @@ Done:
 
 /********************************************************
  SealVerify(): Given seal record, see if it validates.
+ NOTE: Permits a preface file (MmapPre) for sidecar support.
  Generates output text!
  ********************************************************/
-sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
+sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 {
   char *ErrorMsg;
   long signum; // signature number
@@ -861,7 +862,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap)
   if (!ErrorMsg)
 	{
 	// @sigdate set by SealValidateDecodeParts
-	Rec = SealDigest(Rec,Mmap);
+	Rec = SealDigest(Rec,Mmap,MmapPre);
 
 	// Retain flags
 	Rec = SealSetText(Rec,"@sflags",SealGetText(Rec,"@sflags0"));
@@ -925,7 +926,9 @@ bool	SealVerifyFinal	(sealfield *Rec)
  Returns: updated sealfield.
  Generates output text!
  ********************************************************/
-sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd, mmapfile *Mmap)
+sealfield *	SealVerifyBlock	(sealfield *Args,
+				 size_t BlockStart, size_t BlockEnd,
+				 mmapfile *Mmap, mmapfile *MmapPre)
 {
   size_t RecEnd;
   sealfield *Rec=NULL;
@@ -933,10 +936,10 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
   while(BlockStart < BlockEnd) 
     {
     Rec = SealParse(BlockEnd-BlockStart, Mmap->mem+BlockStart, BlockStart, Args);
-    if (!Rec) { return(Args); } // Nothing found
+    if (!Rec) { goto Abort; } // Nothing found
 
     // Found a signature!  Verify the data!
-    Rec = SealVerify(Rec,Mmap);
+    Rec = SealVerify(Rec,Mmap,MmapPre);
 
     // Iterate on remainder
     RecEnd = SealGetIindex(Rec,"@RecEnd",0);
@@ -957,6 +960,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
     SealFree(Rec); Rec=NULL;
     }
 
+Abort:
   return(Args);
 } /* SealVerifyBlock() */
 

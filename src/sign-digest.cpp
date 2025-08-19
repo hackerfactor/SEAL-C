@@ -52,8 +52,10 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
  Stores the byte range in '@digestrange'.
  Sets '@sflags0' and '@sflags1' to store summaries of range
  Any error messages are stored in @error.
+ NOTE: Permits two Mmap files for concatenation (e.g., sidecar);
+ MmapPre is prefaced before an 'F' for computing the digest.
  **************************************/
-sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
+sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 {
   sealfield *digestbin;
   char *da; // digest algorithm
@@ -179,6 +181,11 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 
     else if (b[i]=='P') // start of previous signature
       {
+      if ((p[0] == 0) && MmapPre) // For a sidecar, add in the source media
+	{
+	EVP_DigestUpdate(ctx64,MmapPre->mem,MmapPre->memsize);
+	}
+
       if (state < 3)
 	{
 	sum[0] += p[0]*Addsym; state=1;
@@ -209,6 +216,11 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 
     else if (b[i]=='F') // start of file
       {
+      if (MmapPre) // For a sidecar, add in the source media
+	{
+	EVP_DigestUpdate(ctx64,MmapPre->mem,MmapPre->memsize);
+	}
+
       if (state < 3)
 	{
 	sum[0] += 0*Addsym; state=1;
@@ -226,12 +238,12 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
       {
       if (state < 3)
 	{
-	sum[0] += Mmap->memsize*Addsym; state=1;
+	sum[0] += (Mmap->memsize)*Addsym; state=1;
 	Rec = SealAddC(Rec,"@sflags0",'f');
 	}
       else
 	{
-	sum[1] += Mmap->memsize*Addsym; state=4;
+	sum[1] += (Mmap->memsize)*Addsym; state=4;
 	Rec = SealAddC(Rec,"@sflags1",'f');
 	}
       acc=0;
@@ -256,7 +268,10 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
       seg[1] = i;
 
       // No value? assume end of file
-      if ((state==3) && (acc==0)) { sum[1]=Mmap->memsize; }
+      if ((state==3) && (acc==0))
+	{
+	sum[1]=Mmap->memsize;
+	}
       else { sum[1] += acc*Addsym; }
 
       // Check the range
@@ -284,6 +299,7 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 	{
 	Rec = SealAddI(Rec,"@digestrange",sum[0]);
 	Rec = SealAddI(Rec,"@digestrange",sum[1]);
+	// Update digest
 	EVP_DigestUpdate(ctx64,Mmap->mem+sum[0],sum[1]-sum[0]);
 	//DEBUGPRINT("Segment: seg=%d '%.*s', range: %u-%u (0x%x - 0x%x)",state,(int)(seg[1]-seg[0]),b+seg[0],(uint)sum[0],(uint)sum[1],(uint)sum[0],(uint)sum[1]);
 	}
@@ -306,18 +322,11 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap)
 	{
 	Rec = SealAddI(Rec,"@digestrange",sum[0]);
 	Rec = SealAddI(Rec,"@digestrange",sum[1]);
-	EVP_DigestUpdate(ctx64,Mmap->mem+sum[0],sum[1]-sum[0]);
 	//DEBUGPRINT("Segment: seg=%d '%.*s', range: %u-%u (0x%x - 0x%x)",state,(int)(seg[1]-seg[0]),b+seg[0],(uint)sum[0],(uint)sum[1],(uint)sum[0],(uint)sum[1]);
+	// Update digest
+	EVP_DigestUpdate(ctx64,Mmap->mem+sum[0],sum[1]-sum[0]);
 	}
     }
-#if 0
-  else if (state == 3) // start of next range and then ends
-    {
-    sum[1] = Mmap->memsize;
-    Rec = RangeErrorCheck(Rec,sum,Mmap);
-    if (SealSearch(Rec,"@error")) { goto Abort; }
-    }
-#endif
   else if (state == 5) // end of range
     {
     sum[1] += acc*Addsym;

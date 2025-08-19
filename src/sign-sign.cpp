@@ -92,9 +92,10 @@ mmapfile *	SealInsert	(sealfield *Rec, mmapfile *MmapIn, size_t InsertOffset)
    '@s' contains start and end of signature relative to file.
    Rec contains everything needed to compute the digest and signature:
      'da', 'b', 's', and 'p' arguments.
+ Supports MmapPre for any prefaced data (for sidecar support)
  Returns: true on success, false on failure (with error to stderr)
  **************************************/
-bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
+bool	SealSign	(sealfield *Rec, mmapfile *MmapOut, mmapfile *MmapPre)
 {
   const char *fname;
   sealfield *sig, *sigparm;
@@ -113,7 +114,7 @@ bool	SealSign	(sealfield *Rec, mmapfile *MmapOut)
 
   // Compute new digest
   sigparm = SealClone(Rec);
-  sigparm = SealDigest(sigparm,MmapOut);
+  sigparm = SealDigest(sigparm,MmapOut,MmapPre);
 
   // Sign it (this creates '@signatureenc')
   switch(SealGetCindex(sigparm,"@mode",0)) // sign it
