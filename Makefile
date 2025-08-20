@@ -58,6 +58,6 @@ test:
 	./TEST.sh
 
 test-clean:
-	rm -rf test
-	mkdir test
+	rm -rf test.dir
+	mkdir test.dir
 

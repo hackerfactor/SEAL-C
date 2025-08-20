@@ -334,7 +334,7 @@ sealfield *	Seal_PDFsign	(sealfield *Rec, mmapfile *MmapIn, size_t EOF_offset)
 	}
 
   // Check if file is finalized (abort if it is)
-  if (strchr(SealGetText(Rec,"@sflags"),'F')) // if exists, then append
+  if (strchr(SealGetText(Rec,"@sflags"),'f')) // if exists, then cannot append
 	{
 	fprintf(stderr," ERROR: PDF is finalized; cannot sign. Aborting.\n");
 	exit(0x80);

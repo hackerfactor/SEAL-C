@@ -46,4 +46,5 @@ fi
 
 # Now check it
 bin/sealtool "$Fname"
+exit $?
 
