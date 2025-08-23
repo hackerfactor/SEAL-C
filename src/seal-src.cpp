@@ -171,7 +171,7 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
     curl_global_cleanup();
     if (crc != CURLE_OK)
 	{
-	fprintf(stderr," ERROR: curl(%d]: %s\n",crc,errbuf[0] ? errbuf : "unknown");
+	fprintf(stderr," ERROR: curl[%d]: %s\n",crc,errbuf[0] ? errbuf : "unknown");
 	exit(0x80);
 	}
     }
