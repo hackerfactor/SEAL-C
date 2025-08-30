@@ -43,6 +43,7 @@
 #include "seal.hpp"
 #include "files.hpp"
 #include "seal-parse.hpp"
+#include "sign.hpp"
 
 /**************************************
  SealCurlSrcCallback(): Process URL results.
@@ -69,16 +70,20 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
   sealfield *vf;
 
   // Check if there is already a srcd
-  srca = SealGetText(Args,"srca"); // must be defined
-  srcd = SealGetText(Args,"srcd");
+  srca = SealGetText(Args,"srca"); 
+  srcd = SealGetText(Args,"srcd"); // must be defined if srca is
   src = SealGetText(Args,"src");
 
+  printf("\n\n%s\n\n", srca);
+
   if (!srcd && !src) { return(Args); } // nothing to do
-  if (!srca)
+  if (srca && !srcd)
 	{
-	Args = SealSetText(Args,"@error","undefined srca");
+	Args = SealSetText(Args,"@error","undefined srcd with defined srca");
 	return(Args);
-	}
+	} else if(!srca){
+    srca = SealGetText(Args, "srcaDefault");
+  }
 
   /*****
    No srcd? Compute it!
@@ -125,7 +130,11 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
   EVP_DigestInit(ctx64, mdf());
 
   // Compute the srcd
-  if (strncasecmp(src,"http://",7) && strncasecmp(src,"https://",8)) // it's a URL!
+  printf("\n\n HELLO!! \n\n");
+  printf("ishttp: %d, is https: %d, %s\n",strncasecmp(src,"http://",7), strncasecmp(src,"https://",8), src);
+  fflush(stdout);
+
+  if (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0) // it's a URL!
     {
     CURL *ch; // curl handle
     CURLcode crc; // curl return code
@@ -180,13 +189,16 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
     char Buff[65536];
     int BuffRead;
     FILE *fp;
-    fp = fopen(Fname,"rb");
+    fp = fopen(src,"rb");
     if (!fp)
 	{
-	fprintf(stderr," ERROR: Unable to read src file (%s)",src);
-	exit(0x80);
+	Args = SealSetText(Args,"@error","Unable to read src file (");
+	Args = SealAddText(Args,"@error",src);
+	Args = SealAddText(Args,"@error",")");
+	EVP_MD_CTX_free(ctx64);
+	return(Args);
 	}
-    while((BuffRead = fread(Buff,65536,1,fp)) > 0)
+    while((BuffRead = fread(Buff,1,sizeof(Buff),fp)) > 0)
 	{
 	EVP_DigestUpdate(ctx64,Buff,BuffRead);
 	}
@@ -194,8 +206,8 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
     }
   else
 	{
-	Args = SealSetText(Args,"@error","unknown srca format (");
-	Args = SealAddText(Args,"@error",srca);
+	Args = SealSetText(Args,"@error","unknown src format (");
+	Args = SealAddText(Args,"@error",src);
 	Args = SealAddText(Args,"@error",")");
 	EVP_MD_CTX_free(ctx64);
 	return(Args);
@@ -210,7 +222,7 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
 
   // Re-encode digest from binary to expected srca format.
   // Currently, only supports base64.
-  if (strstr(srca,"base64")) { SealBase64Decode(SealSearch(Args,"@srcd")); }
+  if (strstr(srca,"base64")) { SealBase64Encode(SealSearch(Args,"@srcd")); }
   else if (strstr(srca,"bin")) { ; } // already binary
   else // unsupported
 	{
@@ -232,4 +244,3 @@ bool	SealSrcVerify	(sealfield *Args, const char *Fname)
 {
   return(true);
 } /* SealSrcVerify() */
-

@@ -439,7 +439,7 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"id","");
   Args = SealSetText(Args,"apiurl","");
   Args = SealSetText(Args,"apikey","");
-  Args = SealSetText(Args,"srca","sha256:hex");
+  Args = SealSetText(Args,"srcaDefault","sha256:base64");
 #ifdef __CYGWIN__
   Args = SealSetText(Args,"cacert","./cacert.crt");
 #endif
@@ -648,6 +648,18 @@ int main (int argc, char *argv[])
     if (First) { First=false; } else { printf("\n"); }
     printf("[%s]\n",argv[optind]);
     fflush(stdout);
+
+    // If signing, compute the srcd from src
+    if (strchr("sS",Mode))
+      {
+      Args = SealSrcGet(Args,argv[optind]);
+      if (SealSearch(Args,"@error"))
+        {
+        fprintf(stderr," ERROR: %s\n",SealGetText(Args,"@error"));
+        ReturnCode |= 0x80;
+        continue;
+        }
+      }
 
     // Memory map the file; needed for finding the SEAL record's location.
     Mmap = MmapFile(argv[optind],PROT_READ); // read-only
