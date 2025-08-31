@@ -115,10 +115,14 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
 	}
 
   // Process srca
-  if (!strcmp(srca,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(srca,"sha256")) { mdf = EVP_sha256; }
-  else if (!strcmp(srca,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(srca,"sha512")) { mdf = EVP_sha512; }
+  char* srcaCopy = strdup(srca);
+  char* srcaDa = strtok(srcaCopy, ":");
+  char* srcaSf = strtok(NULL, ":");
+  
+  if (!strcmp(srcaDa,"sha224")) { mdf = EVP_sha224; }
+  else if (!strcmp(srcaDa,"sha256")) { mdf = EVP_sha256; }
+  else if (!strcmp(srcaDa,"sha384")) { mdf = EVP_sha384; }
+  else if (!strcmp(srcaDa,"sha512")) { mdf = EVP_sha512; }
   else
 	{
 	Args = SealSetText(Args,"@error","unknown srca format (");
