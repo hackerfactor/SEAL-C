@@ -74,8 +74,6 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
   srcd = SealGetText(Args,"srcd"); // must be defined if srca is
   src = SealGetText(Args,"src");
 
-  printf("\n\n%s\n\n", srca);
-
   if (!srcd && !src) { return(Args); } // nothing to do
   if (srca && !srcd)
 	{
@@ -132,11 +130,6 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
 	}
   EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
   EVP_DigestInit(ctx64, mdf());
-
-  // Compute the srcd
-  printf("\n\n HELLO!! \n\n");
-  printf("ishttp: %d, is https: %d, %s\n",strncasecmp(src,"http://",7), strncasecmp(src,"https://",8), src);
-  fflush(stdout);
 
   if (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0) // it's a URL!
     {
