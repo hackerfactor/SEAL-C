@@ -38,6 +38,64 @@
 #include "sign.hpp"
 
 /**************************************
+ ShowCfg(): Show the current configuration.
+ NOTE: This doesn't call SealWalk due to formatting.
+ **************************************/
+void	ShowCfg	(sealfield *Args)
+{
+  uint va;
+  sealfield *vf;
+  printf("Current configuration:\n");
+  for(vf=Args; vf; vf=vf->Next)
+    {
+    if (vf->Field[0]=='@') { continue; } // skip private
+    printf("%.*s=",(int)vf->FieldLen, vf->Field);
+    switch(vf->Type)
+	{
+	// c is for character/string
+	case 'c': printf("%.*s",(int)vf->ValueLen, vf->Value); break;
+
+	// 4 is for uint32 (4 bytes, 32 bits, uint)
+	case '4':
+	  for(va=0; va < vf->ValueLen; va+=sizeof(uint32_t))
+	    {
+	    if (va) { printf(" "); }
+	    printf("%u",((uint*)(vf->Value+va))[0]);
+	    }
+	  break;
+
+	// 8 is for uint64 (8 bytes, 64 bits, ulong)
+	case '8':
+	  for(va=0; va < vf->ValueLen; va+=sizeof(uint64_t))
+	    {
+	    if (va) { printf(" "); }
+	    printf("%lu",((ulong*)(vf->Value+va))[0]);
+	    }
+	  break;
+
+	// I is for integer long (size_t)
+	case 'I':
+	  for(va=0; va < vf->ValueLen; va+=sizeof(size_t))
+	    {
+	    if (va) { printf(" "); }
+	    printf("%ld",(long)(((size_t*)(vf->Value+va))[0]) );
+	    }
+	  break;
+
+	case 'b': // b is for binary
+	case 'x': // x for for hex
+	  for(va=0; va < vf->ValueLen; va++)
+	    {
+	    if (va) { printf(" "); }
+	    printf("%02x",vf->Value[va]);
+	    }
+	  break;
+	}
+    printf("\n");
+    }
+} /* ShowCfg() */
+
+/**************************************
  ReadCfg(): Read the config file.
  A config file can overwrite any already-known parameters.
  **************************************/
@@ -320,6 +378,7 @@ void	Usage	(const char *progname)
   printf("Usage: %s [options] file [file...]\n",progname);
   printf("  -h, -?, --help    :: Show help; this usage\n");
   printf("  --config file.cfg :: Optional configuration file (default: $XDG_CONFIG_HOME/seal/config)\n");
+  printf("  --showconfig      :: For debugging: display all parameters after loading the config file and command-line.\n");
   printf("  --no-net          :: Optional: disable all network access (for use in an offline environment)\n");
   printf("  -v                :: Verbose debugging (probably not what you want)\n");
   printf("  -V, --version     :: Show the code version and exit.\n");
@@ -495,6 +554,7 @@ int main (int argc, char *argv[])
     {"manual",    required_argument, NULL, 'm'},
     {"outfile",   required_argument, NULL, 'o'},
     {"options",   required_argument, NULL, 'O'},
+    {"showconfig", no_argument, NULL, 0},
     {"Sign",      no_argument, NULL, 'S'},
     {"sign",      no_argument, NULL, 's'},
     // long-only options
@@ -583,6 +643,13 @@ int main (int argc, char *argv[])
   IsURL = SealIsURL(Args);
   IsLocal = SealIsLocal(Args);
   IsSidecar = SealGetText(Args,"sidecar") ? true : false;
+
+  // Debug parameters
+  if (SealSearch(Args,"showconfig"))
+    {
+    ShowCfg(Args);
+    exit(0);
+    }
 
   if (Mode=='g') // if generating keys
     {
