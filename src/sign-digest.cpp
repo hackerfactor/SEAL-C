@@ -82,7 +82,7 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
   const EVP_MD* (*mdf)(void);
   da = SealGetText(Rec,"da");
   if (!da || !strcmp(da,"sha256")) { mdf = EVP_sha256; } // default
-  else if (!da || !strcmp(da,"sha224")) { mdf = EVP_sha224; }
+  else if (!strcmp(da,"sha224")) { mdf = EVP_sha224; }
   else if (!strcmp(da,"sha384")) { mdf = EVP_sha384; }
   else if (!strcmp(da,"sha512")) { mdf = EVP_sha512; }
   else
