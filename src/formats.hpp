@@ -49,6 +49,9 @@ sealfield *	Seal_MPEG	(sealfield *Args, mmapfile *MmapIn);
 bool		Seal_isAAC	(mmapfile *Mmap);
 sealfield *	Seal_AAC	(sealfield *Args, mmapfile *MmapIn);
 
+bool		Seal_isZip	(mmapfile *Mmap);
+sealfield *	Seal_Zip	(sealfield *Args, mmapfile *MmapIn);
+
 bool		Seal_isText	(mmapfile *Mmap);
 sealfield *	Seal_Text	(sealfield *Args, mmapfile *MmapIn, mmapfile *MmapPre);
 

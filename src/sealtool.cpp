@@ -738,6 +738,7 @@ int main (int argc, char *argv[])
     else if (Seal_isDICOM(Mmap)) { FileFormat='D'; } // DICOM
     else if (Seal_isMPEG(Mmap)) { FileFormat='a'; } // MPEG
     else if (Seal_isAAC(Mmap)) { FileFormat='A'; } // AAC
+    else if (Seal_isZip(Mmap)) { FileFormat='Z'; } // Zip
     else if (Seal_isText(Mmap)) { FileFormat='x'; } // Text
     else
 	{
@@ -777,9 +778,17 @@ int main (int argc, char *argv[])
 	case 'R': Args = Seal_RIFF(Args,Mmap); break; // RIFF
 	case 'T': Args = Seal_TIFF(Args,Mmap); break; // TIFF
 	case 'x': Args = Seal_Text(Args,Mmap,NULL); break; // Text
+	case 'Z': break; // Zip will be caught in the next step
 	case '@': Args = Seal_Sidecar(Args,Mmap); break; // Text
 	default: break; // should never happen
 	}
+
+    // Any file can contain a zip. Check for zips!
+    // Call zip if (A) not signing or (B) signing a zip file
+    if (!strchr("sS",Mode) || (FileFormat=='Z'))
+      {
+      Args = Seal_Zip(Args,Mmap);
+      }
 
     if (SealGetIindex(Args,"@s",2)==0) // no signatures
 	{
