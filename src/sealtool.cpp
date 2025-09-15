@@ -478,6 +478,7 @@ int main (int argc, char *argv[])
   bool IsURL=false; // for signing, use URL?
   bool IsLocal=false; // for signing, use local?
   bool IsSidecar=false; // for signing, generate sidecar?
+  bool HasRef=false; // for signing, is there an src or a digest to reference
 
   // Set default values
   Args = SealSetText(Args,"seal","1"); // SEAL version; currently always '1'
@@ -498,7 +499,7 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"id","");
   Args = SealSetText(Args,"apiurl","");
   Args = SealSetText(Args,"apikey","");
-  Args = SealSetText(Args,"srca","sha256:hex");
+  Args = SealSetText(Args,"srca","sha256:base64");
 #ifdef __CYGWIN__
   Args = SealSetText(Args,"cacert","./cacert.crt");
 #endif
@@ -643,6 +644,7 @@ int main (int argc, char *argv[])
   IsURL = SealIsURL(Args);
   IsLocal = SealIsLocal(Args);
   IsSidecar = SealGetText(Args,"sidecar") ? true : false;
+  HasRef = SealHasRef(Args);
 
   // Debug parameters
   if (SealSearch(Args,"showconfig"))
@@ -664,6 +666,9 @@ int main (int argc, char *argv[])
   // If signing, get dynamic signing parameters
   if (strchr("sSmM",Mode))
     {
+      if (HasRef){
+        Args= SealSrcGet(Args, argv[optind]);
+      }
     /*****
      When signing, no digest gets the size of the signature (@sigsize).
      This never changes between calls, so do it now.

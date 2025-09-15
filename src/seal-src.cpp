@@ -233,3 +233,8 @@ bool	SealSrcVerify	(sealfield *Args, const char *Fname)
   return(true);
 } /* SealSrcVerify() */
 
+bool    SealHasRef (sealfield *Args)
+{
+        return SealGetText(Args,"srcd") || SealGetText(Args,"src");
+}
+

@@ -49,4 +49,8 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre);
 bool	SealVerifyFinal	(sealfield *Rec);
 sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd, mmapfile *Mmap, mmapfile *MmapPre);
 
+// Source References
+sealfield *     SealSrcGet      (sealfield *Args, const char *Fname);
+bool    SealHasRef      (sealfield *Args);
+
 #endif
