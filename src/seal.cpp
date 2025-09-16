@@ -771,6 +771,9 @@ byte *	SealGetGindex	(sealfield *vfhead, const char *Field, size_t Size, int Ind
   vf = SealSearch(vfhead,Field);
   if (!vf) { return(NULL); }
 
+  // Check for overflow conditions
+  if (vf->ValueLen < Size*(Index+1)) { return(NULL); } // No such byte
+
   MaxIndex = vf->ValueLen / Size;
   if (Index < MaxIndex) { return(vf->Value + Index*Size); }
   return(NULL);
