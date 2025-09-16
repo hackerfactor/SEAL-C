@@ -7,6 +7,7 @@ ISLOCAL=1
 ISREMOTE=1
 ISFINAL=1
 ISAPPEND=1
+ISONLYMANUAL=0
 
 FMT=""
 while [ "$1" != "" ] ; do
@@ -14,13 +15,14 @@ while [ "$1" != "" ] ; do
   elif [ "$1" == "remote" ] ; then ISLOCAL=0
   elif [ "$1" == "final" ] ; then ISAPPEND=0
   elif [ "$1" == "append" ] ; then ISFINAL=0
+  elif [ "$1" == "onlymanual" ] ; then ISONLYMANUAL=1
   else
     FMT=".$1"
   fi
   shift
 done
 
-if [ $ISLOCAL == 1 ] ; then
+if [ $ISLOCAL == 1 ] && [ $ISONLYMANUAL == 0 ] ; then
   echo "##### Local Key Generation Test"
   for ka in rsa ec ; do
     # generate keys
@@ -29,7 +31,7 @@ if [ $ISLOCAL == 1 ] ; then
   done # ka
 fi
 
-if [ $ISFINAL == 1 ] ; then
+if [ $ISFINAL == 1 ] && [ $ISONLYMANUAL == 0 ] ; then
 echo ""
 echo "##### Format Test"
 for da in sha256 sha384 sha512 ; do
@@ -87,29 +89,31 @@ done # da
 fi
 
 ### PNG options
-if [ "$FMT" == "" ] || [ "$FMT" == ".png" ] ; then
-  if [ $ISLOCAL == 1 ] && [ $ISFINAL == 1 ] ; then
-    echo ""
-    echo "##### PNG Chunk Test"
-    for opt in seAl sEAl sEAL seAL teXt ; do
-      i=regression/test-unsigned.png
-      ka=rsa
-	sf="date3:base64"
-	sfname=${sf/:/_}
-	j=${i/regression/test.dir}
-	  out=${j/-unsigned/-signed-local-pngchunk-$opt-$ka-$sfname}
-	  echo ""
-	  bin/sealtool -v -s -k "test.dir/sign-$ka.key" --options "$opt" --ka "$ka" --dnsfile "test.dir/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
-	  if [ "$?" != "0" ] ; then exit; fi
-	  echo ""
-	  bin/sealtool -v --ka "$ka" --dnsfile "test.dir/sign-$ka.dns" "$out"
-	  if [ "$?" != "0" ] ; then exit; fi
-    done
+if [ $ISONLYMANUAL == 0 ] ; then
+  if [ "$FMT" == "" ] || [ "$FMT" == ".png" ] ; then
+    if [ $ISLOCAL == 1 ] && [ $ISFINAL == 1 ] ; then
+      echo ""
+      echo "##### PNG Chunk Test"
+      for opt in seAl sEAl sEAL seAL teXt ; do
+        i=regression/test-unsigned.png
+        ka=rsa
+	  sf="date3:base64"
+	  sfname=${sf/:/_}
+	  j=${i/regression/test.dir}
+	    out=${j/-unsigned/-signed-local-pngchunk-$opt-$ka-$sfname}
+	    echo ""
+	    bin/sealtool -v -s -k "test.dir/sign-$ka.key" --options "$opt" --ka "$ka" --dnsfile "test.dir/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
+	    if [ "$?" != "0" ] ; then exit; fi
+	    echo ""
+	    bin/sealtool -v --ka "$ka" --dnsfile "test.dir/sign-$ka.dns" "$out"
+	    if [ "$?" != "0" ] ; then exit; fi
+      done
+    fi
   fi
 fi
 
 ### Append
-if [ 1 == 1 ] ; then
+if [ $ISONLYMANUAL == 0 ] ; then
   if [ $ISLOCAL == 1 ] && [ $ISAPPEND == 1 ] ; then
     echo ""
     echo "##### Append Test"

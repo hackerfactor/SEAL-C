@@ -608,6 +608,7 @@ int main (int argc, char *argv[])
       case 'M': // manual remote signing
       case 'm': // manual local signing
 	{
+	// if digest is defined, use it.
 	if (optarg[0])
 	  {
 	  Args = SealSetText(Args,"@digest1",optarg);
