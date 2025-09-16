@@ -177,20 +177,8 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
     }
   else if (SealIsFile(src)) // src is a file!
     {
-    char Buff[65536];
-    int BuffRead;
-    FILE *fp;
-    fp = fopen(Fname,"rb");
-    if (!fp)
-	{
-	fprintf(stderr," ERROR: Unable to read src file (%s)",src);
-	exit(0x80);
-	}
-    while((BuffRead = fread(Buff,65536,1,fp)) > 0)
-	{
-	EVP_DigestUpdate(ctx64,Buff,BuffRead);
-	}
-    fclose(fp);
+      fprintf(stderr," ERROR: Local src files are not currently supported (%s)",src);
+      exit(0x80);
     }
   else
 	{
