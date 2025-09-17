@@ -57,8 +57,9 @@ size_t	SealCurlSrcCallback	(void *buffer, size_t size, size_t nmemb, void *parm)
 } /* SealCurlCallback() */
 
 /**************************************
- SealSrcGet(): Get a src record and compute the srcd.
- src can be a file or a URL.
+ SealSrcGet(): Get a src record and validate the record at the src 
+ and the srcd.
+ Currently only supporting url srcs.
  Returns: updated Args
  **************************************/
 sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
@@ -68,64 +69,48 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
   char *srca;
   sealfield *vf;
 
-  // Check if there is already a srcd
-  srca = SealGetText(Args,"srca"); // must be defined
-  srcd = SealGetText(Args,"srcd");
+  // Get the three main values for this part
+  srca = SealGetText(Args,"srca"); 
+  srcd = SealGetText(Args,"srcd"); // must be defined if srca is
   src = SealGetText(Args,"src");
 
-  if (!srcd && !src) { return(Args); } // nothing to do
-  if (!srca)
-	{
-	Args = SealSetText(Args,"@error","undefined srca");
-	return(Args);
-	}
+  // Validate the input
 
-  /*****
-   No srcd? Compute it!
-   1. If src exists, use it.
-   2. Else, if Fname exists, use it as a sidecar.
-   *****/
-  if (!src && !Fname) { ; } // check for a local sidecar
-  else if (!src) // check for a local sidecar
+  if (!srcd && !src) { return(Args); } // nothing to do
+  if (!srcd && srca) //the algorithim is present, but not the digest
     {
-    int len;
-    len = strlen(Fname);
-    if ((len > 5) && !strcmp(Fname+len-5,".seal"))
-      {
-      Args = SealSetTextLen(Args,"tmp",len-5,Fname);
-      if (SealIsFile(SealGetText(Args,"tmp")))
-	{
-	Args = SealMove(Args,"src","tmp");
-	src = SealGetText(Args,"src");
-	}
-      Args = SealDel(Args,"tmp");
-      }
+      Args = SealSetText(Args,"@error","undefined srca");
+      return(Args);
     }
 
-  // Check if I can compute srcd
-  if (!src)
-	{
-	Args = SealSetText(Args,"@error","unknown src");
-	return(Args);
-	}
-
   // Process srca
-  if (!strcmp(srca,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(srca,"sha256")) { mdf = EVP_sha256; }
-  else if (!strcmp(srca,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(srca,"sha512")) { mdf = EVP_sha512; }
-  else
+  if(!srca){
+    srca = SealGetText(Args, "srcaDefault");
+  }
+
+  char* srcaCopy = strdup(srca);
+  char* srcaDa = strtok(srcaCopy, ":");
+  char* srcaSf = strtok(NULL, ":");
+
+  printf("Split srca into %s and %s\n", srcaDa, srcaSf);
+
+  if (!strcmp(srcaDa,"sha224")) { mdf = EVP_sha224; }
+  else if (!strcmp(srcaDa,"sha256")) { mdf = EVP_sha256; }
+  else if (!strcmp(srcaDa,"sha384")) { mdf = EVP_sha384; }
+  else if (!strcmp(srcaDa,"sha512")) { mdf = EVP_sha512; }else
 	{
 	Args = SealSetText(Args,"@error","unknown srca format (");
 	Args = SealAddText(Args,"@error",srca);
 	Args = SealAddText(Args,"@error",")");
 	return(Args);
 	}
+
+printf("Got the algorithm\n");
   EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
   EVP_DigestInit(ctx64, mdf());
 
   // Compute the srcd
-  if (strncasecmp(src,"http://",7) && strncasecmp(src,"https://",8)) // it's a URL!
+  if (strncasecmp(src,"http://",7) || strncasecmp(src,"https://",8)) // it's a URL!
     {
     CURL *ch; // curl handle
     CURLcode crc; // curl return code
@@ -182,8 +167,8 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
     }
   else
 	{
-	Args = SealSetText(Args,"@error","unknown srca format (");
-	Args = SealAddText(Args,"@error",srca);
+	Args = SealSetText(Args,"@error","unknown src format (");
+	Args = SealAddText(Args,"@error",src);
 	Args = SealAddText(Args,"@error",")");
 	EVP_MD_CTX_free(ctx64);
 	return(Args);
@@ -192,8 +177,8 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
   // Finalize digest
   unsigned int mdsize;
   mdsize = EVP_MD_size(mdf()); // digest size
-  Args = SealAlloc(Args,"@srcd",mdsize,'b'); // binary digest
-  EVP_DigestFinal(ctx64,SealSearch(Args,"@srcd")->Value,&mdsize); // store the digest
+  Args = SealAlloc(Args,"@srcdCalc",mdsize,'b'); // binary digest
+  EVP_DigestFinal(ctx64,SealSearch(Args,"@srcdCalc")->Value,&mdsize); // store the digest
   EVP_MD_CTX_free(ctx64);
 
   // Re-encode digest from binary to expected srca format.
@@ -207,6 +192,8 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
 	Args = SealAddText(Args,"@error",")");
 	return(Args);
 	}
+
+  // Compare calculated digest to the expected
 
   return(Args);
 } /* SealSrcGet() */

@@ -499,7 +499,7 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"id","");
   Args = SealSetText(Args,"apiurl","");
   Args = SealSetText(Args,"apikey","");
-  Args = SealSetText(Args,"srca","sha256:base64");
+  Args = SealSetText(Args,"srcaDefault","sha256:base64");
 #ifdef __CYGWIN__
   Args = SealSetText(Args,"cacert","./cacert.crt");
 #endif
