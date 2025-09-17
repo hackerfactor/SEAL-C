@@ -62,7 +62,7 @@ size_t	SealCurlSrcCallback	(void *buffer, size_t size, size_t nmemb, void *parm)
  Currently only supporting url srcs.
  Returns: updated Args
  **************************************/
-sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
+sealfield *	SealSrcGet	(sealfield *Args)
 {
   const EVP_MD* (*mdf)(void);
   char *src,*srcd;
@@ -84,7 +84,7 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
     }
 
   // Process srca
-  if(!srca){
+  if(!srca){ //Set it to the default if not specified
     srca = SealGetText(Args, "srcaDefault");
   }
 
@@ -92,20 +92,20 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
   char* srcaDa = strtok(srcaCopy, ":");
   char* srcaSf = strtok(NULL, ":");
 
-  printf("Split srca into %s and %s\n", srcaDa, srcaSf);
+printf("Split srca into %s and %s\n", srcaDa, srcaSf);
 
   if (!strcmp(srcaDa,"sha224")) { mdf = EVP_sha224; }
   else if (!strcmp(srcaDa,"sha256")) { mdf = EVP_sha256; }
   else if (!strcmp(srcaDa,"sha384")) { mdf = EVP_sha384; }
   else if (!strcmp(srcaDa,"sha512")) { mdf = EVP_sha512; }else
-	{
-	Args = SealSetText(Args,"@error","unknown srca format (");
-	Args = SealAddText(Args,"@error",srca);
-	Args = SealAddText(Args,"@error",")");
-	return(Args);
-	}
+    {
+      Args = SealSetText(Args,"@error","unknown srca format (");
+      Args = SealAddText(Args,"@error",srca);
+      Args = SealAddText(Args,"@error",")");
+      return(Args);
+}
 
-printf("Got the algorithm\n");
+printf("Got the algorithim\n");
   EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
   EVP_DigestInit(ctx64, mdf());
 
@@ -183,8 +183,9 @@ printf("Got the algorithm\n");
 
   // Re-encode digest from binary to expected srca format.
   // Currently, only supports base64.
-  if (strstr(srca,"base64")) { SealBase64Decode(SealSearch(Args,"@srcd")); }
-  else if (strstr(srca,"bin")) { ; } // already binary
+  if (!strcmp(srcaSf,"base64")) { SealBase64Decode(SealSearch(Args,"@srcdCalc")); }
+  else if (!strcmp(srcaSf,"hex")) { SealHexDecode(SealSearch(Args,"@srcdCalc")); }
+  else if (!strcmp(srcaSf,"bin")) { ; } // already binary
   else // unsupported
 	{
 	Args = SealSetText(Args,"@error","unknown srca format (");
@@ -208,6 +209,11 @@ bool	SealSrcVerify	(sealfield *Args, const char *Fname)
   return(true);
 } /* SealSrcVerify() */
 
+
+/**************************************
+ SealHasRef(): Checks if there is src data.
+ Returns: true if srcd or src is present.
+ **************************************/
 bool    SealHasRef (sealfield *Args)
 {
         return SealGetText(Args,"srcd") || SealGetText(Args,"src");

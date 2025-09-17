@@ -668,7 +668,7 @@ int main (int argc, char *argv[])
   if (strchr("sSmM",Mode))
     {
       if (HasRef){
-        Args= SealSrcGet(Args, argv[optind]);
+        Args= SealSrcGet(Args);
       }
     /*****
      When signing, no digest gets the size of the signature (@sigsize).
