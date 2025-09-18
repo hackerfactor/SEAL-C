@@ -97,7 +97,8 @@ printf("Split srca into %s and %s\n", srcaDa, srcaSf);
   if (!strcmp(srcaDa,"sha224")) { mdf = EVP_sha224; }
   else if (!strcmp(srcaDa,"sha256")) { mdf = EVP_sha256; }
   else if (!strcmp(srcaDa,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(srcaDa,"sha512")) { mdf = EVP_sha512; }else
+  else if (!strcmp(srcaDa,"sha512")) { mdf = EVP_sha512; }
+  else
     {
       Args = SealSetText(Args,"@error","unknown srca format (");
       Args = SealAddText(Args,"@error",srca);
@@ -109,9 +110,13 @@ printf("Got the algorithim\n");
   EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
   EVP_DigestInit(ctx64, mdf());
 
+printf("Got the context\n");
+printf("%s\n", src);
   // Compute the srcd
-  if (strncasecmp(src,"http://",7) || strncasecmp(src,"https://",8)) // it's a URL!
+   if (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0) // it's a URL!
     {
+
+printf("It knows it is a url");
     CURL *ch; // curl handle
     CURLcode crc; // curl return code
     char errbuf[CURL_ERROR_SIZE];
