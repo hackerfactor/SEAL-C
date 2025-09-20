@@ -113,10 +113,10 @@ printf("Got the algorithim\n");
 printf("Got the context\n");
 printf("%s\n", src);
   // Compute the srcd
-   if (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0) // it's a URL!
+   if (src && (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0)) // it's a URL!
     {
 
-printf("It knows it is a url");
+printf("It knows it is a url\n");
     CURL *ch; // curl handle
     CURLcode crc; // curl return code
     char errbuf[CURL_ERROR_SIZE];
@@ -165,13 +165,14 @@ printf("It knows it is a url");
 	exit(0x80);
 	}
     }
-  else if (SealIsFile(src)) // src is a file!
-    {
-      fprintf(stderr," ERROR: Local src files are not currently supported (%s)",src);
-      exit(0x80);
-    }
+//   else if (SealIsFile(src)) // src is a file!
+//     {
+//       fprintf(stderr," ERROR: Local src files are not currently supported (%s)",src);
+//       exit(0x80);
+//     }
   else
 	{
+printf("COULD NOT IDENTIFY FILE TYPE\n");
 	Args = SealSetText(Args,"@error","unknown src format (");
 	Args = SealAddText(Args,"@error",src);
 	Args = SealAddText(Args,"@error",")");
