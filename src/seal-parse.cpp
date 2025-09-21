@@ -333,13 +333,35 @@ void	SealBase64Decode	(sealfield *Data)
   BIO *bio, *b64;
   sealfield *D=NULL;
   byte d[16];
-  int dlen;
+  byte *tmp; // swap memory
+  size_t dlen;
 
   // Do the decoding inline
   if (!Data || !Data->ValueLen) { return; }
 
+  // Make sure the data is valid Base64 characters.
+  for(dlen=0; dlen < Data->ValueLen; dlen++)
+    {
+    if (isspace(Data->Value[dlen])) { continue; } // skip whitespace
+    else if (isalnum(Data->Value[dlen])) { ; } // A-Z, a-z, 0-9
+    else if (strchr("+/",Data->Value[dlen])) { ; } // + -
+    else if (Data->Value[dlen]=='=')
+      {
+      while((dlen < Data->ValueLen) && (Data->Value[dlen]=='=')) { dlen++; }
+      if (dlen < Data->ValueLen) { Data->ValueLen=dlen; break; } // Found last "="
+      }
+    else { return; } // invalid character
+    }
+
   // Make sure it ends with "=" padding
-  while(Data->ValueLen % 4) { Data = SealAddC(Data,Data->Field,'='); }
+  while(Data->ValueLen % 4)
+    {
+    // Append data, but don't change the Data pointer!
+    Data->Value = (byte*)realloc(Data->Value,Data->ValueLen+4); // reallocate with additional room
+    Data->Value[Data->ValueLen] = '='; // append the "=" padding
+    Data->ValueLen++;
+    memset(Data->Value + Data->ValueLen,0,3); // clear out padding bytes
+    }
 
   b64 = BIO_new(BIO_f_base64());
   bio = BIO_new_mem_buf(Data->Value,Data->ValueLen);
@@ -354,7 +376,6 @@ void	SealBase64Decode	(sealfield *Data)
   if (!D) { Data->ValueLen=0; }
 
   // Replace inline
-  byte *tmp; // swap memory
   tmp = Data->Value;
   Data->Value = D->Value;
   Data->ValueLen = D->ValueLen;
