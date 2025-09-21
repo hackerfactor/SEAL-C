@@ -113,17 +113,17 @@ sealfield *	SealSrcGet	(sealfield *Args)
     char errbuf[CURL_ERROR_SIZE];
     crc = curl_global_init(CURL_GLOBAL_DEFAULT);
     if (crc != CURLE_OK)
-	{
+      {
 	fprintf(stderr," ERROR: Failed to initialize curl. Aborting.\n");
 	exit(0x80);
-	}
+      }
 
     ch = curl_easy_init();
     if (!ch)
-	{
+      {
 	fprintf(stderr," ERROR: Failed to initialize curl handle. Aborting.\n");
 	exit(0x80);
-	}
+      }
 
     // Ignore TLS cerification?
     if (SealSearch(Args,"cert-insecure")) { curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 0L); }
@@ -150,10 +150,10 @@ sealfield *	SealSrcGet	(sealfield *Args)
     // Clean up
     curl_global_cleanup();
     if (crc != CURLE_OK)
-	{
+      {
 	fprintf(stderr," ERROR: curl[%d]: %s\n",crc,errbuf[0] ? errbuf : "unknown");
 	exit(0x80);
-	}
+      }
     }
   else if (SealIsFile(src)) // src is a file!
     {
@@ -180,11 +180,11 @@ sealfield *	SealSrcGet	(sealfield *Args)
   else if (!strcmp(srcaSf,"HEX")) { SealHexEncode(SealSearch(Args,"@srcdCalc"), true); }
   else if (!strcmp(srcaSf,"bin")) { ; } // already binary
   else // unsupported
-	{
-	fprintf(stderr, "ERROR: unknown srca format (%s)\n", srca);
-	free(srcaCopy);
-	exit(0x80);
-	}
+    {
+      fprintf(stderr, "ERROR: unknown srca format (%s)\n", srca);
+      free(srcaCopy);
+      exit(0x80);
+    }
   char* srcdCalc = SealGetText(Args,"@srcdCalc");
   // Compare calculated digest to the expected
   if(srcd && srcdCalc){
