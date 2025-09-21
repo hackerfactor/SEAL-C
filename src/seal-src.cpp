@@ -170,20 +170,18 @@ sealfield *	SealSrcGet	(sealfield *Args)
     return(Args);
   }
 
-printf("Curl Done\n");
-
   // Finalize digest
   unsigned int mdsize;
   mdsize = EVP_MD_size(mdf()); // digest size
-  unsigned char srcdCalc[mdsize];
-printf("digest size: %d\n", mdsize);
-  EVP_DigestFinal(ctx64, srcdCalc, &mdsize); // store the digest
-printf("stored digest\n");
+  Args = SealAlloc(Args,"@srcdCalc",mdsize,'b'); // binary digest
+  EVP_DigestFinal(ctx64,SealSearch(Args,"@srcdCalc")->Value,&mdsize); // store the digest
   EVP_MD_CTX_free(ctx64);
-
   // Re-encode digest from binary to expected srca format.
   // Currently, only supports base64.
-  if (!strcmp(srcaSf,"base64")) { SealBase64Decode(SealSearch(Args,"@srcdCalc")); }
+  if (!strcmp(srcaSf,"base64")) { 
+printf("inside if\n");
+        SealBase64Decode(SealSearch(Args,"@srcdCalc")); 
+  }
   else if (!strcmp(srcaSf,"hex")) { SealHexDecode(SealSearch(Args,"@srcdCalc")); }
   else if (!strcmp(srcaSf,"bin")) { ; } // already binary
   else // unsupported
@@ -195,6 +193,8 @@ printf("stored digest\n");
 	}
 
   // Compare calculated digest to the expected
+
+printf("Finished everything\n");
 
   return(Args);
 } /* SealSrcGet() */
