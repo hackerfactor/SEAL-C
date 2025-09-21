@@ -92,8 +92,6 @@ sealfield *	SealSrcGet	(sealfield *Args)
   char* srcaDa = strtok(srcaCopy, ":");
   char* srcaSf = strtok(NULL, ":");
 
-printf("Split srca into %s and %s\n", srcaDa, srcaSf);
-
   if (!strcmp(srcaDa,"sha224")) { mdf = EVP_sha224; }
   else if (!strcmp(srcaDa,"sha256")) { mdf = EVP_sha256; }
   else if (!strcmp(srcaDa,"sha384")) { mdf = EVP_sha384; }
@@ -105,22 +103,15 @@ printf("Split srca into %s and %s\n", srcaDa, srcaSf);
       Args = SealAddText(Args,"@error",")");
       return(Args);
 }
-
-printf("Got the algorithim\n");
   EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
   EVP_DigestInit(ctx64, mdf());
 
-printf("Got the context\n");
-printf("%s\n", src);
   // Compute the srcd
    if (src && (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0)) // it's a URL!
     {
-
-printf("It knows it is a url\n");
     CURL *ch; // curl handle
     CURLcode crc; // curl return code
     char errbuf[CURL_ERROR_SIZE];
-
     crc = curl_global_init(CURL_GLOBAL_DEFAULT);
     if (crc != CURLE_OK)
 	{
@@ -165,20 +156,21 @@ printf("It knows it is a url\n");
 	exit(0x80);
 	}
     }
-//   else if (SealIsFile(src)) // src is a file!
-//     {
-//       fprintf(stderr," ERROR: Local src files are not currently supported (%s)",src);
-//       exit(0x80);
-//     }
-  else
-	{
-printf("COULD NOT IDENTIFY FILE TYPE\n");
-	Args = SealSetText(Args,"@error","unknown src format (");
-	Args = SealAddText(Args,"@error",src);
-	Args = SealAddText(Args,"@error",")");
-	EVP_MD_CTX_free(ctx64);
-	return(Args);
-	}
+  else if (SealIsFile(src)) // src is a file!
+    {
+      fprintf(stderr," ERROR: Local src files are not currently supported (%s)",src);
+      exit(0x80);
+    }
+  else {
+    printf("COULD NOT IDENTIFY FILE TYPE\n");
+    Args = SealSetText(Args,"@error","unknown src format (");
+    Args = SealAddText(Args,"@error",src);
+    Args = SealAddText(Args,"@error",")");
+    EVP_MD_CTX_free(ctx64);
+    return(Args);
+  }
+
+printf("Curl Done\n");
 
   // Finalize digest
   unsigned int mdsize;
