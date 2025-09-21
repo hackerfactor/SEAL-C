@@ -179,7 +179,7 @@ sealfield *	SealSrcGet	(sealfield *Args)
   // Re-encode digest from binary to expected srca format.
   // Currently, only supports base64.
   if (!strcmp(srcaSf,"base64")) { 
-printf("inside if\n");
+printf("inside if, the calced value is: %s\n", SealSearch(Args,"@srcdCalc")->Value);
         SealBase64Decode(SealSearch(Args,"@srcdCalc")); 
   }
   else if (!strcmp(srcaSf,"hex")) { SealHexDecode(SealSearch(Args,"@srcdCalc")); }
