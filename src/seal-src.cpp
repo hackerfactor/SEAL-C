@@ -175,8 +175,10 @@ printf("Curl Done\n");
   // Finalize digest
   unsigned int mdsize;
   mdsize = EVP_MD_size(mdf()); // digest size
-  Args = SealAlloc(Args,"@srcdCalc",mdsize,'b'); // binary digest
-  EVP_DigestFinal(ctx64,SealSearch(Args,"@srcdCalc")->Value,&mdsize); // store the digest
+  unsigned char srcdCalc[mdsize];
+printf("digest size: %d\n", mdsize);
+  EVP_DigestFinal(ctx64, srcdCalc, &mdsize); // store the digest
+printf("stored digest\n");
   EVP_MD_CTX_free(ctx64);
 
   // Re-encode digest from binary to expected srca format.
