@@ -178,11 +178,9 @@ sealfield *	SealSrcGet	(sealfield *Args)
   EVP_MD_CTX_free(ctx64);
   // Re-encode digest from binary to expected srca format.
   // Currently, only supports base64.
-  if (!strcmp(srcaSf,"base64")) { 
-printf("inside if, the calced value is: %s\n", SealSearch(Args,"@srcdCalc")->Value);
-        SealBase64Decode(SealSearch(Args,"@srcdCalc")); 
-  }
-  else if (!strcmp(srcaSf,"hex")) { SealHexDecode(SealSearch(Args,"@srcdCalc")); }
+  if (!strcmp(srcaSf,"base64")) { SealBase64Encode(SealSearch(Args,"@srcdCalc")); }
+  else if (!strcmp(srcaSf,"hex")) { SealHexEncode(SealSearch(Args,"@srcdCalc"), false); }
+  else if (!strcmp(srcaSf,"HEX")) { SealHexEncode(SealSearch(Args,"@srcdCalc"), true); }
   else if (!strcmp(srcaSf,"bin")) { ; } // already binary
   else // unsupported
 	{
