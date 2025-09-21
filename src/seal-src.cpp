@@ -91,18 +91,17 @@ sealfield *	SealSrcGet	(sealfield *Args)
   char* srcaCopy = strdup(srca);
   char* srcaDa = strtok(srcaCopy, ":");
   char* srcaSf = strtok(NULL, ":");
-
   if (!strcmp(srcaDa,"sha224")) { mdf = EVP_sha224; }
   else if (!strcmp(srcaDa,"sha256")) { mdf = EVP_sha256; }
   else if (!strcmp(srcaDa,"sha384")) { mdf = EVP_sha384; }
   else if (!strcmp(srcaDa,"sha512")) { mdf = EVP_sha512; }
   else
     {
-      Args = SealSetText(Args,"@error","unknown srca format (");
-      Args = SealAddText(Args,"@error",srca);
-      Args = SealAddText(Args,"@error",")");
-      return(Args);
-}
+      free(srcaCopy);
+      fprintf(stderr, "ERROR: unknown srca format (%s)\n", srca);
+      exit(0x80);
+    }
+
   EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
   EVP_DigestInit(ctx64, mdf());
 
@@ -162,12 +161,10 @@ sealfield *	SealSrcGet	(sealfield *Args)
       exit(0x80);
     }
   else {
-    printf("COULD NOT IDENTIFY FILE TYPE\n");
-    Args = SealSetText(Args,"@error","unknown src format (");
-    Args = SealAddText(Args,"@error",src);
-    Args = SealAddText(Args,"@error",")");
+    fprintf(stderr,"ERROR: unknown src format (%s)\n", src);
+    free(srcaCopy);
     EVP_MD_CTX_free(ctx64);
-    return(Args);
+    exit(0x80);
   }
 
   // Finalize digest
@@ -184,13 +181,19 @@ sealfield *	SealSrcGet	(sealfield *Args)
   else if (!strcmp(srcaSf,"bin")) { ; } // already binary
   else // unsupported
 	{
-	Args = SealSetText(Args,"@error","unknown srca format (");
-	Args = SealAddText(Args,"@error",srca);
-	Args = SealAddText(Args,"@error",")");
-	return(Args);
+	fprintf(stderr, "ERROR: unknown srca format (%s)\n", srca);
+	free(srcaCopy);
+	exit(0x80);
 	}
-
+  char* srcdCalc = SealGetText(Args,"@srcdCalc");
   // Compare calculated digest to the expected
+  if(srcd && srcdCalc){
+    if(strcmp(srcd, srcdCalc) != 0){
+      fprintf(stderr, "ERROR: srcd (%s) does not match the calculated digest (%s)\n", srcd, srcdCalc);
+      free(srcaCopy);
+      exit(0x80);
+    }
+  }
 
 printf("Finished everything\n");
 
@@ -216,4 +219,3 @@ bool    SealHasRef (sealfield *Args)
 {
         return SealGetText(Args,"srcd") || SealGetText(Args,"src");
 }
-
