@@ -55,9 +55,9 @@ libcurl:
 	(cd curl-8.10.1 ; make -j 4)
 
 test:
-	./TEST.sh
+	tests/test-local.sh
+	tests/test-remote.sh
 
 test-clean:
-	rm -rf test.dir
-	mkdir test.dir
+	rm -rf tests/*.dir
 
