@@ -141,15 +141,15 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   crc = curl_global_init(CURL_GLOBAL_DEFAULT);
   if (crc != CURLE_OK)
     {
-      fprintf(stderr," ERROR: Failed to initialize curl. Aborting.\n");
-      exit(0x80);
+    fprintf(stderr," ERROR: Failed to initialize curl. Aborting.\n");
+    exit(0x80);
     }
 
   ch = curl_easy_init();
   if (!ch)
     {
-  fprintf(stderr," ERROR: Failed to initialize curl handle. Aborting.\n");
-  exit(0x80);
+    fprintf(stderr," ERROR: Failed to initialize curl handle. Aborting.\n");
+    exit(0x80);
     }
 
   // Ignore TLS cerification?
@@ -200,9 +200,9 @@ void	SealProcessSrca	(char* srca, const EVP_MD* (**mdf)(void), SealSignatureForm
   else if (!strcmp(srcaDa,"sha512")) { *mdf = EVP_sha512; }
   else
     {
-      free(srcaCopy);
-      fprintf(stderr, "ERROR: unknown srca algorithm (%s)\n", srcaDa);
-      exit(0x80);
+    free(srcaCopy);
+    fprintf(stderr, "ERROR: unknown srca algorithm (%s)\n", srcaDa);
+    exit(0x80);
     }
 
   if (!strcmp(srcaSf,"base64")) { *Sf = BASE64; }
@@ -211,9 +211,9 @@ void	SealProcessSrca	(char* srca, const EVP_MD* (**mdf)(void), SealSignatureForm
   else if (!strcmp(srcaSf,"bin")) { *Sf = BIN; }
   else // unsupported
     {
-      free(srcaCopy);
-      fprintf(stderr, "ERROR: unknown signature format for srca (%s)\n", srcaSf);
-      exit(0x80);
+    free(srcaCopy);
+    fprintf(stderr, "ERROR: unknown signature format for srca (%s)\n", srcaSf);
+    exit(0x80);
     }
 
   free(srcaCopy);
@@ -253,27 +253,32 @@ sealfield *	SealSrcGet	(sealfield *Args)
   // Compute the srcd
   if(srcf)
     { 
-      srcdCalc = SealGetDigestFromFile(Args, ctx64, sf, mdf); 
-      SealDel(Args, "srcf");
+    srcdCalc = SealGetDigestFromFile(Args, ctx64, sf, mdf); 
+    SealDel(Args, "srcf");
     }
   else if (src && (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0)) // it's a URL!
     {
-      srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+    srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
     }
-  else {
+  else
+    {
     fprintf(stderr,"ERROR: unknown src format (%s)\n", src);
     EVP_MD_CTX_free(ctx64);
     exit(0x80);
-  }
+    }
 
   // Compare calculated digest to the expected
-  if(srcd && srcdCalc){
-    if(strcmp(srcd, srcdCalc) != 0){
+  if (srcd && srcdCalc)
+    {
+    if (strcmp(srcd, srcdCalc) != 0)
+      {
       printf("WARNING: srcd (%s) does not match the calculated digest (%s)\n", srcd, srcdCalc);
+      }
     }
-  } else if(srcdCalc && !srcd){
+  else if (srcdCalc && !srcd)
+    {
     Args = SealSetText(Args, "srcd", srcdCalc);
-  }
+    }
 
   return(Args);
 } /* SealSrcGet() */
@@ -295,9 +300,10 @@ void	SealSrcVerify	(sealfield *Args)
   srca = SealGetText(Args,"srca");
 
   // If there's nothing to verify, just return.
-  if (!srcd || !src || !srca) {
+  if (!srcd || !src || !srca)
+    {
     return;
-  }
+    }
 
   // Process srca to get the algorithm and format
   SealProcessSrca(srca, &mdf, &sf);
@@ -306,21 +312,26 @@ void	SealSrcVerify	(sealfield *Args)
   EVP_DigestInit(ctx64, mdf());
 
   // Compute the digest from the src URL
-  if (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0) {
-      srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
-  } else {
-      // Currently only URL src is supported for verification.
-      // Local files are not stored in the record.
-      EVP_MD_CTX_free(ctx64);
-      return;
-  }
+  if (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0)
+    {
+    srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+    }
+  else
+    {
+    // Currently only URL src is supported for verification.
+    // Local files are not stored in the record.
+    EVP_MD_CTX_free(ctx64);
+    return;
+    }
 
   // Compare the provided srcd with the one we just calculated
-  if (srcd && srcdCalc) {
-    if (strcmp(srcd, srcdCalc) != 0) {
+  if (srcd && srcdCalc)
+    {
+    if (strcmp(srcd, srcdCalc) != 0)
+      {
       printf("  WARNING: srcd value does not match calculated digest for src\n");
       printf("    srcd: %s\n", srcd);
       printf("    calc: %s\n", srcdCalc);
+      }
     }
-  }
 } /* SealSrcVerify() */

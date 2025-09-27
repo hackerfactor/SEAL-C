@@ -403,10 +403,10 @@ void	Usage	(const char *progname)
   printf("  -s, --sign           :: Required: Enable signing (requires lowercase 's')\n");
   printf("  -k, --keyfile fname  :: File for storing the private key in PEM format (default: ./seal-private.pem)\n");
   printf("  --sidecar fname      :: Optional: generate a sidecar signature (src or srcd required)\n");
-  printf("  -I --src URL         :: Optional: Specify a source URL for validation. This will retrieve the file and compute the checksum. The URL will be included in the SEAL record.\n");
-  printf("  --srcf file          :: Optional: Specify a source file for validation. This will access the file and compute the checksum. The filename will NOT be included in the SEAL record.\n");
+  printf("  -I, --src URL         :: Optional: Specify a source URL for validation. This will retrieve the file and compute the checksum. The URL will be included in the SEAL record.\n");
   printf("  --srca text          :: Optional: Specify the source digest encoding. (default: sha256:base64)\n");
   printf("  --srcd text          :: Optional: Specify the source digest value. Must match the srca encoding. When present, src/srcf will be validated against it, but that validation will NOT prevent signing.\n");
+  printf("  --srcf file          :: Optional: Specify a source file for validation. This will access the file and compute the checksum. The filename will NOT be included in the SEAL record.\n");
   printf("\n");
   printf("  Signing with a remote signing service:\n");
   printf("  -S, --Sign           :: Required: Enable signing (requires uppercase 'S')\n");
