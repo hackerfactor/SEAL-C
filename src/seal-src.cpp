@@ -49,6 +49,8 @@ enum SealSignatureFormat{
   BIN
 };
 
+const char* SignatureFormats[] = {"HEX_LOWER", "HEX_UPPER", "BASE64", "BIN"};
+
 /**************************************
  SealCurlSrcCallback(): Process URL results.
  This adds all buffer data to a checksum.
@@ -85,7 +87,7 @@ char*   SealFinalizeDigest(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureForm
       SealBase64Encode(SealSearch(Args,"@srcdCalc"));
       break;
     default:
-      fprintf(stderr, "ERROR: unsupported Seal Signature Format can not be encoded (%s)\n", Sf);
+      fprintf(stderr, "ERROR: unsupported Seal Signature Format can not be encoded (%s)\n", SignatureFormats[Sf]);
       exit(0x80);
   }
 
@@ -100,8 +102,30 @@ char*   SealFinalizeDigest(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureForm
  **************************************/
 char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat srcaSf, const EVP_MD* (*mdf)(void))
 {
-    fprintf(stderr," ERROR: Local src files are not currently supported");
-    exit(0x80);
+    char *srcf = SealGetText(Args, "srcf");
+    if (!srcf) return NULL;
+
+    FILE *fp = fopen(srcf, "rb");
+    if (!fp) {
+        fprintf(stderr, "ERROR: could not open src file (%s)\n", srcf);
+        exit(0x80);
+    }
+
+    byte buffer[4096];
+    size_t bytesRead;
+
+    while ((bytesRead = fread(buffer, 1, sizeof(buffer), fp)) > 0) {
+        EVP_DigestUpdate(ctx64, buffer, bytesRead);
+    }
+
+    if (ferror(fp)) {
+        fprintf(stderr, "ERROR: failed while reading src file (%s)\n", srcf);
+        fclose(fp);
+        exit(0x80);
+    }
+
+    fclose(fp);
+    return SealFinalizeDigest(Args, ctx64, srcaSf, mdf);
 }
 
 /**************************************

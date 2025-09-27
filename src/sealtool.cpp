@@ -386,7 +386,7 @@ void	Usage	(const char *progname)
   printf("  Verifying:\n");
   printf("  Verify any SEAL signature in the file(s)\n");
   printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (default: unset; use DNS)\n");
-  printf("  -I, --src name       :: Optional: For validating srcd, use this URL or file as the source.\n");
+  printf("  -I, --src name       :: Optional: For validating srcd, use this URL as the source.\n");
   printf("\n");
   printf("  Generate signature:\n");
   printf("  -g, --generate       :: Required: generate a signature\n");
@@ -403,10 +403,10 @@ void	Usage	(const char *progname)
   printf("  -s, --sign           :: Required: Enable signing (requires lowercase 's')\n");
   printf("  -k, --keyfile fname  :: File for storing the private key in PEM format (default: ./seal-private.pem)\n");
   printf("  --sidecar fname      :: Optional: generate a sidecar signature (src or srcd required)\n");
-  printf("  -I, --src URL        :: Optional: Specify a source URL for validation. This will retrieve the file and compute the checksum. The URL will be included in the SEAL record.\n");
-  printf("  -I, --src file       :: Optional: Specify a source file for validation. This will access the file and compute the checksum. The filename will NOT be included in the SEAL record.\n");
-  printf("  --srca text          :: Optional: Specify the source digest encoding. (default: sha256:hex)\n");
-  printf("  --srcd text          :: Optional: Specify the source digest value. Must match the srca encoding. When present, src is not accessed.\n");
+  printf("  -I --src URL         :: Optional: Specify a source URL for validation. This will retrieve the file and compute the checksum. The URL will be included in the SEAL record.\n");
+  printf("  --srcf file          :: Optional: Specify a source file for validation. This will access the file and compute the checksum. The filename will NOT be included in the SEAL record.\n");
+  printf("  --srca text          :: Optional: Specify the source digest encoding. (default: sha256:base64)\n");
+  printf("  --srcd text          :: Optional: Specify the source digest value. Must match the srca encoding. When present, src/srcf will be validated against it, but that validation will NOT prevent signing.\n");
   printf("\n");
   printf("  Signing with a remote signing service:\n");
   printf("  -S, --Sign           :: Required: Enable signing (requires uppercase 'S')\n");
@@ -567,7 +567,8 @@ int main (int argc, char *argv[])
     {"copyright", required_argument, NULL, 'C'},
     // source referencing
     {"sidecar",   required_argument, NULL, 1}, // generate a sidecar
-    {"src",       required_argument, NULL, 'I'}, // source url or file
+    {"src",       required_argument, NULL, 'I'}, // source url
+    {"srcf",      required_argument, NULL, 1}, // source file
     {"srca",      required_argument, NULL, 1}, // source digest encoding
     {"srcd",      required_argument, NULL, 1}, // source digest
     // modes
