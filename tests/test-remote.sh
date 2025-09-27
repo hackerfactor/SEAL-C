@@ -45,4 +45,57 @@ for ka in rsa ec ; do
 done # ka
 done # da
 
+### Src reference tests (local file)
+echo ""
+echo "##### Src Reference Test (local file)"
+
+for da in sha256 sha512 ; do
+for ka in rsa ec ; do
+for srcsf in hex HEX base64 ; do
+  srca="$da:$srcsf"
+  echo ""
+  echo "#### Remote Signing with local src reference ($ka, $srca)"
+  i=../regression/test-unsigned.jpg
+  j=${i/..\/regression/$TESTDIR}
+  out=${j/-unsigned/-signed-local-src-file-$ka-$da-$srcsf}
+  ../bin/sealtool -S --da "$da" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" --srcf "../regression/test-unsigned.png" --srca "$srca" -o "$out" "$i"
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+
+    # Verify remote signing
+    echo ""
+    echo "#### Verify Remote $da $ka $sf"
+    ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
+    if [ "$?" != "0" ] ; then echo "Failed."; exit; fi
+
+done # srcsf
+done # ka
+done # da
+
+### Src reference tests (URL)
+echo ""
+echo "##### Src Reference Test (URL)"
+
+for da in sha256 sha512 ; do
+for ka in rsa ec ; do
+for srcsf in hex HEX base64 ; do
+  srca="$da:$srcsf"
+  src_url="https://signmydata.com/?logo=seal-fingerprint.jpeg"
+  echo ""
+  echo "#### Remote Signing with URL src reference ($ka, $srca)"
+  i=../regression/test-unsigned.jpg
+  j=${i/..\/regression/$TESTDIR}
+  out=${j/-unsigned/-signed-local-src-url-$ka-$da-$srcsf}
+  ../bin/sealtool -S --da "$da" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" --src "$src_url" --srca "$srca" -o "$out" "$i"
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+
+    # Verify remote signing
+    echo ""
+    echo "#### Verify Remote $da $ka $sf"
+    ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
+    if [ "$?" != "0" ] ; then echo "Failed."; exit; fi
+
+done # srcsf
+done # ka
+done # da
+
 exit 0

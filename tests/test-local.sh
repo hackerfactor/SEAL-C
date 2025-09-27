@@ -102,6 +102,53 @@ for sf in 'date3:hex' ; do
 done #sf
 done # ka
 
+### Src reference tests (local file)
+echo ""
+echo "##### Src Reference Test (local file)"
+
+for da in sha256 sha512 ; do
+for ka in rsa ec ; do
+for srcsf in hex HEX base64 ; do
+  srca="$da:$srcsf"
+  echo ""
+  echo "#### Local Signing with local src reference ($ka, $srca)"
+  i=../regression/test-unsigned.jpg
+  j=${i/..\/regression/$TESTDIR}
+  out=${j/-unsigned/-signed-local-src-file-$ka-$da-$srcsf}
+  ../bin/sealtool -s -k "$TESTDIR/sign-$ka.key" --ka "$ka" --da "$da" --srcf "../regression/test-unsigned.png" --srca "$srca" -o "$out" "$i"
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+
+  echo "#### Verifying Local with local src reference ($ka, $srca)"
+  ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out"
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+done # srcsf
+done # ka
+done # da
+
+### Src reference tests (URL)
+echo ""
+echo "##### Src Reference Test (URL)"
+
+for da in sha256 sha512 ; do
+for ka in rsa ec ; do
+for srcsf in hex HEX base64 ; do
+  srca="$da:$srcsf"
+  src_url="https://signmydata.com/?logo=seal-fingerprint.jpeg"
+  echo ""
+  echo "#### Local Signing with URL src reference ($ka, $srca)"
+  i=../regression/test-unsigned.jpg
+  j=${i/..\/regression/$TESTDIR}
+  out=${j/-unsigned/-signed-local-src-url-$ka-$da-$srcsf}
+  ../bin/sealtool -s -k "$TESTDIR/sign-$ka.key" --ka "$ka" --da "$da" --src "$src_url" --srca "$srca" -o "$out" "$i"
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+
+  echo "#### Verifying Local with URL src reference ($ka, $srca)"
+  ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out"
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+done # srcsf
+done # ka
+done # da
+
 ### Try manual fields
 echo ""
 echo "##### Manual Test"
