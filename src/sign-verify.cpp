@@ -888,6 +888,12 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	Rec = SealValidateSig(Rec);
 	ErrorMsg = SealGetText(Rec,"@error");
 	}
+  /* Verify the src details, if present.
+     Failure to verify warns, does not error */
+  if (!ErrorMsg)
+    {
+      SealSrcVerify(Rec);
+    }
 
   // Report any errors or findings
   if (ErrorMsg)
