@@ -257,7 +257,44 @@ sealfield *	SealSrcGet	(sealfield *Args)
  Populate and validate srcd.
  Returns: true on success, false on error.
  **************************************/
-bool	SealSrcVerify	(sealfield *Args)
-{
-  return(true);
+void	SealSrcVerify	(sealfield *Args)
+{ 
+  char *srcd, *src, *srca;
+  const EVP_MD* (*mdf)(void);
+  SealSignatureFormat sf;
+  char *srcdCalc;
+
+  srcd = SealGetText(Args,"srcd");
+  src = SealGetText(Args,"src");
+  srca = SealGetText(Args,"srca");
+
+  // If there's nothing to verify, just return.
+  if (!srcd || !src || !srca) {
+    return;
+  }
+
+  // Process srca to get the algorithm and format
+  SealProcessSrca(srca, &mdf, &sf);
+
+  EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
+  EVP_DigestInit(ctx64, mdf());
+
+  // Compute the digest from the src URL
+  if (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0) {
+      srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+  } else {
+      // Currently only URL src is supported for verification.
+      // Local files are not stored in the record.
+      EVP_MD_CTX_free(ctx64);
+      return;
+  }
+
+  // Compare the provided srcd with the one we just calculated
+  if (srcd && srcdCalc) {
+    if (strcmp(srcd, srcdCalc) != 0) {
+      printf("  WARNING: srcd value does not match calculated digest for src\n");
+      printf("    srcd: %s\n", srcd);
+      printf("    calc: %s\n", srcdCalc);
+    }
+  }
 } /* SealSrcVerify() */
