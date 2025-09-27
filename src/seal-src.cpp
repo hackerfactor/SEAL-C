@@ -271,6 +271,8 @@ sealfield *	SealSrcGet	(sealfield *Args)
     if(strcmp(srcd, srcdCalc) != 0){
       printf("WARNING: srcd (%s) does not match the calculated digest (%s)\n", srcd, srcdCalc);
     }
+  } else if(srcdCalc && !srcd){
+    Args = SealSetText(Args, "srcd", srcdCalc);
   }
 
   return(Args);
