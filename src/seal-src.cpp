@@ -249,8 +249,6 @@ sealfield *	SealSrcGet	(sealfield *Args)
     }
   }
 
-printf("Finished everything\n");
-
   return(Args);
 } /* SealSrcGet() */
 
@@ -263,13 +261,3 @@ bool	SealSrcVerify	(sealfield *Args)
 {
   return(true);
 } /* SealSrcVerify() */
-
-
-/**************************************
- SealHasRef(): Checks if there is src data.
- Returns: true if srcd or src is present.
- **************************************/
-bool    SealHasRef (sealfield *Args)
-{
-        return SealGetText(Args,"srcd") || SealGetText(Args,"src");
-}

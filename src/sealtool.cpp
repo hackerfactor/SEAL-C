@@ -478,7 +478,6 @@ int main (int argc, char *argv[])
   bool IsURL=false; // for signing, use URL?
   bool IsLocal=false; // for signing, use local?
   bool IsSidecar=false; // for signing, generate sidecar?
-  bool HasRef=false; // for signing, is there an src or a digest to reference
 
   // Set default values
   Args = SealSetText(Args,"seal","1"); // SEAL version; currently always '1'
@@ -645,7 +644,6 @@ int main (int argc, char *argv[])
   IsURL = SealIsURL(Args);
   IsLocal = SealIsLocal(Args);
   IsSidecar = SealGetText(Args,"sidecar") ? true : false;
-  HasRef = SealHasRef(Args);
 
   // Debug parameters
   if (SealSearch(Args,"showconfig"))
@@ -667,9 +665,7 @@ int main (int argc, char *argv[])
   // If signing, get dynamic signing parameters
   if (strchr("sSmM",Mode))
     {
-      if (HasRef){
-        Args= SealSrcGet(Args);
-      }
+      Args= SealSrcGet(Args);
     /*****
      When signing, no digest gets the size of the signature (@sigsize).
      This never changes between calls, so do it now.

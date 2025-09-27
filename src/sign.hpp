@@ -51,6 +51,5 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
 
 // Source References
 sealfield *     SealSrcGet      (sealfield *Args);
-bool    SealHasRef      (sealfield *Args);
-
+bool	SealSrcVerify	(sealfield *Args);
 #endif
