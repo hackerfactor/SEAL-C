@@ -12,39 +12,39 @@ if [ "$Fname" == "" ] ; then
 fi
 
 # grab the file
-cp regression/test-unsigned.jpg "$Fname"
+cp ../regression/test-unsigned.jpg "$Fname"
 
 # get the record
-rec1=$(bin/sealtool -M '')
+rec1=$(../bin/sealtool -M '')
 #echo "Rec1: $rec2"
 
 # insert the record into the file
-exiftool -config regression/exiftool-seal.config -overwrite_original "$Field=$rec1" "$Fname" > /dev/null 2>&1
+exiftool -config ../regression/exiftool-seal.config -overwrite_original "$Field=$rec1" "$Fname" > /dev/null 2>&1
 if [ "$?" != "0" ] ; then
   echo "ExifTool failure."
   exit 1
 fi
 
 # get the digest
-digest=$(bin/sealtool -v "$Fname" | grep -e '^ *Digest: ' | awk '{print $2}')
+digest=$(../bin/sealtool -v "$Fname" | grep -e '^ *Digest: ' | awk '{print $2}')
 echo "  Digest: $digest"
 
 # get the record with the signature
-rec2=$(bin/sealtool -M "$digest")
+rec2=$(../bin/sealtool -M "$digest")
 #if [[ "$Field" == *XMP:* ]] ; then
 #  rec2="${rec2}"
 #fi
 #echo "Rec2: $rec2"
 
 # re-insert
-cp regression/test-unsigned.jpg "$Fname"
-exiftool -config regression/exiftool-seal.config -overwrite_original "$Field=$rec2" "$Fname" > /dev/null 2>&1
+cp ../regression/test-unsigned.jpg "$Fname"
+exiftool -config ../regression/exiftool-seal.config -overwrite_original "$Field=$rec2" "$Fname" > /dev/null 2>&1
 if [ "$?" != "0" ] ; then
   echo "ExifTool update failure."
   exit 1
 fi
 
 # Now check it
-bin/sealtool "$Fname"
+../bin/sealtool "$Fname"
 exit $?
 
