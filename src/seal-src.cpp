@@ -330,7 +330,7 @@ void	SealSrcVerify	(sealfield *Args)
   EVP_DigestInit(ctx64, mdf());
 
   // Compute the digest from the src URL
-  if (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0)
+  if (src && (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0))
     {
     srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
     }
@@ -338,6 +338,7 @@ void	SealSrcVerify	(sealfield *Args)
     {
     // Currently only URL src is supported for verification.
     // Local files are not stored in the record.
+    printf("  WARNING: src digest could not be calculated for provided src (%s).\n", src);
     EVP_MD_CTX_free(ctx64);
     return;
     }
@@ -350,6 +351,10 @@ void	SealSrcVerify	(sealfield *Args)
       printf("  WARNING: srcd value does not match calculated digest for src\n");
       printf("    srcd: %s\n", srcd);
       printf("    calc: %s\n", srcdCalc);
+      }
+    else 
+      {
+      printf("  Source Digest from %s matched the provided digest.\n", src);
       }
     }
 } /* SealSrcVerify() */
