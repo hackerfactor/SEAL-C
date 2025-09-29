@@ -666,7 +666,7 @@ int main (int argc, char *argv[])
   // If signing, get dynamic signing parameters
   if (strchr("sSmM",Mode))
     {
-      Args= SealSrcGet(Args);
+      Args= SealSrcGet(Args, (Verbose > 0));
     /*****
      When signing, no digest gets the size of the signature (@sigsize).
      This never changes between calls, so do it now.
