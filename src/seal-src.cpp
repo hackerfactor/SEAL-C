@@ -229,16 +229,16 @@ sealfield * SealCheckOrSetSrcd(sealfield *Args, char *srcd, char *srcdCalc, char
     {
     if (strcmp(srcd, srcdCalc) != 0)
       {
-      printf("WARNING: srcd does not match the digest calculated from %s\n", srcRef);
-      if(IsVerbose)
-        {
-        printf("srcd provided:    %s\n", srcd);
-        printf("srcd calculated:  %s\n", srcdCalc);
-        }
+      printf("  WARNING: srcd does not match the digest calculated from %s\n", srcRef);
       }
     else
       {
-      printf("INFO: Digest Calculated from %s matched the provided digest\n", srcRef);
+      printf("  Source reference digest calculated from %s matched the provided digest\n", srcRef);
+      }
+    if(IsVerbose)
+      {
+      printf("    srcd provided:    %s\n", srcd);
+      printf("    srcd calculated:  %s\n", srcdCalc);
       }
     }
   else if (srcdCalc && !srcd)
