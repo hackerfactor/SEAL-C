@@ -1,8 +1,14 @@
 #!/bin/bash
 # End-to-End test suite for local signing
 
-# Everything is relative to this $TESTDIRectory.
+# Everything is relative to this test directory.
 cd $(dirname "$0")
+
+FMT=""
+if [ "$1" != "" ] ; then
+  FMT=".$1"
+  shift
+fi
 
 TESTDIR=test-local.dir
 rm -rf $TESTDIR
@@ -48,22 +54,24 @@ done # ka
 done # da
 
 ### PNG options
-echo ""
-echo "##### PNG Chunk Test"
-for opt in seAl sEAl sEAL seAL teXt ; do
-  i=../regression/test-unsigned.png
-  ka=rsa
-  sf="date3:base64"
-  sfname=${sf/:/_}
-  j=${i/..\/regression/$TESTDIR}
-  out=${j/-unsigned/-signed-local-pngchunk-$opt-$ka-$sfname}
+if [ "$FMT" == "" ] || [ "$FMT" == ".png" ] ; then
   echo ""
-  ../bin/sealtool -v -s -k "$TESTDIR/sign-$ka.key" --options "$opt" --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
-  echo ""
-  ../bin/sealtool -v --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
-done
+  echo "##### PNG Chunk Test"
+  for opt in seAl sEAl sEAL seAL teXt ; do
+    i=../regression/test-unsigned.png
+    ka=rsa
+    sf="date3:base64"
+    sfname=${sf/:/_}
+    j=${i/..\/regression/$TESTDIR}
+    out=${j/-unsigned/-signed-local-pngchunk-$opt-$ka-$sfname}
+    echo ""
+    ../bin/sealtool -v -s -k "$TESTDIR/sign-$ka.key" --options "$opt" --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
+    if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+    echo ""
+    ../bin/sealtool -v --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out"
+    if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  done
+fi
 
 echo ""
 echo "##### Append Test"
@@ -150,21 +158,23 @@ done # ka
 done # da
 
 ### Try manual fields
-echo ""
-echo "##### Manual Test"
-echo ""
-echo "#### Manual Non-standard JPEG comment"
-./SignManual.sh -Comment $TESTDIR/test-signed-remote-manual-comment.jpg
-if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+if [ "$FMT" == "" ] || [ "$FMT" == ".jpg" ] ; then
+  echo ""
+  echo "##### Manual Test"
+  echo ""
+  echo "#### Manual Non-standard JPEG comment"
+  ./SignManual.sh -Comment $TESTDIR/test-signed-remote-manual-comment.jpg
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
 
-echo ""
-echo "#### Manual EXIF"
-./SignManual.sh -EXIF:seal $TESTDIR/test-signed-remote-manual-exif.jpg
-if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  echo ""
+  echo "#### Manual EXIF"
+  ./SignManual.sh -EXIF:seal $TESTDIR/test-signed-remote-manual-exif.jpg
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
 
-echo ""
-echo "#### Manual XMP"
-./SignManual.sh -XMP:seal $TESTDIR/test-signed-remote-manual-xmp.jpg
-if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  echo ""
+  echo "#### Manual XMP"
+  ./SignManual.sh -XMP:seal $TESTDIR/test-signed-remote-manual-xmp.jpg
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+fi
 
 exit 0
