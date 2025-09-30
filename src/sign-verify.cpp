@@ -900,6 +900,13 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	_SealVerifyShow(Rec,signum,NULL);
 	}
 
+  /* Verify the src details, if present.
+     Failure to verify warns, does not error */
+  if (!ErrorMsg)
+    {
+    SealSrcVerify(Rec);
+    }
+
   return(Rec);
 } /* SealVerify() */
 
@@ -937,6 +944,9 @@ sealfield *	SealVerifyBlock	(sealfield *Args,
     {
     Rec = SealParse(BlockEnd-BlockStart, Mmap->mem+BlockStart, BlockStart, Args);
     if (!Rec) { goto Abort; } // Nothing found
+
+    // Keep srcf if it came from Args
+    Rec = SealCopy2(Rec,"srcf",Args,"srcf");
 
     // Found a signature!  Verify the data!
     Rec = SealVerify(Rec,Mmap,MmapPre);

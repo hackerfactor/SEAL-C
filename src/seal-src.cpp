@@ -3,26 +3,24 @@
  See LICENSE
 
  Processing src and sidecar settings.
-  srca=   :: essential: encoding info
+  srca=   :: algorithim to use for encoding/ was used
   srcd=   :: computed digest in srca format
-  src=    :: path/url to the sidecar file
+  src=    :: url of original image
+  srcf=   :: path to file for calculating the digest
 
  Lots of conditionals:
 
-  If srcd is set, then src is ignored.
-  Otherwise, src is used to set srcd.
+  If srcd is set, then calculate the digest for src if available and compare,
+    but warn, do not error if they do not match.
 
-  If src is a local file, then load it, compute srcd, and remove the parameter.
+  If srcf is present, then load it, compute srcd, and remove the parameter.
   Why? Don't store local filenames.
 
   If src is a URL file, then load it, compute srcd, and keep the parameter.
   Why? URLs are expected to be public.
- 
-  If signing and 'sidecar' is set, then set the output filename to:
-    argv[optind] + ".seal"
 
   If verifying and known srcd does not match the computed srcd,
-  then flag it as an error!
+  then flag it as a warning, but allow signing to continue!
  ************************************************/
 // C headers
 #include <stdlib.h>
@@ -44,6 +42,15 @@
 #include "files.hpp"
 #include "seal-parse.hpp"
 
+enum SealSignatureFormat{
+  HEX_LOWER,
+  HEX_UPPER,
+  BASE64,
+  BIN
+};
+
+const char* SignatureFormats[] = {"HEX_LOWER", "HEX_UPPER", "BASE64", "BIN"};
+
 /**************************************
  SealCurlSrcCallback(): Process URL results.
  This adds all buffer data to a checksum.
@@ -53,173 +60,283 @@ size_t	SealCurlSrcCallback	(void *buffer, size_t size, size_t nmemb, void *parm)
   EVP_MD_CTX* ctx64;
   ctx64 = (EVP_MD_CTX*)parm;
   EVP_DigestUpdate(ctx64,buffer,nmemb*size);
-  return(nmemb*size);
+  return(size * nmemb);
 } /* SealCurlCallback() */
 
 /**************************************
- SealSrcGet(): Get a src record and compute the srcd.
- src can be a file or a URL.
- Returns: updated Args
+ SealFinalize Digest(): Finalize the Digest
  **************************************/
-sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
-{
-  const EVP_MD* (*mdf)(void);
-  char *src,*srcd;
-  char *srca;
-  sealfield *vf;
-
-  // Check if there is already a srcd
-  srca = SealGetText(Args,"srca"); // must be defined
-  srcd = SealGetText(Args,"srcd");
-  src = SealGetText(Args,"src");
-
-  if (!srcd && !src) { return(Args); } // nothing to do
-  if (!srca)
-	{
-	Args = SealSetText(Args,"@error","undefined srca");
-	return(Args);
-	}
-
-  /*****
-   No srcd? Compute it!
-   1. If src exists, use it.
-   2. Else, if Fname exists, use it as a sidecar.
-   *****/
-  if (!src && !Fname) { ; } // check for a local sidecar
-  else if (!src) // check for a local sidecar
-    {
-    int len;
-    len = strlen(Fname);
-    if ((len > 5) && !strcmp(Fname+len-5,".seal"))
-      {
-      Args = SealSetTextLen(Args,"tmp",len-5,Fname);
-      if (SealIsFile(SealGetText(Args,"tmp")))
-	{
-	Args = SealMove(Args,"src","tmp");
-	src = SealGetText(Args,"src");
-	}
-      Args = SealDel(Args,"tmp");
-      }
-    }
-
-  // Check if I can compute srcd
-  if (!src)
-	{
-	Args = SealSetText(Args,"@error","unknown src");
-	return(Args);
-	}
-
-  // Process srca
-  if (!strcmp(srca,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(srca,"sha256")) { mdf = EVP_sha256; }
-  else if (!strcmp(srca,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(srca,"sha512")) { mdf = EVP_sha512; }
-  else
-	{
-	Args = SealSetText(Args,"@error","unknown srca format (");
-	Args = SealAddText(Args,"@error",srca);
-	Args = SealAddText(Args,"@error",")");
-	return(Args);
-	}
-  EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
-  EVP_DigestInit(ctx64, mdf());
-
-  // Compute the srcd
-  if (strncasecmp(src,"http://",7) && strncasecmp(src,"https://",8)) // it's a URL!
-    {
-    CURL *ch; // curl handle
-    CURLcode crc; // curl return code
-    char errbuf[CURL_ERROR_SIZE];
-
-    crc = curl_global_init(CURL_GLOBAL_DEFAULT);
-    if (crc != CURLE_OK)
-	{
-	fprintf(stderr," ERROR: Failed to initialize curl. Aborting.\n");
-	exit(0x80);
-	}
-
-    ch = curl_easy_init();
-    if (!ch)
-	{
-	fprintf(stderr," ERROR: Failed to initialize curl handle. Aborting.\n");
-	exit(0x80);
-	}
-
-    // Ignore TLS cerification?
-    if (SealSearch(Args,"cert-insecure")) { curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 0L); }
-    else { curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 1L); }
-
-    // In Cygwin, curl tries to find a cert in /etc, which doesn't exist.
-    // Therefore, include our own cacert from https://curl.se/docs/caextract.html
-    vf = SealSearch(Args,"cacert");
-    if (vf) { curl_easy_setopt(ch, CURLOPT_CAINFO, vf->Value); }
-
-    // Set retrieval parameters
-    curl_easy_setopt(ch, CURLOPT_URL, SealGetText(Args,"src")); // set the URL
-    curl_easy_setopt(ch, CURLOPT_WRITEFUNCTION, SealCurlSrcCallback);
-    curl_easy_setopt(ch, CURLOPT_WRITEDATA, (void*)ctx64); // callback gets pointer to open digest
-    memset(errbuf,0,CURL_ERROR_SIZE);
-    curl_easy_setopt(ch, CURLOPT_ERRORBUFFER, errbuf);
-    curl_easy_setopt(ch, CURLOPT_CONNECTTIMEOUT, 20); // 20 seconds to connect
-    curl_easy_setopt(ch, CURLOPT_TIMEOUT, 60); // 60 seconds to transfer data
-
-    // Do the request!
-    crc = curl_easy_perform(ch);
-    curl_easy_cleanup(ch);
-
-    // Clean up
-    curl_global_cleanup();
-    if (crc != CURLE_OK)
-	{
-	fprintf(stderr," ERROR: curl[%d]: %s\n",crc,errbuf[0] ? errbuf : "unknown");
-	exit(0x80);
-	}
-    }
-  else if (SealIsFile(src)) // src is a file!
-    {
-    char Buff[65536];
-    int BuffRead;
-    FILE *fp;
-    fp = fopen(Fname,"rb");
-    if (!fp)
-	{
-	fprintf(stderr," ERROR: Unable to read src file (%s)",src);
-	exit(0x80);
-	}
-    while((BuffRead = fread(Buff,65536,1,fp)) > 0)
-	{
-	EVP_DigestUpdate(ctx64,Buff,BuffRead);
-	}
-    fclose(fp);
-    }
-  else
-	{
-	Args = SealSetText(Args,"@error","unknown srca format (");
-	Args = SealAddText(Args,"@error",srca);
-	Args = SealAddText(Args,"@error",")");
-	EVP_MD_CTX_free(ctx64);
-	return(Args);
-	}
-
-  // Finalize digest
+char*   SealFinalizeDigest(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat Sf, const EVP_MD* (*mdf)(void)){
+    // Finalize digest
   unsigned int mdsize;
   mdsize = EVP_MD_size(mdf()); // digest size
-  Args = SealAlloc(Args,"@srcd",mdsize,'b'); // binary digest
-  EVP_DigestFinal(ctx64,SealSearch(Args,"@srcd")->Value,&mdsize); // store the digest
+  Args = SealAlloc(Args,"@srcdCalc",mdsize,'b'); // binary digest
+  EVP_DigestFinal(ctx64,SealSearch(Args,"@srcdCalc")->Value,&mdsize); // store the digest
   EVP_MD_CTX_free(ctx64);
-
   // Re-encode digest from binary to expected srca format.
-  // Currently, only supports base64.
-  if (strstr(srca,"base64")) { SealBase64Decode(SealSearch(Args,"@srcd")); }
-  else if (strstr(srca,"bin")) { ; } // already binary
-  else // unsupported
-	{
-	Args = SealSetText(Args,"@error","unknown srca format (");
-	Args = SealAddText(Args,"@error",srca);
-	Args = SealAddText(Args,"@error",")");
-	return(Args);
-	}
+  switch(Sf){
+    case BIN:
+      break; // already binary
+    case HEX_UPPER:
+      SealHexEncode(SealSearch(Args,"@srcdCalc"), true);
+      break;
+    case HEX_LOWER:
+      SealHexEncode(SealSearch(Args,"@srcdCalc"), false);
+      break;
+    case BASE64:
+      SealBase64Encode(SealSearch(Args,"@srcdCalc"));
+      break;
+    default:
+      fprintf(stderr, "ERROR: unsupported Seal Signature Format can not be encoded (%s)\n", SignatureFormats[Sf]);
+      exit(0x80);
+  }
 
+  return SealGetText(Args,"@srcdCalc");
+} /* SealFinalizeDigest() */
+
+/**************************************
+ SealGetDigestFromFile(): Get the digest
+ from the provided file, and remove srcf
+ as a parameter since it should not be 
+ saved.
+ **************************************/
+char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat srcaSf, const EVP_MD* (*mdf)(void))
+{
+    char *srcf = SealGetText(Args, "srcf");
+    if (!srcf) return NULL;
+
+    FILE *fp = fopen(srcf, "rb");
+    if (!fp) {
+        printf("  Source unavailable: %s\n", srcf);
+        if(Verbose)
+          {
+          printf("  ERROR: could not open src file (%s)\n", srcf);
+          }
+        return NULL;
+    }
+
+    byte buffer[4096];
+    size_t bytesRead;
+
+    while ((bytesRead = fread(buffer, 1, sizeof(buffer), fp)) > 0) {
+        EVP_DigestUpdate(ctx64, buffer, bytesRead);
+    }
+
+    if (ferror(fp))
+      {
+      printf("  Source unavailable: %s\n", srcf);
+      if(Verbose)
+        {
+        printf("  ERROR: failed while reading src file (%s)\n", srcf);
+        }
+      fclose(fp);
+      return NULL;
+      }
+
+    fclose(fp);
+    return SealFinalizeDigest(Args, ctx64, srcaSf, mdf);
+} /* SealGetDigestFromFile() */
+
+/**************************************
+ SealGetDigestFromURL(): Call the src URL 
+ and calculate the Digest for the given algorthim
+ **************************************/
+char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat srcaSf, const EVP_MD* (*mdf)(void))
+{
+  sealfield *vf;
+  CURL *ch; // curl handle
+  CURLcode crc; // curl return code
+  char * src;
+  char errbuf[CURL_ERROR_SIZE];
+
+  src = SealGetText(Args,"src");
+  crc = curl_global_init(CURL_GLOBAL_DEFAULT);
+  if (crc != CURLE_OK)
+    {
+    printf("  Source unavailable: %s\n", src);
+    if(Verbose)
+      {
+      printf("  Failed to initialize curl. Aborting.\n");
+      } 
+    return NULL;
+    }
+
+  ch = curl_easy_init();
+  if (!ch)
+    {
+      printf("  Source unavailable: %s\n", src);
+      if(Verbose)
+      {
+      printf("  Failed to initialize curl handle. Aborting.\n");
+      } 
+    return NULL;
+    }
+
+  // Ignore TLS cerification?
+  if (SealSearch(Args,"cert-insecure")) { curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 0L); }
+  else { curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 1L); }
+
+  // In Cygwin, curl tries to find a cert in /etc, which doesn't exist.
+  // Therefore, include our own cacert from https://curl.se/docs/caextract.html
+  vf = SealSearch(Args,"cacert");
+  if (vf) { curl_easy_setopt(ch, CURLOPT_CAINFO, vf->Value); }
+
+  // Set retrieval parameters
+  curl_easy_setopt(ch, CURLOPT_URL, src); // set the URL
+  curl_easy_setopt(ch, CURLOPT_WRITEFUNCTION, SealCurlSrcCallback);
+  curl_easy_setopt(ch, CURLOPT_WRITEDATA, (void*)ctx64); // callback gets pointer to open digest
+  memset(errbuf,0,CURL_ERROR_SIZE);
+  curl_easy_setopt(ch, CURLOPT_ERRORBUFFER, errbuf);
+  curl_easy_setopt(ch, CURLOPT_CONNECTTIMEOUT, 20); // 20 seconds to connect
+  curl_easy_setopt(ch, CURLOPT_TIMEOUT, 60); // 60 seconds to transfer data
+
+  // Do the request!
+  crc = curl_easy_perform(ch);
+  curl_easy_cleanup(ch);
+
+  // Clean up
+  curl_global_cleanup();
+  if (crc != CURLE_OK)
+    {
+    printf("  Source unavailable: %s\n", SealGetText(Args,"src"));
+    if(Verbose)
+      {
+      printf("  curl[%d]: %s\n", crc,errbuf[0] ? errbuf : "unknown");
+      }
+    return NULL;
+    }
+  return SealFinalizeDigest(Args, ctx64, srcaSf, mdf);
+} /* SealGetDigestFromURL() */
+
+/**************************************
+ SealProcessSrca(): Split up srca into the
+ algorithim and signature format to use
+ **************************************/
+bool	SealProcessSrca	(char* srca, const EVP_MD* (**mdf)(void), SealSignatureFormat* Sf)
+{
+  // Process srca
+  char* srcaCopy = strdup(srca);
+  char* srcaDa = strtok(srcaCopy, ":");
+  char* srcaSf = strtok(NULL, ":");
+  if (!strcmp(srcaDa,"sha224")) { *mdf = EVP_sha224; }
+  else if (!strcmp(srcaDa,"sha256")) { *mdf = EVP_sha256; }
+  else if (!strcmp(srcaDa,"sha384")) { *mdf = EVP_sha384; }
+  else if (!strcmp(srcaDa,"sha512")) { *mdf = EVP_sha512; }
+  else
+    {
+    free(srcaCopy);
+    printf("ERROR: unknown srca algorithm (%s) in %s\n", srcaDa, srca);
+    return false;
+    }
+
+  if (!strcmp(srcaSf,"base64")) { *Sf = BASE64; }
+  else if (!strcmp(srcaSf,"hex")) { *Sf = HEX_LOWER; }
+  else if (!strcmp(srcaSf,"HEX")) { *Sf = HEX_UPPER; }
+  else if (!strcmp(srcaSf,"bin")) { *Sf = BIN; }
+  else // unsupported
+    {
+    printf("ERROR: unknown signature format for srca (%s) in %s\n", srcaSf, srca);
+    free(srcaCopy);
+    return false;
+    }
+
+  free(srcaCopy);
+  return true;
+} /* SealProcessSrca() */
+
+/**************************************
+ SealCheckOrSetSrcd(): Checks the digest,
+ outputs if it is valid or not, and sets
+ the digest if it is not set.
+ **************************************/
+sealfield * SealCheckOrSetSrcd(sealfield *Args, char *srcd, char *srcdCalc, char *srcRef)
+{
+  if (srcd && srcdCalc)
+    {
+    if (strcmp(srcd, srcdCalc) != 0)
+      {
+      printf("  Source mismatched: %s\n", srcRef);
+      }
+    else
+      {
+      printf("  Source matched: %s \n", srcRef);
+      }
+    if(Verbose)
+      {
+      printf("  srcd provided:   %s\n", srcd);
+      printf("  srcd calculated: %s\n", srcdCalc);
+      }
+    }
+  else if (srcdCalc && !srcd)
+    {
+    Args = SealSetText(Args, "srcd", srcdCalc);
+    if(Verbose)
+      {
+      printf("  srcd calculated: %s\n", srcdCalc);
+      }
+    }
+  else
+    {
+    printf("  Error: Digest could not be generated for %s\n", srcRef);
+    exit(0x80);
+    }
+  return Args;
+} /* SealCheckOrSetSrcd() */
+
+/**************************************
+ SealSrcGet(): Get a src record and validate the record at the src 
+ and the srcd.
+ Currently only supporting url srcs.
+ Returns: updated Args
+ **************************************/
+sealfield *	SealSrcGet	(sealfield *Args)
+{
+  const EVP_MD* (*mdf)(void);
+  char *src,*srcd,*srca, *srcf;
+  SealSignatureFormat sf;
+  bool canProceed;
+
+  // Get the three main values for this part
+  srca = SealGetText(Args,"srca"); 
+  srcd = SealGetText(Args,"srcd");
+  srcf = SealGetText(Args,"srcf");
+  src = SealGetText(Args,"src");
+  //DEBUGPRINT("srca=%s srcd=%s src=%s srcf=%s",srca,srcd,src,srcf);
+
+  // Validate the input
+
+  // must have either src or srcf
+  if (!src && !srcf)
+    { 
+    return(Args); 
+    } // nothing to do
+
+  // Split up srca so it can be used where needed
+  canProceed = SealProcessSrca(srca, &mdf, &sf);
+  if(!canProceed) // Can not sign with invalid srca
+    {
+    exit(0x80);
+    }
+
+  EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
+  EVP_DigestInit(ctx64, mdf());
+  char* srcdCalc;
+  // Compute the srcd
+  if(srcf)
+    { 
+    srcdCalc = SealGetDigestFromFile(Args, ctx64, sf, mdf); 
+    Args = SealCheckOrSetSrcd(Args, srcd, srcdCalc, srcf);
+    }
+  else if (src && (!strncasecmp(src,"http://",7) || !strncasecmp(src,"https://",8))) // it's a URL!
+    {
+    srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+    Args = SealCheckOrSetSrcd(Args, srcd, srcdCalc, src);
+    }
+  else
+    {
+    printf(" ERROR: unknown src format (%s)\n", src);
+    exit(0x80);
+    }
   return(Args);
 } /* SealSrcGet() */
 
@@ -228,8 +345,103 @@ sealfield *	SealSrcGet	(sealfield *Args, const char *Fname)
  Populate and validate srcd.
  Returns: true on success, false on error.
  **************************************/
-bool	SealSrcVerify	(sealfield *Args, const char *Fname)
-{
-  return(true);
-} /* SealSrcVerify() */
+void	SealSrcVerify	(sealfield *Args)
+{ 
+  char *srcd, *src, *srca, *srcf;
+  const EVP_MD* (*mdf)(void);
+  SealSignatureFormat sf;
+  char *srcdCalc=NULL;
 
+  srca = SealGetText(Args,"srca");
+  srcd = SealGetText(Args,"srcd");
+  srcf = SealGetText(Args,"srcf");
+  src = SealGetText(Args,"src");
+  //DEBUGPRINT("srca=%s srcd=%s src=%s srcf=%s",srca,srcd,src,srcf);
+
+  // src must be a web URL
+  if (src && strncasecmp(src,"http://",7) && strncasecmp(src,"https://",8))
+    {
+    // Not http or https
+    printf("  Unsupported source: %s\n",src);
+    src=NULL;
+    }
+
+  // src without srcd cannot be validated
+  if (src && !srcd)
+    {
+    printf("  Unverfied source: %s\n",src);
+    return;
+    }
+
+  // If there's nothing to verify, just return.
+  if (!srcd || !srca) { return; } // needs srcd and srca
+  if (!src && !srcf) { return; } // either src or srcf
+
+  // Process srca to get the algorithm and format
+  SealProcessSrca(srca, &mdf, &sf);
+
+  EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
+  EVP_DigestInit(ctx64, mdf());
+
+  // Compute the digest from the src URL
+  if (srcf) // if user supplied srcf, then use it!
+    {
+    srcdCalc = SealGetDigestFromFile(Args, ctx64, sf, mdf);
+    // What if we have both srcf and src?
+    // Check if srcf worked. Otherwise, try src.
+    if ((srcdCalc && (strcmp(srcd, srcdCalc) == 0)) || !src) // correct hash or no fallback
+      {
+      src=srcf;
+      }
+    else if (src) // wrong hash; if a fallback exists, use it
+      {
+      // reset checksum; get it from url
+      if (!srcdCalc) { EVP_MD_CTX_free(ctx64); }
+      ctx64 = EVP_MD_CTX_new();
+      EVP_DigestInit(ctx64, mdf());
+      srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+      }
+    }
+  else if (src) // no srcf and has src
+    {
+    srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+    }
+
+  if (!srcdCalc)
+    {
+    // Currently only URL src is supported for verification.
+    // Local files are not stored in the record.
+    if (Verbose)
+      {
+      printf(" Source digest: unavailable (%s)\n", src);
+      }
+    else
+      {
+      printf(" Source digest: unavailable\n");
+      }
+    EVP_MD_CTX_free(ctx64);
+    return;
+    }
+
+  // Compare the provided srcd with the one we just calculated
+  if (srcd && srcdCalc)
+    {
+    if (strcmp(srcd, srcdCalc) != 0)
+      {
+      printf("  Source mismatch: %s\n",src);
+      if (Verbose)
+	{
+	printf("  srcd provided:   %s\n", srcd);
+	printf("  srcd calculated: %s\n", srcdCalc);
+	}
+      }
+    else 
+      {
+      printf("  Source matched: %s\n", src);
+      if (Verbose)
+	{
+	printf("  Source Digest: %s\n", srcd);
+	}
+      }
+    }
+} /* SealSrcVerify() */

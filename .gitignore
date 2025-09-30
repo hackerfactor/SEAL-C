@@ -1,5 +1,7 @@
 test.dir
+test-*.dir
 tmp
 bin/*
 *.pem
 *.dns
+*.key

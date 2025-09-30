@@ -386,7 +386,7 @@ void	Usage	(const char *progname)
   printf("  Verifying:\n");
   printf("  Verify any SEAL signature in the file(s)\n");
   printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (default: unset; use DNS)\n");
-  printf("  -I, --src name       :: Optional: For validating srcd, use this URL or file as the source.\n");
+  printf("  -I, --src name       :: Optional: For validating srcd, use this URL as the source.\n");
   printf("\n");
   printf("  Generate signature:\n");
   printf("  -g, --generate       :: Required: generate a signature\n");
@@ -402,11 +402,7 @@ void	Usage	(const char *progname)
   printf("  Signing with a local private key:\n");
   printf("  -s, --sign           :: Required: Enable signing (requires lowercase 's')\n");
   printf("  -k, --keyfile fname  :: File for storing the private key in PEM format (default: ./seal-private.pem)\n");
-  printf("  --sidecar fname      :: Optional: generate a sidecar signature (src or srcd required)\n");
-  printf("  -I, --src URL        :: Optional: Specify a source URL for validation. This will retrieve the file and compute the checksum. The URL will be included in the SEAL record.\n");
-  printf("  -I, --src file       :: Optional: Specify a source file for validation. This will access the file and compute the checksum. The filename will NOT be included in the SEAL record.\n");
-  printf("  --srca text          :: Optional: Specify the source digest encoding. (default: sha256:hex)\n");
-  printf("  --srcd text          :: Optional: Specify the source digest value. Must match the srca encoding. When present, src is not accessed.\n");
+  printf("  -I, --src URL         :: Optional: Specify a source URL for validation. This will retrieve the file and compute the checksum. The URL will be included in the SEAL record.\n");
   printf("\n");
   printf("  Signing with a remote signing service:\n");
   printf("  -S, --Sign           :: Required: Enable signing (requires uppercase 'S')\n");
@@ -446,6 +442,7 @@ void	Usage	(const char *progname)
   printf("               Supports: sha224, sha256, sha384, sha512\n");
   printf("  --kv number          :: Unique key version (default: 1)\n");
   printf("  --sf text            :: Signing format (default: HEX)\n");
+  printf("  --sidecar filename   :: Optional: generate a sidecar signature\n");
   printf("\n");
   printf("  Informational fields:\n");
   printf("  -C, --copyright text :: Copyright text (default: no added text)\n");
@@ -454,8 +451,9 @@ void	Usage	(const char *progname)
   printf("\n");
   printf("  External source reference:\n");
   printf("  --src url            :: URL to remote source (default: no url)\n");
-  printf("  --srca sha256:base64 :: Encoding for source digest (default: sha256:base64 if srcd is used)\n");
-  printf("  --srcd digest        :: Digest of remote source (default: no digest)\n");
+  printf("  --srca text          :: Optional: Specify the source digest encoding. (default: sha256:base64)\n");
+  printf("  --srcd text          :: Optional: Specify the source digest value. Must match the srca encoding. When present, src/srcf will be validated against it, but that validation will NOT prevent signing.\n");
+  printf("  --srcf file          :: Optional: Specify a source file for computing the checksum (for signing or validation). When signing, the filename will NOT be included in the SEAL record.\n");
   printf("\n");
   printf("  Return codes:\n");
   printf("    0x00 All files have valid signatures.\n");
@@ -498,7 +496,7 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"id","");
   Args = SealSetText(Args,"apiurl","");
   Args = SealSetText(Args,"apikey","");
-  Args = SealSetText(Args,"srca","sha256:hex");
+  Args = SealSetText(Args,"srca","sha256:base64");
 #ifdef __CYGWIN__
   Args = SealSetText(Args,"cacert","./cacert.crt");
 #endif
@@ -567,7 +565,8 @@ int main (int argc, char *argv[])
     {"copyright", required_argument, NULL, 'C'},
     // source referencing
     {"sidecar",   required_argument, NULL, 1}, // generate a sidecar
-    {"src",       required_argument, NULL, 'I'}, // source url or file
+    {"src",       required_argument, NULL, 'I'}, // source url
+    {"srcf",      required_argument, NULL, 1}, // source file
     {"srca",      required_argument, NULL, 1}, // source digest encoding
     {"srcd",      required_argument, NULL, 1}, // source digest
     // modes
@@ -665,6 +664,8 @@ int main (int argc, char *argv[])
   // If signing, get dynamic signing parameters
   if (strchr("sSmM",Mode))
     {
+    // Populate src
+    Args = SealSrcGet(Args);
     /*****
      When signing, no digest gets the size of the signature (@sigsize).
      This never changes between calls, so do it now.
