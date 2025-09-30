@@ -60,12 +60,14 @@ for srcsf in hex HEX base64 ; do
   out=${j/-unsigned/-signed-local-src-file-$ka-$da-$srcsf}
   ../bin/sealtool -S --da "$da" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" --srcf "../regression/test-unsigned.png" --srca "$srca" -o "$out" "$i"
   if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  ../bin/sealtool --srcf "../regression/test-unsigned.png" $TESTDIR/test-*remote-$da-$ka-$sfname*
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
 
-    # Verify remote signing
-    echo ""
-    echo "#### Verify Remote $da $ka $sf"
-    ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
-    if [ "$?" != "0" ] ; then echo "Failed."; exit; fi
+  # Verify remote signing
+  echo ""
+  echo "#### Verify Remote $da $ka $sf"
+  ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
 
 done # srcsf
 done # ka
@@ -87,12 +89,14 @@ for srcsf in hex HEX base64 ; do
   out=${j/-unsigned/-signed-local-src-url-$ka-$da-$srcsf}
   ../bin/sealtool -S --da "$da" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" --src "$src_url" --srca "$srca" -o "$out" "$i"
   if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  ../bin/sealtool "$out"
+  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
 
-    # Verify remote signing
-    echo ""
-    echo "#### Verify Remote $da $ka $sf"
-    ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
-    if [ "$?" != "0" ] ; then echo "Failed."; exit; fi
+  # Verify remote signing
+  echo ""
+  echo "#### Verify Remote $da $ka $sf"
+  ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
+  if [ "$?" != "0" ] ; then echo "Failed."; exit; fi
 
 done # srcsf
 done # ka

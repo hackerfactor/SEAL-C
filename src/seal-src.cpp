@@ -91,7 +91,7 @@ char*   SealFinalizeDigest(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureForm
       exit(0x80);
   }
 
-   return SealGetText(Args,"@srcdCalc");
+  return SealGetText(Args,"@srcdCalc");
 } /* SealFinalizeDigest() */
 
 /**************************************
@@ -100,17 +100,17 @@ char*   SealFinalizeDigest(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureForm
  as a parameter since it should not be 
  saved.
  **************************************/
-char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat srcaSf, const EVP_MD* (*mdf)(void), bool IsVerbose)
+char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat srcaSf, const EVP_MD* (*mdf)(void))
 {
     char *srcf = SealGetText(Args, "srcf");
     if (!srcf) return NULL;
 
     FILE *fp = fopen(srcf, "rb");
     if (!fp) {
-        printf("  Source unavailable:   %s\n", srcf);
-        if(IsVerbose)
+        printf("  Source unavailable: %s\n", srcf);
+        if(Verbose)
           {
-          printf("    ERROR: could not open src file (%s)\n", srcf);
+          printf("  ERROR: could not open src file (%s)\n", srcf);
           }
         return NULL;
     }
@@ -124,13 +124,13 @@ char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFo
 
     if (ferror(fp))
       {
-      printf("  Source unavailable:   %s\n", srcf);
-      if(IsVerbose)
+      printf("  Source unavailable: %s\n", srcf);
+      if(Verbose)
         {
-        printf("    ERROR: failed while reading src file (%s)\n", srcf);
+        printf("  ERROR: failed while reading src file (%s)\n", srcf);
         }
-        fclose(fp);
-        return NULL;
+      fclose(fp);
+      return NULL;
       }
 
     fclose(fp);
@@ -141,7 +141,7 @@ char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFo
  SealGetDigestFromURL(): Call the src URL 
  and calculate the Digest for the given algorthim
  **************************************/
-char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat srcaSf, const EVP_MD* (*mdf)(void), bool IsVerbose)
+char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat srcaSf, const EVP_MD* (*mdf)(void))
 {
   sealfield *vf;
   CURL *ch; // curl handle
@@ -153,10 +153,10 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   crc = curl_global_init(CURL_GLOBAL_DEFAULT);
   if (crc != CURLE_OK)
     {
-    printf("  Source unavailable:   %s\n", src);
-    if(IsVerbose)
+    printf("  Source unavailable: %s\n", src);
+    if(Verbose)
       {
-      printf("    Failed to initialize curl. Aborting.\n");
+      printf("  Failed to initialize curl. Aborting.\n");
       } 
     return NULL;
     }
@@ -164,10 +164,10 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   ch = curl_easy_init();
   if (!ch)
     {
-      printf("  Source unavailable:   %s\n", src);
-      if(IsVerbose)
+      printf("  Source unavailable: %s\n", src);
+      if(Verbose)
       {
-      printf("    Failed to initialize curl handle. Aborting.\n");
+      printf("  Failed to initialize curl handle. Aborting.\n");
       } 
     return NULL;
     }
@@ -198,10 +198,10 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   curl_global_cleanup();
   if (crc != CURLE_OK)
     {
-    printf("  Source unavailable:   %s\n", SealGetText(Args,"src"));
-    if(IsVerbose)
+    printf("  Source unavailable: %s\n", SealGetText(Args,"src"));
+    if(Verbose)
       {
-      printf("    curl[%d]: %s\n", crc,errbuf[0] ? errbuf : "unknown");
+      printf("  curl[%d]: %s\n", crc,errbuf[0] ? errbuf : "unknown");
       }
     return NULL;
     }
@@ -249,39 +249,39 @@ bool	SealProcessSrca	(char* srca, const EVP_MD* (**mdf)(void), SealSignatureForm
  outputs if it is valid or not, and sets
  the digest if it is not set.
  **************************************/
-sealfield * SealCheckOrSetSrcd(sealfield *Args, char *srcd, char *srcdCalc, char *srcRef, bool IsVerbose){
+sealfield * SealCheckOrSetSrcd(sealfield *Args, char *srcd, char *srcdCalc, char *srcRef)
+{
   if (srcd && srcdCalc)
     {
     if (strcmp(srcd, srcdCalc) != 0)
       {
-      printf("  Source mismatched:  %s\n", srcRef);
+      printf("  Source mismatched: %s\n", srcRef);
       }
     else
       {
-      printf("  Source matched:     %s \n", srcRef);
+      printf("  Source matched: %s \n", srcRef);
       }
-    if(IsVerbose)
+    if(Verbose)
       {
-      printf("    srcd provided:    %s\n", srcd);
-      printf("    srcd calculated:  %s\n", srcdCalc);
+      printf("  srcd provided:   %s\n", srcd);
+      printf("  srcd calculated: %s\n", srcdCalc);
       }
     }
   else if (srcdCalc && !srcd)
     {
     Args = SealSetText(Args, "srcd", srcdCalc);
-      if(IsVerbose)
-        {
-        printf("  srcd calculated:  %s\n", srcdCalc);
-        }
+    if(Verbose)
+      {
+      printf("  srcd calculated: %s\n", srcdCalc);
+      }
     }
   else
     {
-    printf("Error: Digest could not be generated for %s\n", srcRef);
+    printf("  Error: Digest could not be generated for %s\n", srcRef);
     exit(0x80);
     }
   return Args;
 } /* SealCheckOrSetSrcd() */
-
 
 /**************************************
  SealSrcGet(): Get a src record and validate the record at the src 
@@ -289,7 +289,7 @@ sealfield * SealCheckOrSetSrcd(sealfield *Args, char *srcd, char *srcdCalc, char
  Currently only supporting url srcs.
  Returns: updated Args
  **************************************/
-sealfield *	SealSrcGet	(sealfield *Args, bool IsVerbose)
+sealfield *	SealSrcGet	(sealfield *Args)
 {
   const EVP_MD* (*mdf)(void);
   char *src,*srcd,*srca, *srcf;
@@ -299,14 +299,17 @@ sealfield *	SealSrcGet	(sealfield *Args, bool IsVerbose)
   // Get the three main values for this part
   srca = SealGetText(Args,"srca"); 
   srcd = SealGetText(Args,"srcd");
-  src = SealGetText(Args,"src");
   srcf = SealGetText(Args,"srcf");
+  src = SealGetText(Args,"src");
+  //DEBUGPRINT("srca=%s srcd=%s src=%s srcf=%s",srca,srcd,src,srcf);
 
   // Validate the input
 
-  if (!srcd && !src && !srcf) { 
+  // must have either src or srcf
+  if (!src && !srcf)
+    { 
     return(Args); 
-  } // nothing to do
+    } // nothing to do
 
   // Split up srca so it can be used where needed
   canProceed = SealProcessSrca(srca, &mdf, &sf);
@@ -321,18 +324,17 @@ sealfield *	SealSrcGet	(sealfield *Args, bool IsVerbose)
   // Compute the srcd
   if(srcf)
     { 
-    srcdCalc = SealGetDigestFromFile(Args, ctx64, sf, mdf, IsVerbose); 
-    Args = SealCheckOrSetSrcd(Args, srcd, srcdCalc, srcf, IsVerbose);
-    Args = SealDel(Args, "srcf");
+    srcdCalc = SealGetDigestFromFile(Args, ctx64, sf, mdf); 
+    Args = SealCheckOrSetSrcd(Args, srcd, srcdCalc, srcf);
     }
-  else if (src && (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0)) // it's a URL!
+  else if (src && (!strncasecmp(src,"http://",7) || !strncasecmp(src,"https://",8))) // it's a URL!
     {
-    srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf, IsVerbose);
-    Args = SealCheckOrSetSrcd(Args, srcd, srcdCalc, src, IsVerbose);
+    srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+    Args = SealCheckOrSetSrcd(Args, srcd, srcdCalc, src);
     }
   else
     {
-    printf("ERROR: unknown src format (%s)\n", src);
+    printf(" ERROR: unknown src format (%s)\n", src);
     exit(0x80);
     }
   return(Args);
@@ -345,20 +347,35 @@ sealfield *	SealSrcGet	(sealfield *Args, bool IsVerbose)
  **************************************/
 void	SealSrcVerify	(sealfield *Args)
 { 
-  char *srcd, *src, *srca;
+  char *srcd, *src, *srca, *srcf;
   const EVP_MD* (*mdf)(void);
   SealSignatureFormat sf;
-  char *srcdCalc;
+  char *srcdCalc=NULL;
 
-  srcd = SealGetText(Args,"srcd");
-  src = SealGetText(Args,"src");
   srca = SealGetText(Args,"srca");
+  srcd = SealGetText(Args,"srcd");
+  srcf = SealGetText(Args,"srcf");
+  src = SealGetText(Args,"src");
+  //DEBUGPRINT("srca=%s srcd=%s src=%s srcf=%s",srca,srcd,src,srcf);
 
-  // If there's nothing to verify, just return.
-  if (!srcd || !src || !srca)
+  // src must be a web URL
+  if (src && strncasecmp(src,"http://",7) && strncasecmp(src,"https://",8))
     {
+    // Not http or https
+    printf("  Unsupported source: %s\n",src);
+    src=NULL;
+    }
+
+  // src without srcd cannot be validated
+  if (src && !srcd)
+    {
+    printf("  Unverfied source: %s\n",src);
     return;
     }
+
+  // If there's nothing to verify, just return.
+  if (!srcd || !srca) { return; } // needs srcd and srca
+  if (!src && !srcf) { return; } // either src or srcf
 
   // Process srca to get the algorithm and format
   SealProcessSrca(srca, &mdf, &sf);
@@ -367,15 +384,41 @@ void	SealSrcVerify	(sealfield *Args)
   EVP_DigestInit(ctx64, mdf());
 
   // Compute the digest from the src URL
-  if (src && (strncasecmp(src,"http://",7) == 0 || strncasecmp(src,"https://",8) == 0))
+  if (srcf) // if user supplied srcf, then use it!
     {
-    srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf, true);
+    srcdCalc = SealGetDigestFromFile(Args, ctx64, sf, mdf);
+    // What if we have both srcf and src?
+    // Check if srcf worked. Otherwise, try src.
+    if ((srcdCalc && (strcmp(srcd, srcdCalc) == 0)) || !src) // correct hash or no fallback
+      {
+      src=srcf;
+      }
+    else if (src) // wrong hash; if a fallback exists, use it
+      {
+      // reset checksum; get it from url
+      if (!srcdCalc) { EVP_MD_CTX_free(ctx64); }
+      ctx64 = EVP_MD_CTX_new();
+      EVP_DigestInit(ctx64, mdf());
+      srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+      }
     }
-  else
+  else if (src) // no srcf and has src
+    {
+    srcdCalc = SealGetDigestFromURL(Args, ctx64, sf, mdf);
+    }
+
+  if (!srcdCalc)
     {
     // Currently only URL src is supported for verification.
     // Local files are not stored in the record.
-    printf("  WARNING: src digest could not be calculated for provided src (%s).\n", src);
+    if (Verbose)
+      {
+      printf(" Source digest: unavailable (%s)\n", src);
+      }
+    else
+      {
+      printf(" Source digest: unavailable\n");
+      }
     EVP_MD_CTX_free(ctx64);
     return;
     }
@@ -385,13 +428,20 @@ void	SealSrcVerify	(sealfield *Args)
     {
     if (strcmp(srcd, srcdCalc) != 0)
       {
-      printf("  WARNING: srcd value does not match calculated digest for src\n");
-      printf("    srcd: %s\n", srcd);
-      printf("    calc: %s\n", srcdCalc);
+      printf("  Source mismatch: %s\n",src);
+      if (Verbose)
+	{
+	printf("  srcd provided:   %s\n", srcd);
+	printf("  srcd calculated: %s\n", srcdCalc);
+	}
       }
     else 
       {
-      printf("  Source Digest from %s matched the provided digest.\n", src);
+      printf("  Source matched: %s\n", src);
+      if (Verbose)
+	{
+	printf("  Source Digest: %s\n", srcd);
+	}
       }
     }
 } /* SealSrcVerify() */

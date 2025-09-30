@@ -642,6 +642,7 @@ Done:
   if (Rec)
     {
     Rec = SealSetIindex(Rec,"@RecEnd",0,i); // Mark end of the record
+    Rec = SealDel(Rec,"srcf"); // Never allow srcf from a SEAL record
     }
   return(Rec);
 } /* SealParse() */

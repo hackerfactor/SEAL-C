@@ -44,6 +44,7 @@ sealfield *	SealRecord	(sealfield *Args)
     "src",
     "srca",
     "srcd",
+    // Never include srcf! That's always a local file.
     "id",
     "b",
     NULL
