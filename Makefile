@@ -57,6 +57,7 @@ libcurl:
 test:
 	tests/test-local.sh
 	tests/test-remote.sh
+	tests/test-manual.sh
 
 test-clean:
 	rm -rf tests/*.dir
