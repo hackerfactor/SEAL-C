@@ -78,3 +78,5 @@ This is *not* every file format that `sealtool` supports! Many formats are based
 
 Have a format you need that isn't supported? Let us know!
 
+## Sidecars
+All media formats (both known and unknown), and all read-only media, is supported through the use of a _sidecar_. A _sidecar_ stores the SEAL record in a separate file. This way, you can sign real-only media, such as a forensic drive image or legal evidence, without altering the source media.
