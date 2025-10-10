@@ -560,6 +560,7 @@ int main (int argc, char *argv[])
     {"sf",        required_argument, NULL, 1},
     {"kv",        required_argument, NULL, 1}, // must be numeric >= 0
     {"uid",       required_argument, NULL, 1},
+    {"pka",       required_argument, NULL, 1},
     // informational
     {"info",      required_argument, NULL, 1},
     {"comment",   required_argument, NULL, 'c'},
@@ -815,4 +816,3 @@ int main (int argc, char *argv[])
   SealFree(CleanArgs); // free memory for completeness
   return(ReturnCode); // done processing
 } /* main() */
-

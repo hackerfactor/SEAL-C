@@ -75,6 +75,14 @@ sealfield *	SealRecord	(sealfield *Args)
   Args = SealAddText(Args,"@record",SealGetText(Args,"domain"));
   Args = SealAddText(Args,"@record","\"");
 
+  // Add the public key if inline mode is being used
+  if (SealSearch(Args,"inline"))
+    {
+    Args = SealAddText(Args,"@record"," pk=\"");
+    Args = SealAddText(Args,"@record",SealGetText(Args,"@pubder"));
+    Args = SealAddText(Args,"@record","\"");
+    }
+
   // Add the signature!!!
   Args = SealAddText(Args,"@record"," s=\"");
 

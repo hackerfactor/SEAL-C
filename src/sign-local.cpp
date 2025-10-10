@@ -182,6 +182,39 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
 } /* SealLoadPrivateKey() */
 
 /**************************************
+ SealPKDGen(): Compute digest of a public key.
+ Uses @pubder_raw, returns digest in @pkd
+ **************************************/
+sealfield *	SealPKDGen	(sealfield *Args)
+{
+  const EVP_MD* (*mdf)(void);
+  char *pka;
+  sealfield *pubkey;
+  unsigned int mdsize;
+
+  pka = SealGetText(Args,"pka");
+  if (!pka) { return(Args); } // nothing to do
+
+  if (!strcmp(pka,"sha224")) { mdf = EVP_sha224; }
+  else if (!strcmp(pka,"sha256")) { mdf = EVP_sha256; }
+  else if (!strcmp(pka,"sha384")) { mdf = EVP_sha384; }
+  else if (!strcmp(pka,"sha512")) { mdf = EVP_sha512; }
+  else {
+    fprintf(stderr," ERROR: Unsupported public key digest algorithm (%s).\n",pka);
+    exit(0x80);
+  }
+
+  pubkey = SealSearch(Args,"@pubder");
+  if (!pubkey) { return Args; }
+
+  mdsize = EVP_MD_size(mdf());
+  Args = SealAlloc(Args,"@pkd",mdsize,'b');
+  EVP_Digest(pubkey->Value, pubkey->ValueLen, SealSearch(Args,"@pkd")->Value, &mdsize, mdf(), NULL);
+  SealBase64Encode(SealSearch(Args,"@pkd"));
+  return Args;
+} /* SeakPKDGen */
+
+/**************************************
  SealSignLocal(): Sign data using the private key!
  If there is no @digest1, then set the signature size (@sigsize).
  If there is @digest1, then set the signature (@signature).
@@ -591,7 +624,20 @@ void	SealGenerateKeys	(sealfield *Args)
   // Store uid if it exists
   vf = SealSearch(Args,"uid");
   if (vf) { PrintDNSstring(fp,"uid",vf); }
-  fprintf(fp," p=%s",SealGetText(Args,"@pubder")); // value is base64 public key!
+
+  if (SealSearch(Args,"inline"))
+    {
+    Args = SealPKDGen(Args);
+    vf = SealSearch(Args,"@pkd");
+    SealBase64Encode(vf);
+    fprintf(fp," pka=%s", SealGetText(Args,"pka"));
+    fprintf(fp," p=%s", (char*)vf->Value);
+    Args = SealDel(Args,"@pkd");
+    }
+  else
+    {
+    fprintf(fp," p=%s",SealGetText(Args,"@pubder")); // value is base64 public key!
+    }
   Args = SealDel(Args,"@pubder");
 
   // No comments in DNS; limited space!
@@ -602,4 +648,3 @@ void	SealGenerateKeys	(sealfield *Args)
   printf("Public DNS TXT value written to: %s\n",pubfile);
   EVP_PKEY_free(keypair);
 } /* SealGenerateKeys() */
-
