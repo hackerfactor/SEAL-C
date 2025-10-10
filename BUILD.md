@@ -99,6 +99,9 @@ $ sealtool -M '08a69e78b54266759cfdf45e5a4a89e60dfea5ecf27bd6b4db83b92294dc2b9c'
 ```
 This contains the computed signature for your provided digest. You can now replace the placeholder template in your file with this signature.
 
+## Flags
+- `p`/`inline` Use the inline public key signature method.
+
 ## Current Status
 This is the initial release.
 - It supports a wide range of image, audio, video, and document files -- with more being added. All common web formats are supported, including JPEG, PNG, WebP, PDF, and MP4.

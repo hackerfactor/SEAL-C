@@ -552,6 +552,7 @@ int main (int argc, char *argv[])
     {"manual",    required_argument, NULL, 'm'},
     {"outfile",   required_argument, NULL, 'o'},
     {"options",   required_argument, NULL, 'O'},
+    {"inline",    no_argument, NULL, 'p'},
     {"showconfig", no_argument, NULL, 0},
     {"Sign",      no_argument, NULL, 'S'},
     {"sign",      no_argument, NULL, 's'},
@@ -572,7 +573,7 @@ int main (int argc, char *argv[])
     // modes
     {NULL,0,NULL,0}
     };
-  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghI:i:K:k:M:m:o:O:Ssu:VvW?",long_options,&long_option_index)) != -1)
+  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghI:i:K:k:M:m:o:O:pSsu:VvW?",long_options,&long_option_index)) != -1)
     {
     switch(c)
       {
@@ -598,6 +599,7 @@ int main (int argc, char *argv[])
       case 'k': Args = SealSetText(Args,"keyfile",optarg); break;
       case 'o': Args = SealSetText(Args,"outfile",optarg); break;
       case 'O': Args = SealSetText(Args,"options",optarg); break;
+      case 'p': Args = SealSetText(Args, "inline", "True"); break; // Any value being set means it is true
       case 'u': Args = SealSetText(Args,"apiurl",optarg); break;
 
       case 'G': // generate password (not in usage; really insecure)
