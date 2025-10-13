@@ -182,8 +182,30 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
 } /* SealLoadPrivateKey() */
 
 /**************************************
+ SealGetPublicKeyDER(): Get the public key in DER and Base64 format.
+ This populates the '@pubder' and 'pubKeyBin' fields in Args.
+ **************************************/
+sealfield *	SealGetPublicKeyDER	(sealfield *Args, EVP_PKEY *key)
+{
+  BIO *bio = BIO_new(BIO_s_mem());
+  i2d_PUBKEY_bio(bio, key);
+  size_t derlen;
+  unsigned char *derdata;
+  derlen = BIO_get_mem_data(bio, &derdata);
+
+  // @pubder is the base64 version for the 'pk' attribute
+  Args = SealSetBin(Args,"@pubder",derlen,derdata);
+  SealBase64Encode(SealSearch(Args,"@pubder"));
+
+  // pubKeyBin is the raw version for the pka digest
+  Args = SealSetBin(Args, "pubKeyBin", derlen, derdata);
+  BIO_free(bio);
+  return Args;
+} /* SealGetPublicKeyDER() */
+
+/**************************************
  SealPKDGen(): Compute digest of a public key.
- Uses @pubder_raw, returns digest in @pkd
+ Uses pubKeyBin, returns digest in @pkd
  **************************************/
 sealfield *	SealPKDGen	(sealfield *Args)
 {
@@ -204,13 +226,14 @@ sealfield *	SealPKDGen	(sealfield *Args)
     exit(0x80);
   }
 
-  pubkey = SealSearch(Args,"@pubder");
+  pubkey = SealSearch(Args,"pubKeyBin");
   if (!pubkey) { return Args; }
 
   mdsize = EVP_MD_size(mdf());
   Args = SealAlloc(Args,"@pkd",mdsize,'b');
   EVP_Digest(pubkey->Value, pubkey->ValueLen, SealSearch(Args,"@pkd")->Value, &mdsize, mdf(), NULL);
   SealBase64Encode(SealSearch(Args,"@pkd"));
+  Args = SealDel(Args, "pubKeyBin");
   return Args;
 } /* SeakPKDGen */
 
@@ -234,6 +257,11 @@ sealfield *	SealSignLocal	(sealfield *Args)
 
   // Keys must be loaded.
   if (!PrivateKey) { SealLoadPrivateKey(Args); }
+
+  // If inline, we need the public key in DER and base64 format.
+  if (SealSearch(Args,"inline") && !SealSearch(Args, "pubKeyBin")) {
+    Args = SealGetPublicKeyDER(Args, PrivateKey);
+  }
 
   // Set the date string
   memset(datestr,0,30);
@@ -595,14 +623,7 @@ void	SealGenerateKeys	(sealfield *Args)
 
   // Save binary public key to memory (I'll base64-encode it without the headers)
   {
-  BIO *bio = BIO_new(BIO_s_mem());
-  i2d_PUBKEY_bio(bio, keypair);
-  size_t derlen;
-  unsigned char *derdata;
-  derlen = BIO_get_mem_data(bio, &derdata);
-  Args = SealSetBin(Args,"@pubder",derlen,derdata);
-  SealBase64Encode(SealSearch(Args,"@pubder"));
-  BIO_free(bio);
+    Args = SealGetPublicKeyDER(Args, keypair);
   }
 
   // Create DNS entry!
@@ -633,12 +654,13 @@ void	SealGenerateKeys	(sealfield *Args)
     fprintf(fp," pka=%s", SealGetText(Args,"pka"));
     fprintf(fp," p=%s", (char*)vf->Value);
     Args = SealDel(Args,"@pkd");
+    // When inline, @pubder is preserved for the pk attribute in the SEAL record.
     }
   else
     {
     fprintf(fp," p=%s",SealGetText(Args,"@pubder")); // value is base64 public key!
+    Args = SealDel(Args,"@pubder"); // Not inline, so @pubder is no longer needed.
     }
-  Args = SealDel(Args,"@pubder");
 
   // No comments in DNS; limited space!
   fprintf(fp,"\n");
