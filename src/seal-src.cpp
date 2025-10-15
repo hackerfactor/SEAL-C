@@ -87,7 +87,7 @@ char*   SealFinalizeDigest(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureForm
       SealBase64Encode(SealSearch(Args,"@srcdCalc"));
       break;
     default:
-      fprintf(stderr, "ERROR: unsupported Seal Signature Format can not be encoded (%s)\n", SignatureFormats[Sf]);
+      fprintf(stderr, "ERROR: Unsupported Seal signature format.\n");
       exit(0x80);
   }
 
