@@ -591,7 +591,6 @@ void	SealGenerateKeys	(sealfield *Args)
   // Store uid if it exists
   vf = SealSearch(Args,"uid");
   if (vf) { PrintDNSstring(fp,"uid",vf); }
-
   fprintf(fp," p=%s",SealGetText(Args,"@pubder")); // value is base64 public key!
   Args = SealDel(Args,"@pubder");
 
@@ -603,3 +602,4 @@ void	SealGenerateKeys	(sealfield *Args)
   printf("Public DNS TXT value written to: %s\n",pubfile);
   EVP_PKEY_free(keypair);
 } /* SealGenerateKeys() */
+
