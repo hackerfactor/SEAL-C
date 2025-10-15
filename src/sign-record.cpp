@@ -79,7 +79,7 @@ sealfield *	SealRecord	(sealfield *Args)
   if (SealSearch(Args,"inline"))
     {
     Args = SealAddText(Args,"@record"," pk=\"");
-    Args = SealAddText(Args,"@record",SealGetText(Args,"@pubder"));
+    Args = SealAddText(Args,"@record",SealGetText(Args,"pk"));
     Args = SealAddText(Args,"@record","\"");
     }
 

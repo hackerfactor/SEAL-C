@@ -560,6 +560,7 @@ int main (int argc, char *argv[])
     {"sf",        required_argument, NULL, 1},
     {"kv",        required_argument, NULL, 1}, // must be numeric >= 0
     {"uid",       required_argument, NULL, 1},
+    {"pk",       required_argument, NULL, 1},
     {"pka",       required_argument, NULL, 1},
     // informational
     {"info",      required_argument, NULL, 1},
