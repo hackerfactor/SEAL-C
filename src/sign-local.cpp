@@ -182,10 +182,10 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
 } /* SealLoadPrivateKey() */
 
 /**************************************
- SealGetPublicKeyDER(): Get the public key in DER and Base64 format.
+ SealGetPublicKeyDER(): Get the public key in DER and binary format.
  This populates the '@pubder' and 'pubKeyBin' fields in Args.
  **************************************/
-sealfield *	SealGetPublicKeyDER	(sealfield *Args, EVP_PKEY *key)
+sealfield *	SealGetPublicKey	(sealfield *Args, EVP_PKEY *key)
 {
   BIO *bio = BIO_new(BIO_s_mem());
   i2d_PUBKEY_bio(bio, key);
@@ -258,9 +258,9 @@ sealfield *	SealSignLocal	(sealfield *Args)
   // Keys must be loaded.
   if (!PrivateKey) { SealLoadPrivateKey(Args); }
 
-  // If inline, we need the public key in DER and base64 format.
+  // If inline, we need the public key in binary format.
   if (SealSearch(Args,"inline") && !SealSearch(Args, "pubKeyBin")) {
-    Args = SealGetPublicKeyDER(Args, PrivateKey);
+    Args = SealGetPublicKey(Args, PrivateKey);
   }
 
   // Set the date string
@@ -623,7 +623,14 @@ void	SealGenerateKeys	(sealfield *Args)
 
   // Save binary public key to memory (I'll base64-encode it without the headers)
   {
-    Args = SealGetPublicKeyDER(Args, keypair);
+  BIO *bio = BIO_new(BIO_s_mem());
+  i2d_PUBKEY_bio(bio, keypair);
+  size_t derlen;
+  unsigned char *derdata;
+  derlen = BIO_get_mem_data(bio, &derdata);
+  Args = SealSetBin(Args,"@pubder",derlen,derdata);
+  SealBase64Encode(SealSearch(Args,"@pubder"));
+  BIO_free(bio);
   }
 
   // Create DNS entry!
