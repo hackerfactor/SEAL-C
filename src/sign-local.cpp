@@ -182,28 +182,6 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
 } /* SealLoadPrivateKey() */
 
 /**************************************
- SealGetPublicKeyDER(): Get the public key in DER and binary format.
- This populates the '@pubder' and 'pubKeyBin' fields in Args.
- **************************************/
-sealfield *	SealGetPublicKey	(sealfield *Args, EVP_PKEY *key)
-{
-  BIO *bio = BIO_new(BIO_s_mem());
-  i2d_PUBKEY_bio(bio, key);
-  size_t derlen;
-  unsigned char *derdata;
-  derlen = BIO_get_mem_data(bio, &derdata);
-
-  // @pubder is the base64 version for the 'pk' attribute
-  Args = SealSetBin(Args,"@pubder",derlen,derdata);
-  SealBase64Encode(SealSearch(Args,"@pubder"));
-
-  // pubKeyBin is the raw version for the pka digest
-  Args = SealSetBin(Args, "pubKeyBin", derlen, derdata);
-  BIO_free(bio);
-  return Args;
-} /* SealGetPublicKeyDER() */
-
-/**************************************
  SealSignLocal(): Sign data using the private key!
  If there is no @digest1, then set the signature size (@sigsize).
  If there is @digest1, then set the signature (@signature).
@@ -223,11 +201,6 @@ sealfield *	SealSignLocal	(sealfield *Args)
 
   // Keys must be loaded.
   if (!PrivateKey) { SealLoadPrivateKey(Args); }
-
-  // If inline, we need the public key in binary format.
-  if (SealSearch(Args,"inline") && !SealSearch(Args, "pubKeyBin")) {
-    Args = SealGetPublicKey(Args, PrivateKey);
-  }
 
   // Set the date string
   memset(datestr,0,30);
