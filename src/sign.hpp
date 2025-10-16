@@ -52,4 +52,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
 // Source References
 sealfield *     SealSrcGet      (sealfield *Args);
 void	SealSrcVerify	(sealfield *Args);
+
+// Inline Signing
+sealfield * SealGetPublicKey    (sealfield *Args);
 #endif

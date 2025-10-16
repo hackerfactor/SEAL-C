@@ -670,6 +670,10 @@ int main (int argc, char *argv[])
     {
     // Populate src
     Args = SealSrcGet(Args);
+    
+    // Handle getting the public key if inline signing
+    Args = SealGetPublicKey(Args);
+
     /*****
      When signing, no digest gets the size of the signature (@sigsize).
      This never changes between calls, so do it now.
