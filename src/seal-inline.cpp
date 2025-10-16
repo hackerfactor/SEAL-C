@@ -42,8 +42,7 @@ sealfield *	SealGetPublicKey	(sealfield *Args)
   if(!pk)
     {
     printf("    ERROR: Unable to retrieve public key for inline signing.\n");
-    printf("%s\n", SealGetText(Args,"dnsfile"));
-        printf("    %s\n", SealGetText(Args,"@error"));
+    printf("    %s\n", SealGetText(Args,"@error"));
     exit(0x80);
     } 
   Args = SealSetText(Args, "pk", pk);
