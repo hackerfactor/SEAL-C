@@ -519,10 +519,9 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
 
     // Decode the signature
     sigFormat = SealGetSF(SigFormat);
-    sealfield *sigbin = SealSearch(Rec, "@sigbin");
-    SealDecode(sigbin, sigFormat);
+    SealDecode(SealSearch(Rec, "@sigbin"), sigFormat);
 
-    if (sigbin->ValueLen < 1) 
+    if (SealSearch(Rec, "@sigbin")->ValueLen < 1) 
       {
       if (sigFormat == BASE64) 
         {
