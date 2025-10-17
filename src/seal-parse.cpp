@@ -664,7 +664,7 @@ SealSignatureFormat SealGetSF(const char* sf) {
         return BIN;
     }
     return INVALID; // Default for unknown formats/ no format
-}
+} /* SealGetSF() */
 
 /**************************************
  SealEncode(): Encode data based on the signature format.
@@ -687,7 +687,7 @@ void SealEncode(sealfield *data, SealSignatureFormat sf) {
         // Do nothing, already in binary or invalid format
         break;
     }
-}
+} /* SealEncode() */
 
 /**************************************
  SealDecode(): Decode data based on the signature format.
@@ -708,4 +708,4 @@ void SealDecode(sealfield *data, SealSignatureFormat sf) {
         // Do nothing, already in binary or invalid format
         break;
     }
-}
+} /* SealDecode */
