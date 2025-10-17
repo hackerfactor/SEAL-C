@@ -205,7 +205,7 @@ bool	SealProcessSrca	(char* srca, const EVP_MD* (**mdf)(void), SealSignatureForm
     }
 
   *Sf = SealGetSF(srcaSf);
-  if (*Sf == INVALID) // SealGetSF returns BIN for unsupported formats
+  if (*Sf == INVALID) // SealGetSF returns INVALID for unsupported formats
     {
     printf("ERROR: unknown signature format for srca (%s) in %s\n", srcaSf, srca);
     free(srcaCopy);
