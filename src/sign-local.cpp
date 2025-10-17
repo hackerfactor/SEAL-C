@@ -323,7 +323,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
         enclen = siglen; // bad choice
         break;
       case INVALID:
-        fprintf(stderr," ERROR: Invalid sf (%s).\n", sf);
+        fprintf(stderr," ERROR: Unknown signature format (%s).\n",sf);
         exit(0x80);
   }
   if (datestrlen) { enclen += datestrlen+1; } // "date:"
