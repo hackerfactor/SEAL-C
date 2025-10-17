@@ -55,4 +55,5 @@ void	SealSrcVerify	(sealfield *Args);
 
 // Inline Signing
 sealfield * SealGetPublicKey    (sealfield *Args);
+sealfield * SealInlineVerify    (sealfield *Args);
 #endif
