@@ -41,6 +41,7 @@
 #include "seal.hpp"
 #include "files.hpp"
 #include "seal-parse.hpp"
+#include "sign.hpp"
 
 enum SealSignatureFormat{
   HEX_LOWER,
@@ -218,11 +219,8 @@ bool	SealProcessSrca	(char* srca, const EVP_MD* (**mdf)(void), SealSignatureForm
   char* srcaCopy = strdup(srca);
   char* srcaDa = strtok(srcaCopy, ":");
   char* srcaSf = strtok(NULL, ":");
-  if (!strcmp(srcaDa,"sha224")) { *mdf = EVP_sha224; }
-  else if (!strcmp(srcaDa,"sha256")) { *mdf = EVP_sha256; }
-  else if (!strcmp(srcaDa,"sha384")) { *mdf = EVP_sha384; }
-  else if (!strcmp(srcaDa,"sha512")) { *mdf = EVP_sha512; }
-  else
+  *mdf = SealGetMdfFromString(srcaDa);
+  if (!*mdf)
     {
     free(srcaCopy);
     printf("ERROR: unknown srca algorithm (%s) in %s\n", srcaDa, srca);

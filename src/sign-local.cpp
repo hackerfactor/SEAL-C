@@ -253,11 +253,8 @@ sealfield *	SealSignLocal	(sealfield *Args)
 
   // Set the digest algorithm
   digestalg = SealGetText(Args,"da"); // SEAL's 'da' parameter
-  if (!strcmp(digestalg,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(digestalg,"sha256")) { mdf = EVP_sha256; } // default
-  else if (!strcmp(digestalg,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(digestalg,"sha512")) { mdf = EVP_sha512; }
-  else
+  mdf = SealGetMdfFromString(digestalg);
+  if (!mdf)
     {
     fprintf(stderr," ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
     exit(0x80);
@@ -602,4 +599,3 @@ void	SealGenerateKeys	(sealfield *Args)
   printf("Public DNS TXT value written to: %s\n",pubfile);
   EVP_PKEY_free(keypair);
 } /* SealGenerateKeys() */
-
