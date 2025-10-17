@@ -651,7 +651,7 @@ Done:
 
 /**************************************
  SealGetSF(): Given a signature format string, get the enum.
- Returns BIN on unsupported/unknown format.
+ Returns INVALID on unsupported/unknown format.
  **************************************/
 SealSignatureFormat SealGetSF(const char* sf) {
     if (strstr(sf, "base64")) {
