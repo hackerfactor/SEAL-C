@@ -459,6 +459,7 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
   char *SigFormat;
   char *Sig;
   size_t siglen,datelen=0;
+  SealSignatureFormat sigFormat;
 
   if (!Rec) // should never happen
     {
@@ -517,27 +518,24 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
     while((s->ValueLen > 1) && isspace(s->Value[s->ValueLen-1])) { s->ValueLen--; }
 
     // Decode the signature
-    if (strstr(SigFormat,"HEX") || strstr(SigFormat,"hex"))
+    sigFormat = SealGetSF(SigFormat);
+    sealfield *sigbin = SealSearch(Rec, "@sigbin");
+    SealDecode(sigbin, sigFormat);
+
+    if (sigbin->ValueLen < 1) 
       {
-      SealHexDecode(SealSearch(Rec,"@sigbin"));
-      if (SealGetSize(Rec,"@sigbin") < 1)
-	{
-	Rec = SealSetText(Rec,"@error","hex signature failed to decode");
-	}
-      }
-    else if (strstr(SigFormat,"base64"))
-      {
-      SealBase64Decode(SealSearch(Rec,"@sigbin"));
-      if (SealGetSize(Rec,"@sigbin") < 1)
-	{
-	Rec = SealSetText(Rec,"@error","base64 signature failed to decode");
-	}
-      }
-    else if (strstr(SigFormat,"bin")) { ; } // already handled
-    else
-      {
-      Rec = SealSetText(Rec,"@error","unsupported signature encoding");
-      }
+      if (sigFormat == BASE64) 
+        {
+        Rec = SealSetText(Rec, "@error", "base64 signature failed to decode");
+        } 
+      else if (sigFormat == HEX_LOWER || sigFormat == HEX_UPPER) 
+        {
+        Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
+        }
+    }
+    if (sigFormat == INVALID) {
+        Rec = SealSetText(Rec, "@error", "unsupported signature encoding");
+    }
 
     // To help with debugging
     sealfield *sf;

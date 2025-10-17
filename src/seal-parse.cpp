@@ -31,6 +31,8 @@
 #include "seal.hpp"
 #include "seal-parse.hpp"
 
+const char* SignatureFormats[] = {"HEX_LOWER", "HEX_UPPER", "BASE64", "BIN", "INVALID"};
+
 struct {
   int len;
   const char *code;
@@ -647,3 +649,63 @@ Done:
   return(Rec);
 } /* SealParse() */
 
+/**************************************
+ SealGetSF(): Given a signature format string, get the enum.
+ Returns BIN on unsupported/unknown format.
+ **************************************/
+SealSignatureFormat SealGetSF(const char* sf) {
+    if (strstr(sf, "base64")) {
+        return BASE64;
+    } else if (strstr(sf, "HEX")) {
+        return HEX_UPPER;
+    } else if (strstr(sf, "hex")) {
+        return HEX_LOWER;
+    } else if (strstr(sf, "bin")) {
+        return BIN;
+    }
+    return INVALID; // Default for unknown formats/ no format
+}
+
+/**************************************
+ SealEncode(): Encode data based on the signature format.
+ **************************************/
+void SealEncode(sealfield *data, SealSignatureFormat sf) {
+    if (!data) return;
+
+    switch (sf) {
+        case HEX_UPPER:
+            SealHexEncode(data, true);
+            break;
+        case HEX_LOWER:
+            SealHexEncode(data, false);
+            break;
+        case BASE64:
+            SealBase64Encode(data);
+            break;
+        case BIN:
+        case INVALID:
+            // Do nothing, already in binary or invalid format
+            break;
+    }
+}
+
+/**************************************
+ SealDecode(): Decode data based on the signature format.
+ **************************************/
+void SealDecode(sealfield *data, SealSignatureFormat sf) {
+    if (!data) return;
+
+    switch (sf) {
+        case HEX_UPPER:
+        case HEX_LOWER:
+            SealHexDecode(data);
+            break;
+        case BASE64:
+            SealBase64Decode(data);
+            break;
+        case BIN:
+        case INVALID:
+            // Do nothing, already in binary or invalid format
+            break;
+    }
+}
