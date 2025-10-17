@@ -670,22 +670,22 @@ SealSignatureFormat SealGetSF(const char* sf) {
  SealEncode(): Encode data based on the signature format.
  **************************************/
 void SealEncode(sealfield *data, SealSignatureFormat sf) {
-    if (!data) return;
+    if (!data) { return; }
 
     switch (sf) {
-        case HEX_UPPER:
-            SealHexEncode(data, true);
-            break;
-        case HEX_LOWER:
-            SealHexEncode(data, false);
-            break;
-        case BASE64:
-            SealBase64Encode(data);
-            break;
-        case BIN:
-        case INVALID:
-            // Do nothing, already in binary or invalid format
-            break;
+      case HEX_UPPER:
+        SealHexEncode(data, true);
+        break;
+      case HEX_LOWER:
+        SealHexEncode(data, false);
+        break;
+      case BASE64:
+        SealBase64Encode(data);
+        break;
+      case BIN:
+      case INVALID:
+        // Do nothing, already in binary or invalid format
+        break;
     }
 }
 
@@ -693,19 +693,19 @@ void SealEncode(sealfield *data, SealSignatureFormat sf) {
  SealDecode(): Decode data based on the signature format.
  **************************************/
 void SealDecode(sealfield *data, SealSignatureFormat sf) {
-    if (!data) return;
+    if (!data) { return; }
 
     switch (sf) {
-        case HEX_UPPER:
-        case HEX_LOWER:
-            SealHexDecode(data);
-            break;
-        case BASE64:
-            SealBase64Decode(data);
-            break;
-        case BIN:
-        case INVALID:
-            // Do nothing, already in binary or invalid format
-            break;
+      case HEX_UPPER:
+      case HEX_LOWER:
+        SealHexDecode(data);
+        break;
+      case BASE64:
+        SealBase64Decode(data);
+        break;
+      case BIN:
+      case INVALID:
+        // Do nothing, already in binary or invalid format
+        break;
     }
 }
