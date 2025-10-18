@@ -46,6 +46,22 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
 } /* RangeErrorCheck() */
 
 /**************************************
+ SealGetMdfFromString(): Given a digest algorithm name, get the EVP_MD function.
+ Defaults to sha256 when not specified
+ Returns NULL on unsupported algorithm.
+ **************************************/
+const EVP_MD* (*SealGetMdfFromString(const char *da))(void)
+{
+  if (!da || !strcmp(da,"sha256")) { return EVP_sha256; } // default
+  if (!strcmp(da,"sha224")) { return EVP_sha224; }
+  if (!strcmp(da,"sha384")) { return EVP_sha384; }
+  if (!strcmp(da,"sha512")) { return EVP_sha512; }
+  return NULL;
+} /* SealGetMdfFromString() */
+
+
+
+/**************************************
  SealDigest(): Given a file, compute the digest!
  This uses 'da', 'b', 's', and 'p' arguments.
  Computes the digest and stores binary data in @digest1.
@@ -81,13 +97,10 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
   /* Prepare the hasher! */
   const EVP_MD* (*mdf)(void);
   da = SealGetText(Rec,"da");
-  if (!da || !strcmp(da,"sha256")) { mdf = EVP_sha256; } // default
-  else if (!strcmp(da,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(da,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(da,"sha512")) { mdf = EVP_sha512; }
-  else
+  mdf = SealGetMdfFromString(da);
+  if (!mdf)
     {
-    //fprintf(stderr," ERROR: Unknown digest algorithm (da=%s).\n",da);
+    if (!da) { da = (char*)""; } // prevent crash
     Rec = SealSetText(Rec,"@error","Unknown digest algorithm (da=");
     Rec = SealAddText(Rec,"@error",da);
     Rec = SealAddText(Rec,"@error",")");
@@ -411,11 +424,8 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
     Rec = SealSetText(Rec,"da","sha256"); // default
     DigestAlg = SealGetText(Rec,"da");
     }
-  if (!strcmp(DigestAlg,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(DigestAlg,"sha256")) { mdf = EVP_sha256; } // default
-  else if (!strcmp(DigestAlg,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(DigestAlg,"sha512")) { mdf = EVP_sha512; }
-  else // should never happen
+  mdf = SealGetMdfFromString(DigestAlg);
+  if (!mdf) // should never happen
     {
     Rec = SealSetText(Rec,"@error","Unsupported digest algorithm (da=");
     Rec = SealAddText(Rec,"@error",DigestAlg);
@@ -460,4 +470,3 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
 
   return(Rec);
 } /* SealDoubleDigest() */
-

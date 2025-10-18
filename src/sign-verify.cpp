@@ -459,6 +459,7 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
   char *SigFormat;
   char *Sig;
   size_t siglen,datelen=0;
+  SealSignatureFormat sigFormat;
 
   if (!Rec) // should never happen
     {
@@ -517,27 +518,24 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
     while((s->ValueLen > 1) && isspace(s->Value[s->ValueLen-1])) { s->ValueLen--; }
 
     // Decode the signature
-    if (strstr(SigFormat,"HEX") || strstr(SigFormat,"hex"))
+    sigFormat = SealGetSF(SigFormat);
+    if (sigFormat == INVALID) 
       {
-      SealHexDecode(SealSearch(Rec,"@sigbin"));
-      if (SealGetSize(Rec,"@sigbin") < 1)
-	{
-	Rec = SealSetText(Rec,"@error","hex signature failed to decode");
-	}
+      Rec = SealSetText(Rec, "@error", "unsupported signature encoding");
       }
-    else if (strstr(SigFormat,"base64"))
+    SealDecode(SealSearch(Rec, "@sigbin"), sigFormat);
+
+    if (SealSearch(Rec, "@sigbin")->ValueLen < 1) 
       {
-      SealBase64Decode(SealSearch(Rec,"@sigbin"));
-      if (SealGetSize(Rec,"@sigbin") < 1)
-	{
-	Rec = SealSetText(Rec,"@error","base64 signature failed to decode");
-	}
-      }
-    else if (strstr(SigFormat,"bin")) { ; } // already handled
-    else
-      {
-      Rec = SealSetText(Rec,"@error","unsupported signature encoding");
-      }
+      if (sigFormat == BASE64) 
+        {
+        Rec = SealSetText(Rec, "@error", "base64 signature failed to decode");
+        } 
+      else if (sigFormat == HEX_LOWER || sigFormat == HEX_UPPER) 
+        {
+        Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
+        }
+    }
 
     // To help with debugging
     sealfield *sf;
@@ -667,11 +665,8 @@ sealfield *	SealValidateSig	(sealfield *Rec)
    *****/
 
   digestalg = SealGetText(Rec,"da"); // SEAL's 'da' parameter
-  if (!strcmp(digestalg,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(digestalg,"sha256")) { mdf = EVP_sha256; }
-  else if (!strcmp(digestalg,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(digestalg,"sha512")) { mdf = EVP_sha512; }
-  else
+  mdf = SealGetMdfFromString(digestalg);
+  if (!mdf)
 	{
 	fprintf(stderr," ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
 	exit(0x80);
@@ -973,4 +968,3 @@ sealfield *	SealVerifyBlock	(sealfield *Args,
 Abort:
   return(Args);
 } /* SealVerifyBlock() */
-

@@ -41,15 +41,7 @@
 #include "seal.hpp"
 #include "files.hpp"
 #include "seal-parse.hpp"
-
-enum SealSignatureFormat{
-  HEX_LOWER,
-  HEX_UPPER,
-  BASE64,
-  BIN
-};
-
-const char* SignatureFormats[] = {"HEX_LOWER", "HEX_UPPER", "BASE64", "BIN"};
+#include "sign.hpp"
 
 /**************************************
  SealCurlSrcCallback(): Process URL results.
@@ -73,23 +65,9 @@ char*   SealFinalizeDigest(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureForm
   Args = SealAlloc(Args,"@srcdCalc",mdsize,'b'); // binary digest
   EVP_DigestFinal(ctx64,SealSearch(Args,"@srcdCalc")->Value,&mdsize); // store the digest
   EVP_MD_CTX_free(ctx64);
+
   // Re-encode digest from binary to expected srca format.
-  switch(Sf){
-    case BIN:
-      break; // already binary
-    case HEX_UPPER:
-      SealHexEncode(SealSearch(Args,"@srcdCalc"), true);
-      break;
-    case HEX_LOWER:
-      SealHexEncode(SealSearch(Args,"@srcdCalc"), false);
-      break;
-    case BASE64:
-      SealBase64Encode(SealSearch(Args,"@srcdCalc"));
-      break;
-    default:
-      fprintf(stderr, "ERROR: Unsupported Seal signature format.\n");
-      exit(0x80);
-  }
+  SealEncode(SealSearch(Args, "@srcdCalc"), Sf);
 
   return SealGetText(Args,"@srcdCalc");
 } /* SealFinalizeDigest() */
@@ -218,28 +196,21 @@ bool	SealProcessSrca	(char* srca, const EVP_MD* (**mdf)(void), SealSignatureForm
   char* srcaCopy = strdup(srca);
   char* srcaDa = strtok(srcaCopy, ":");
   char* srcaSf = strtok(NULL, ":");
-  if (!strcmp(srcaDa,"sha224")) { *mdf = EVP_sha224; }
-  else if (!strcmp(srcaDa,"sha256")) { *mdf = EVP_sha256; }
-  else if (!strcmp(srcaDa,"sha384")) { *mdf = EVP_sha384; }
-  else if (!strcmp(srcaDa,"sha512")) { *mdf = EVP_sha512; }
-  else
+  *mdf = SealGetMdfFromString(srcaDa);
+  if (!*mdf)
     {
     free(srcaCopy);
     printf("ERROR: unknown srca algorithm (%s) in %s\n", srcaDa, srca);
     return false;
     }
 
-  if (!strcmp(srcaSf,"base64")) { *Sf = BASE64; }
-  else if (!strcmp(srcaSf,"hex")) { *Sf = HEX_LOWER; }
-  else if (!strcmp(srcaSf,"HEX")) { *Sf = HEX_UPPER; }
-  else if (!strcmp(srcaSf,"bin")) { *Sf = BIN; }
-  else // unsupported
+  *Sf = SealGetSF(srcaSf);
+  if (*Sf == INVALID) // SealGetSF returns INVALID for unsupported formats
     {
     printf("ERROR: unknown signature format for srca (%s) in %s\n", srcaSf, srca);
     free(srcaCopy);
     return false;
     }
-
   free(srcaCopy);
   return true;
 } /* SealProcessSrca() */
