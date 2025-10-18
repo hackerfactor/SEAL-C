@@ -403,38 +403,19 @@ void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf)
 } /* PrintDNSstring() */
 
 /**************************************
- SealGenerateKeys(): Create the public and private keys!
- Depends on OpenSSL 3.x.
+ SealGenerateKeyPrivate(): Create the private key.
+ Stores the key in keyfile.
+ Returns: keypair handle on success, NULL on failure.
+ (exits on failure.)
  **************************************/
-void	SealGenerateKeys	(sealfield *Args)
+EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
 {
-  // Get the algorithm and bits.
-  FILE *fp;
   sealfield *vf;
-  EVP_PKEY_CTX *pctx=NULL;
+  EVP_PKEY_CTX *pctx = NULL;
+  OSSL_ENCODER_CTX *encoder = NULL;
   EVP_PKEY *keypair = NULL;
-  OSSL_ENCODER_CTX *encoder=NULL;
   unsigned int Bits;
-  char *keyfile=NULL, *pubfile=NULL;
-
-  vf = SealSearch(Args,"keybits");
-  if (!vf) { Bits=2048; }
-  else { Bits = atoi((char*)(vf->Value)); }
-  // Bits size is already validated
-
-  vf = SealSearch(Args,"dnsfile");
-  if (!vf || !vf->ValueLen)
-    {
-    fprintf(stderr," ERROR: dnsfile (-D) must be set.\n");
-    exit(0x80);
-    }
-  pubfile = (char*)vf->Value;
-  // No overwrite!
-  if (access(pubfile,F_OK)==0)
-    {
-    fprintf(stderr," ERROR: dnsfile (%s) already exists. Overwriting prohibited. Aborting..\n",pubfile);
-    exit(0x80);
-    }
+  char *keyfile;
 
   vf = SealSearch(Args,"keyfile");
   if (!vf || !vf->ValueLen)
@@ -443,20 +424,40 @@ void	SealGenerateKeys	(sealfield *Args)
     exit(0x80);
     }
   keyfile = (char*)vf->Value;
-  // No overwrite!
-  if (access(keyfile,F_OK)==0)
+
+  vf = SealSearch(Args,"keybits");
+  if (!vf) { Bits=2048; }
+  else { Bits = atoi((char*)(vf->Value)); }
+  // Bits size is already validated
+
+  vf = SealSearch(Args,"ka");
+  if (!vf)
     {
-    fprintf(stderr," ERROR: keyfile (%s) already exists. Overwriting prohibited. Aborting..\n",keyfile);
+    fprintf(stderr," ERROR: key algorithm (-ka) not defined. Aborting.\n");
     exit(0x80);
     }
 
+  //===========================================
   // If support for other algorithms is added, do it here.
-  // For now, only supporing RSA.
-  // Generate the key
+  //===========================================
 
-  vf = SealSearch(Args,"ka");
-  if (!vf) { keypair=NULL; }
-  else if (!strcmp((char*)(vf->Value),"rsa"))
+  // For now, supporing RSA by default.
+
+  // If the keyfile exists, re-use it.
+  if (access(keyfile,F_OK)==0)
+    {
+    keypair = SealLoadPrivateKey(Args);
+    if (!keypair)
+      {
+      fprintf(stderr," ERROR: keyfile (%s) already exists and cannot be loaded. Aborting.\n",keyfile);
+      exit(0x80);
+      }
+    printf("Private key loaded from: %s\n",keyfile);
+    return(keypair);
+    }
+
+  // Generate the key
+  if (!strcmp((char*)(vf->Value),"rsa"))
     {
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
     if (!pctx ||
@@ -529,8 +530,11 @@ void	SealGenerateKeys	(sealfield *Args)
 	}
     }
   if (pwd && FreePwd) { free(pwd); }
-  }
+  } // apply password
 
+  // Save new private key file
+  {
+  FILE *fp;
   fp = fopen(keyfile,"wb");
   if (!fp)
     {
@@ -545,7 +549,42 @@ void	SealGenerateKeys	(sealfield *Args)
     }
 
   fclose(fp);
+  printf("Private key written to: %s\n",keyfile);
+  } // save file
+
   OSSL_ENCODER_CTX_free(encoder);
+  return(keypair);
+} /* SealGenerateKeyPrivate() */
+
+/**************************************
+ SealGenerateKeys(): Create the public and private keys!
+ Depends on OpenSSL 3.x.
+ **************************************/
+void	SealGenerateKeys	(sealfield *Args)
+{
+  // Get the algorithm and bits.
+  FILE *fp;
+  sealfield *vf;
+  EVP_PKEY *keypair = NULL;
+  OSSL_ENCODER_CTX *encoder = NULL;
+  char *pubfile=NULL;
+
+  vf = SealSearch(Args,"dnsfile");
+  if (!vf || !vf->ValueLen)
+    {
+    fprintf(stderr," ERROR: dnsfile (-D) must be set.\n");
+    exit(0x80);
+    }
+  pubfile = (char*)vf->Value;
+  // No overwrite!
+  if (access(pubfile,F_OK)==0)
+    {
+    fprintf(stderr," ERROR: dnsfile (%s) already exists. Overwriting prohibited. Aborting..\n",pubfile);
+    exit(0x80);
+    }
+
+  // Load or generate the private key.
+  keypair = SealGenerateKeyPrivate(Args);
 
   // Save public key as DER!
   encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair,
@@ -598,8 +637,7 @@ void	SealGenerateKeys	(sealfield *Args)
   fprintf(fp,"\n");
   fclose(fp);
 
-  printf("Private key written to: %s\n",keyfile);
   printf("Public DNS TXT value written to: %s\n",pubfile);
-  EVP_PKEY_free(keypair);
+  SealFreePrivateKey();
 } /* SealGenerateKeys() */
 
