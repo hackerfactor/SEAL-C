@@ -519,6 +519,10 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
 
     // Decode the signature
     sigFormat = SealGetSF(SigFormat);
+    if (sigFormat == INVALID) 
+      {
+      Rec = SealSetText(Rec, "@error", "unsupported signature encoding");
+      }
     SealDecode(SealSearch(Rec, "@sigbin"), sigFormat);
 
     if (SealSearch(Rec, "@sigbin")->ValueLen < 1) 
@@ -531,9 +535,6 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
         {
         Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
         }
-    }
-    if (sigFormat == INVALID) {
-        Rec = SealSetText(Rec, "@error", "unsupported signature encoding");
     }
 
     // To help with debugging
