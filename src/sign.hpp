@@ -29,6 +29,7 @@ sealfield *	SealRecord	(sealfield *Args);
 
 // Compute digest
 sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre);
+const EVP_MD* (*SealGetMdfFromString(const char *da))(void);
 sealfield *	SealDoubleDigest	(sealfield *Rec);
 
 // Sign (generic)

@@ -191,6 +191,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
   EVP_PKEY_CTX *ctx;
   const EVP_MD* (*mdf)(void);
   char *digestalg=NULL;
+  SealSignatureFormat sigFormat;
   char *sf; // signing format (date, hex, whatever)
   char *keyalg; // rsa or ec
   char datestr[30], *s;
@@ -253,11 +254,8 @@ sealfield *	SealSignLocal	(sealfield *Args)
 
   // Set the digest algorithm
   digestalg = SealGetText(Args,"da"); // SEAL's 'da' parameter
-  if (!strcmp(digestalg,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(digestalg,"sha256")) { mdf = EVP_sha256; } // default
-  else if (!strcmp(digestalg,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(digestalg,"sha512")) { mdf = EVP_sha512; }
-  else
+  mdf = SealGetMdfFromString(digestalg);
+  if (!mdf)
     {
     fprintf(stderr," ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
     exit(0x80);
@@ -310,20 +308,24 @@ sealfield *	SealSignLocal	(sealfield *Args)
    Convert it to the output format.
    Binary signature is stored in sig!
    *****/
+  sigFormat = SealGetSF(sf);
   enclen=0;
-  if (strstr(sf,"base64"))
-    {
-    // base64 is a 4/3 expansion with padding to a multiple of 4
-    enclen = ((siglen+2)/3) * 4;
-    }
-  else if (strstr(sf,"bin")) { enclen = siglen; } // bad choice
-  else if (strstr(sf,"hex")) { enclen = siglen*2; }
-  else if (strstr(sf,"HEX")) { enclen = siglen*2; }
-  else
-    {
-    fprintf(stderr," ERROR: Unknown signature format (%s).\n",sf);
-    exit(0x80);
-    }
+  switch(sigFormat) {
+      case BASE64:
+        // base64 is a 4/3 expansion with padding to a multiple of 4
+        enclen = ((siglen+2)/3) * 4;
+        break;
+      case HEX_UPPER:
+      case HEX_LOWER:
+        enclen = siglen*2;
+        break;
+      case BIN:
+        enclen = siglen; // bad choice
+        break;
+      case INVALID:
+        fprintf(stderr," ERROR: Unknown signature format (%s).\n",sf);
+        exit(0x80);
+  }
   if (datestrlen) { enclen += datestrlen+1; } // "date:"
   Args = SealSetU32index(Args,"@sigsize",0,enclen);
 
@@ -348,10 +350,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
 
     // Encode the signature
     Args = SealCopy(Args,"@enc","@signaturebin");
-    if (strstr(sf,"base64")) { SealBase64Encode(SealSearch(Args,"@enc")); }
-    else if (strstr(sf,"hex")) { SealHexEncode(SealSearch(Args,"@enc"),false); }
-    else if (strstr(sf,"HEX")) { SealHexEncode(SealSearch(Args,"@enc"),true); }
-    // else if (strstr(sf,"bin")) { ; } /* Already handled */
+    SealEncode(SealSearch(Args, "@enc"), sigFormat);
 
     // Set the date as needed
     if (datestrlen)
@@ -403,38 +402,19 @@ void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf)
 } /* PrintDNSstring() */
 
 /**************************************
- SealGenerateKeys(): Create the public and private keys!
- Depends on OpenSSL 3.x.
+ SealGenerateKeyPrivate(): Create the private key.
+ Stores the key in keyfile.
+ Returns: keypair handle on success, NULL on failure.
+ (exits on failure.)
  **************************************/
-void	SealGenerateKeys	(sealfield *Args)
+EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
 {
-  // Get the algorithm and bits.
-  FILE *fp;
   sealfield *vf;
-  EVP_PKEY_CTX *pctx=NULL;
+  EVP_PKEY_CTX *pctx = NULL;
+  OSSL_ENCODER_CTX *encoder = NULL;
   EVP_PKEY *keypair = NULL;
-  OSSL_ENCODER_CTX *encoder=NULL;
   unsigned int Bits;
-  char *keyfile=NULL, *pubfile=NULL;
-
-  vf = SealSearch(Args,"keybits");
-  if (!vf) { Bits=2048; }
-  else { Bits = atoi((char*)(vf->Value)); }
-  // Bits size is already validated
-
-  vf = SealSearch(Args,"dnsfile");
-  if (!vf || !vf->ValueLen)
-    {
-    fprintf(stderr," ERROR: dnsfile (-D) must be set.\n");
-    exit(0x80);
-    }
-  pubfile = (char*)vf->Value;
-  // No overwrite!
-  if (access(pubfile,F_OK)==0)
-    {
-    fprintf(stderr," ERROR: dnsfile (%s) already exists. Overwriting prohibited. Aborting..\n",pubfile);
-    exit(0x80);
-    }
+  char *keyfile;
 
   vf = SealSearch(Args,"keyfile");
   if (!vf || !vf->ValueLen)
@@ -443,20 +423,40 @@ void	SealGenerateKeys	(sealfield *Args)
     exit(0x80);
     }
   keyfile = (char*)vf->Value;
-  // No overwrite!
-  if (access(keyfile,F_OK)==0)
+
+  vf = SealSearch(Args,"keybits");
+  if (!vf) { Bits=2048; }
+  else { Bits = atoi((char*)(vf->Value)); }
+  // Bits size is already validated
+
+  vf = SealSearch(Args,"ka");
+  if (!vf)
     {
-    fprintf(stderr," ERROR: keyfile (%s) already exists. Overwriting prohibited. Aborting..\n",keyfile);
+    fprintf(stderr," ERROR: key algorithm (-ka) not defined. Aborting.\n");
     exit(0x80);
     }
 
+  //===========================================
   // If support for other algorithms is added, do it here.
-  // For now, only supporing RSA.
-  // Generate the key
+  //===========================================
 
-  vf = SealSearch(Args,"ka");
-  if (!vf) { keypair=NULL; }
-  else if (!strcmp((char*)(vf->Value),"rsa"))
+  // For now, supporing RSA by default.
+
+  // If the keyfile exists, re-use it.
+  if (access(keyfile,F_OK)==0)
+    {
+    keypair = SealLoadPrivateKey(Args);
+    if (!keypair)
+      {
+      fprintf(stderr," ERROR: keyfile (%s) already exists and cannot be loaded. Aborting.\n",keyfile);
+      exit(0x80);
+      }
+    printf("Private key loaded from: %s\n",keyfile);
+    return(keypair);
+    }
+
+  // Generate the key
+  if (!strcmp((char*)(vf->Value),"rsa"))
     {
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
     if (!pctx ||
@@ -529,8 +529,11 @@ void	SealGenerateKeys	(sealfield *Args)
 	}
     }
   if (pwd && FreePwd) { free(pwd); }
-  }
+  } // apply password
 
+  // Save new private key file
+  {
+  FILE *fp;
   fp = fopen(keyfile,"wb");
   if (!fp)
     {
@@ -545,7 +548,42 @@ void	SealGenerateKeys	(sealfield *Args)
     }
 
   fclose(fp);
+  printf("Private key written to: %s\n",keyfile);
+  } // save file
+
   OSSL_ENCODER_CTX_free(encoder);
+  return(keypair);
+} /* SealGenerateKeyPrivate() */
+
+/**************************************
+ SealGenerateKeys(): Create the public and private keys!
+ Depends on OpenSSL 3.x.
+ **************************************/
+void	SealGenerateKeys	(sealfield *Args)
+{
+  // Get the algorithm and bits.
+  FILE *fp;
+  sealfield *vf;
+  EVP_PKEY *keypair = NULL;
+  OSSL_ENCODER_CTX *encoder = NULL;
+  char *pubfile=NULL;
+
+  vf = SealSearch(Args,"dnsfile");
+  if (!vf || !vf->ValueLen)
+    {
+    fprintf(stderr," ERROR: dnsfile (-D) must be set.\n");
+    exit(0x80);
+    }
+  pubfile = (char*)vf->Value;
+  // No overwrite!
+  if (access(pubfile,F_OK)==0)
+    {
+    fprintf(stderr," ERROR: dnsfile (%s) already exists. Overwriting prohibited. Aborting..\n",pubfile);
+    exit(0x80);
+    }
+
+  // Load or generate the private key.
+  keypair = SealGenerateKeyPrivate(Args);
 
   // Save public key as DER!
   encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair,
@@ -598,8 +636,6 @@ void	SealGenerateKeys	(sealfield *Args)
   fprintf(fp,"\n");
   fclose(fp);
 
-  printf("Private key written to: %s\n",keyfile);
   printf("Public DNS TXT value written to: %s\n",pubfile);
-  EVP_PKEY_free(keypair);
+  SealFreePrivateKey();
 } /* SealGenerateKeys() */
-

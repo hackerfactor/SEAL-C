@@ -15,6 +15,8 @@
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "ns_parse.hpp"
+
 // Cygwin does not provide the needed symbols from <nameser.h>
 // Therefore, we include our own copy.
 #ifdef __CYGWIN__

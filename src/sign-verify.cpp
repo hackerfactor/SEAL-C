@@ -25,6 +25,7 @@
 
 // for SEAL
 #include "seal.hpp"
+#include "seal-dns.hpp"
 #include "seal-parse.hpp"
 #include "sign.hpp"
 #include "files.hpp"
@@ -195,263 +196,12 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 #pragma GCC visibility pop
 
 /********************************************************
- SealGetDNSfile(): Given a file that goes to DNS, use it.
- ********************************************************/
-sealfield *	SealGetDNSfile	(sealfield *Rec)
-{
-  sealfield *R, *Reply;
-  mmapfile *Mmap;
-  const char *fname;
-
-  fname = SealGetText(Rec,"dnsfile");
-  if (!fname || !fname[0]) { return(NULL); }
-
-  Mmap = MmapFile(fname,PROT_READ);
-  if (!Mmap) { return(NULL); }
-
-  size_t len;
-  for(len=Mmap->memsize; len > 0; len--)
-    {
-    if (!isspace(Mmap->mem[len-1])) { break; }
-    }
-
-  R = NULL;
-  R = SealSetText(R,"@dns","<seal ");
-  R = SealAddBin(R,"@dns",len,Mmap->mem);
-  R = SealAddText(R,"@dns"," />");
-  Reply = SealParse(R->ValueLen,R->Value,0,NULL);
-  SealFree(R);
-  MmapFree(Mmap);
-
-  Reply = SealMove(Reply,"@public","p");
-  for(R=Reply; R; R=R->Next)
-    {
-    if (!strcmp(R->Field,"@RecEnd")) { continue; }
-    Rec = SealCopy2(Rec,R->Field,R,R->Field);
-    }
-  SealFree(Reply);
-
-  return(Rec);
-} /* SealGetDNSfile() */
-
-/********************************************************
- SealGetDNS(): Given a hostname, get the first matching key from DNS.
- Returns: Public key in '@public', revoke in '@revoke'.
- Errors are detailed in '@error'
- ********************************************************/
-sealfield *	SealGetDNS	(sealfield *Rec)
-{
-  char *Domain;
-  if (!Rec) { return(Rec); } // must be defined
-  if (!SealSearch(Rec,"uid")) { Rec=SealSetText(Rec,"uid",""); } // default uid
-  if (!SealSearch(Rec,"kv")) { Rec=SealSetText(Rec,"kv","1"); } // default key version
-
-  // For speed: Check if the same DNS key exists
-  Rec = SealCopy(Rec,"@dnscache","seal");
-  Rec = SealAddText(Rec,"@dnscache",":");
-  Rec = SealAddText(Rec,"@dnscache",SealGetText(Rec,"d"));
-  Rec = SealAddText(Rec,"@dnscache",":");
-  Rec = SealAddText(Rec,"@dnscache",SealGetText(Rec,"kv"));
-  Rec = SealAddText(Rec,"@dnscache",":");
-  Rec = SealAddText(Rec,"@dnscache",SealGetText(Rec,"ka"));
-  Rec = SealAddText(Rec,"@dnscache",":");
-  Rec = SealAddText(Rec,"@dnscache",SealGetText(Rec,"uid"));
-  if (!SealCmp(Rec,"@dnscache","@dnscachelast"))
-	{
-	return(Rec);
-	}
-
-  // Prepare for new DNS lookup
-  Rec = SealMove(Rec,"@dnscachelast","@dnscache");
-  Rec = SealDel(Rec,"@public");
-  Rec = SealDel(Rec,"@publicbin");
-  Rec = SealDel(Rec,"@revoke");
-  Domain = SealGetText(Rec,"d"); // must be defined
-  if (!Domain || !Domain[0])
-    {
-    Rec = SealSetText(Rec,"@error","no domain specified");
-    return(Rec);
-    }
-
-  // Do the DNS query!
-  sealfield *vf, *Reply=NULL;
-  sealfield *vBuf=NULL;
-  unsigned char Buffer[16384]; // permit 16K buffer for DNS reply (should be overkill)
-  const char *s;
-  int Txti; // DNS unparsed (input) TXT as offset into Buffer
-  int size;
-  ns_msg nsMsg;
-  ns_rr rr; // dns response record
-  struct __res_state dnsstate;
-  int MsgMax, count, c;
-
-  // Check for static file
-  Reply = SealGetDNSfile(Rec);
-  if (Reply) { return(Reply); }
-
-  // Do DNS
-  memset(&dnsstate, 0, sizeof(dnsstate));
-  if (res_ninit(&dnsstate) < 0)
-    {
-    // Should never happen
-    fprintf(stderr," ERROR: Unable to initialize DNS lookup. Aborting.\n");
-    exit(0x80);
-    }
-
-  memset(&Buffer, 0, 16384);
-  MsgMax = res_nquery(&dnsstate, Domain, C_IN, T_TXT, Buffer, 16384-1);
-  if (MsgMax > 0) // found something!
-    {
-    /*****
-     Parse the record
-     DNS uses pascal strings: 1 byte length + data
-
-     Okay, so I asked for TXT records (res_nquery T_TXT).
-     But the DNS server can return ANYTHING.
-
-     There are four sections in the reply message:
-       QUERY, ANSWER, AUTHORITY, and ADDITIONAL.
-     Each says how many records they can return.
-     I only care about the ANSWER section (ns_s_an).
-     1. Find out how many answers (ns_msg_count with ns_s_an).
-     2. For each answer, make sure the format is valid and it's a TXT.
-	Skip anything else.
-     3. DNS replies use a simple "reuse" approach to reduce the reply size.
-	(They call it "compressed" but it's not compressed in the traditional sense.)
-	The values are stored in a pascal string:
-	  1 byte length + data
-	A long value may be: 1 data 1 data 1 data 0
-	But let's say that two records return similar strings, like
-	"host1.hackerfactor.com" and "host2.hackerfactor.com".
-	Then it can store a pointer to previous content.
-	E.g.:
-	  5 "host1" 17 ".hackerfactor.com" 0
-	  5 "host2" 0xc0 jump to previous 17 ".hackerfactor.com" 0
-
-     You can either try parsing this manually, or use the undocumented
-     ns_name_uncompress() function. (undocumented because there's no
-     man-page for it; never has been since the internet was a baby, and
-     it may not exist on every platform).
-
-     I use a sealfield and just append text to it.
-     To stop infinite loops, I stop at 4K (+/- 256).
-     *****/
-    if (ns_initparse(Buffer, MsgMax, &nsMsg)) { goto Done; } // failed?
-    // How many ANSWER replies?
-    count = ns_msg_count(nsMsg, ns_s_an);
-    for(c=0; c < count; c++)
-      {
-      if (ns_parserr(&nsMsg,ns_s_an,c,&rr)) { continue; } // if failed to parse
-      if (ns_rr_type(rr) != ns_t_txt) { continue; } // must be TXT
-
-      if (Reply) { SealFree(Reply); Reply=NULL; }
-      if (vBuf) { SealFree(vBuf); vBuf=NULL; }
-
-      // ns_rr_rdata returns length + string
-      // Find text position as offset into Buffer
-      s = (const char *)ns_rr_rdata(rr);
-      if (!s) { continue; } // bad data
-
-      vBuf = SealSetText(vBuf,"r","<seal ");
-      Txti = (unsigned char*)s - Buffer; // s is located somewhere in Buffer; Txti is the offset
-      while((Txti < MsgMax) && (SealGetSize(vBuf,"r") < 4096))
-	{
-	size = Buffer[Txti]; Txti++;
-	if (size <= 0) { break; } // no more data
-	else if ((size & 0xf0) == 0xc0) // it's a jump!
-	  {
-	  if (Txti+1 >= MsgMax) { break; } // overflow
-	  Txti = ((size & 0x3f) << 8) | Buffer[Txti]; // find the offset
-	  continue;
-	  }
-	else if (Txti+size > MsgMax) { break; } // read overflow
-	vBuf = SealAddTextLen(vBuf,"r",size,(const char*)Buffer+Txti);
-	Txti += size;
-	if (size < 0xff) { break; }
-	}
-      vBuf = SealAddText(vBuf,"r"," />");
-
-      // Now I have something in vBuf['r']that looks like "<seal DNS />"
-      // Check for SEAL record: must begin with "seal="
-      s = SealGetText(vBuf,"r");
-      if (strncmp(s+6,"seal=",5)) { SealFree(vBuf); vBuf=NULL; continue; }
-
-      // Parse the DNS record!
-      Reply = SealParse(SealGetSize(vBuf,"r"),(byte*)s,0,NULL);
-      SealFree(vBuf); vBuf=NULL;
-      if (!Reply) { SealFree(Reply); Reply=NULL; continue; } // failed to parse
-
-      // Set defaults
-      if (!SealSearch(Reply,"p")) { SealFree(Reply); Reply=NULL; continue; } // no public key!
-      while(SealGetSize(Reply,"p")%4) { Reply=SealAddC(Reply,"p",'='); } // base64 padding
-      if (!SealSearch(Reply,"kv")) { Reply=SealSetText(Reply,"kv","1"); }
-      if (!SealSearch(Reply,"uid")) { Reply=SealSetText(Reply,"uid",""); }
-
-      // Does it match the type of key I want?
-      if (SealCmp2(Rec,"seal",Reply,"seal") ||
-	  SealCmp2(Rec,"kv",Reply,"kv") ||
-	  SealCmp2(Rec,"ka",Reply,"ka") ||
-	  SealCmp2(Rec,"uid",Reply,"uid"))
-	  { SealFree(Reply); Reply=NULL; continue; } // not a match!
-
-      /*****
-       The signature may include a date, such as 202409051239.
-       Revocation may include a date in ISO 8601.
-       E.g., 2024-04-09T05:12:39
-       Reduce any revocation to numeric-only.
-       *****/
-
-      // Set any default revokes
-      vf = SealSearch(Reply,"p");
-      // If public key doesn't exist or is empty or is 'revoke'
-      if (!vf || !vf->ValueLen || !strcmp((char*)vf->Value,"revoke"))
-	 {
-	 // No public key for validation any pre-revocation.
-	 // Thus, it is always revoked.
-	 Reply = SealSetText(Reply,"r","0"); // always revoked
-	 }
-      else
-	{
-	Rec = SealSetText(Rec,"@public",(char*)vf->Value);
-	}
-
-      vf = SealSearch(Reply,"r");
-      if (vf)
-	{
-	size_t a,b;
-	for(a=b=0; a < vf->ValueLen; a++)
-	  {
-	  if (!isdigit(vf->Value[a])) { continue; }
-	  if (a==b) { continue; }
-	  vf->Value[b]=vf->Value[a];
-	  b++;
-	  }
-	if (b < vf->ValueLen)
-	  {
-	  memset(vf->Value+b,0,vf->ValueLen - b);
-	  vf->ValueLen = b;
-	  }
-	Rec = SealSetText(Rec,"@revoke",(char*)vf->Value);
-	}
-      goto Done; // Found a result!
-      } // foreach dns record
-    } // if dns reply
-
-Done:
-  res_nclose(&dnsstate);
-  if (Reply) { SealFree(Reply); }
-  return(Rec);
-} /* SealGetDNS() */
-
-/********************************************************
- SealValidateDecodeParts(): Given seal record with signature,
- decode the signature and finalize the digest.
+ SealValidateDecodeParts(): Given seal record with signature, decode the signature.
+ NOTE: This does NOT check the crypto!
  Returns: Errors are detailed in '@error'
  On success:
    Decoded signature is in '@sigbin'
    Any timestamp is in '@sigdate'
-   Decoded digest is in '@digestbin'
-   Decoded public key is in '@publicbin'
    and no '@error'
  ********************************************************/
 sealfield *	SealValidateDecodeParts	(sealfield *Rec)
@@ -459,6 +209,7 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
   char *SigFormat;
   char *Sig;
   size_t siglen,datelen=0;
+  SealSignatureFormat sigFormat;
 
   if (!Rec) // should never happen
     {
@@ -517,46 +268,30 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
     while((s->ValueLen > 1) && isspace(s->Value[s->ValueLen-1])) { s->ValueLen--; }
 
     // Decode the signature
-    if (strstr(SigFormat,"HEX") || strstr(SigFormat,"hex"))
+    sigFormat = SealGetSF(SigFormat);
+    if (sigFormat == INVALID) 
       {
-      SealHexDecode(SealSearch(Rec,"@sigbin"));
-      if (SealGetSize(Rec,"@sigbin") < 1)
-	{
-	Rec = SealSetText(Rec,"@error","hex signature failed to decode");
-	}
+      Rec = SealSetText(Rec, "@error", "unsupported signature encoding");
       }
-    else if (strstr(SigFormat,"base64"))
+    SealDecode(SealSearch(Rec, "@sigbin"), sigFormat);
+
+    if (SealSearch(Rec, "@sigbin")->ValueLen < 1) 
       {
-      SealBase64Decode(SealSearch(Rec,"@sigbin"));
-      if (SealGetSize(Rec,"@sigbin") < 1)
-	{
-	Rec = SealSetText(Rec,"@error","base64 signature failed to decode");
-	}
-      }
-    else if (strstr(SigFormat,"bin")) { ; } // already handled
-    else
-      {
-      Rec = SealSetText(Rec,"@error","unsupported signature encoding");
-      }
+      if (sigFormat == BASE64) 
+        {
+        Rec = SealSetText(Rec, "@error", "base64 signature failed to decode");
+        } 
+      else if (sigFormat == HEX_LOWER || sigFormat == HEX_UPPER) 
+        {
+        Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
+        }
+    }
 
     // To help with debugging
     sealfield *sf;
     sf = SealSearch(Rec,"@sigbin");
     if (sf) { sf->Type = 'x'; }
     } // decode to binary
-
-  /*****
-   Decode the public key to binary
-   *****/
-  if (SealSearch(Rec,"@public"))
-    {
-    Rec = SealCopy(Rec,"@publicbin","@public");
-    SealBase64Decode(SealSearch(Rec,"@publicbin"));
-    if (SealGetSize(Rec,"@publicbin") <= 0)
-	{
-	Rec = SealSetText(Rec,"@error","signature failed to base64 decode");
-	}
-    }
 
   return(Rec);
 } /* SealValidateDecodeParts() */
@@ -567,26 +302,28 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
  Returns: Errors are detailed in '@error'
  On success, decoded signature is in '@sigbin' (and not '@error').
  ********************************************************/
-sealfield *	SealValidateRevoke	(sealfield *Rec)
+sealfield *	SealValidateRevoke	(sealfield *Rec, sealfield *dnstxt)
 {
   bool IsInvalid=false;
   char *SigDate;
   char *Sig;
   char *Revoke;
   char *Public;
+  char *PublicDigest;
 
-  if (!Rec) // should never happen
+  if (!Rec || !dnstxt) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no record to check");
     return(Rec);
     }
 
-  Revoke = SealGetText(Rec,"r");
+  Revoke = SealGetText(dnstxt,"r");
+  Public = SealGetText(dnstxt,"p");
+  PublicDigest = SealGetText(dnstxt,"pkd");
   SigDate = SealGetText(Rec,"@sigdate"); // may not exist
   Sig = SealGetText(Rec,"s");
-  Public = SealGetText(Rec,"@public");
 
-  // Verify that components exist
+  // Verify that components exist (should already be set)
   if (!Sig || !Sig[0])
     {
     Rec = SealSetText(Rec,"@error","no signature found");
@@ -595,12 +332,12 @@ sealfield *	SealValidateRevoke	(sealfield *Rec)
 
   /*****
    Multiple conditions and revoke methods.
-   1. If there's an "r=", then it's probably revoked.
+   1. If there's a DNS "r=", then it's probably revoked.
       Check the date.
       - If there is no date in the sig, then it's revoked.
       - If there is a date and it's newer than r=, then it's revoked.
       - If there is a date and the sig is older, then it's valid.
-   2. No r=?  If there is no DNS entry, then it cannot ve validated.
+   2. No r=?  If there is no DNS entry, then it cannot be validated.
       This isn't revoked; this is unknown.
    3. No r= and public key is not defined
       This isn't revoked; this is unknown.
@@ -624,9 +361,11 @@ sealfield *	SealValidateRevoke	(sealfield *Rec)
     // If revoked finished early, then it's not revoked!
     }
   else if (Revoke) { IsInvalid=true; }
-  else if (!Public) { ; } // no public defined means cannot verify
-  else if (!Public[0]) { IsInvalid=true; } // revoked
-  else if (!strcasecmp(Public,"revoke")) { IsInvalid=true; } // revoked
+  // If p or pkd is set to an empty string, then that is a revoke
+  else if (Public && !strcasecmp(Public,"revoke")) { IsInvalid=true; } // revoked (explicit)
+  else if (PublicDigest && !strcasecmp(PublicDigest,"revoke")) { IsInvalid=true; } // revoked (explicit)
+  else if (Public && !Public[0]) { IsInvalid=true; } // revoked (no value)
+  else if (PublicDigest && !PublicDigest[0]) { IsInvalid=true; } // revoked (no value)
 
   if (IsInvalid)
     {
@@ -643,12 +382,12 @@ sealfield *	SealValidateRevoke	(sealfield *Rec)
  SealValidateRevoke() worked (no '@error').
  Returns: Errors are detailed in '@error'
  ********************************************************/
-sealfield *	SealValidateSig	(sealfield *Rec)
+sealfield *	SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
 {
   const EVP_MD* (*mdf)(void);
   EVP_PKEY *PubKey=NULL;
   EVP_PKEY_CTX *PubKeyCtx=NULL;
-  char *keyalg, *digestalg;
+  char *keyalg, *digestalg, *sigstr, *dnsstr;
   sealfield *sigbin, *digestbin, *pubkey;
   unsigned long e;
 
@@ -657,7 +396,6 @@ sealfield *	SealValidateSig	(sealfield *Rec)
    '@sigbin' = binary signature
    '@digest1' = binary digest
    '@digest2' = (optional) binary digest
-   '@publicbin' = binary public key
    'ka' = key algorthtm
    And we know the record is not revoked.
 
@@ -666,19 +404,33 @@ sealfield *	SealValidateSig	(sealfield *Rec)
      decode_ka(publicbin,sigbin) == digest
    *****/
 
+  // Make sure signature and dns versions match
+  sigstr = SealGetText(Rec,"seal");
+  dnsstr = SealGetText(Rec,"seal");
+  if (!sigstr || !dnsstr || strcmp(sigstr,dnsstr))
+    {
+    Rec = SealSetText(Rec,"@error","mismatched SEAL version");
+    goto Done;
+    }
+
+  sigstr = SealGetText(Rec,"id");
+  dnsstr = SealGetText(Rec,"id");
+  if (dnsstr && (!sigstr || strcmp(sigstr,dnsstr)))
+    {
+    Rec = SealSetText(Rec,"@error","mismatched SEAL IDs");
+    goto Done;
+    }
+
   digestalg = SealGetText(Rec,"da"); // SEAL's 'da' parameter
-  if (!strcmp(digestalg,"sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(digestalg,"sha256")) { mdf = EVP_sha256; }
-  else if (!strcmp(digestalg,"sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(digestalg,"sha512")) { mdf = EVP_sha512; }
-  else
+  mdf = SealGetMdfFromString(digestalg);
+  if (!mdf)
 	{
 	fprintf(stderr," ERROR: Unsupported digest algorithm (da=%s).\n",digestalg);
 	exit(0x80);
 	}
 
   // Prepare the public key
-  pubkey = SealSearch(Rec,"@publicbin");
+  pubkey = SealSearch(dnstxt,"@p-bin");
   if (!pubkey) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no public key found");
@@ -689,6 +441,13 @@ sealfield *	SealValidateSig	(sealfield *Rec)
   if (!keyalg) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no public key algorithm defined");
+    goto Done;
+    }
+  // Check if ka matches DNS
+  dnsstr = SealGetText(dnstxt,"ka");
+  if (!dnsstr || strcmp(dnsstr,keyalg))
+    {
+    Rec = SealSetText(Rec,"@error","mismatched key algorithm");
     goto Done;
     }
 
@@ -709,7 +468,7 @@ sealfield *	SealValidateSig	(sealfield *Rec)
 
   // Load public key into EVP_PKEY structure
   {
-  /* Use BIO to import the data */
+  /* Use BIO (binary I/O handler) to import the data */
   BIO *bio;
   bio = BIO_new_mem_buf(pubkey->Value, pubkey->ValueLen);
   if (!bio)
@@ -808,8 +567,11 @@ Done:
  ********************************************************/
 sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 {
-  char *ErrorMsg;
+  char *ErrorMsg=NULL;
+  sealfield *dnstxt;
+  int dnsnum; // which dns record number?
   long signum; // signature number
+  sealfield *IsRevoke=NULL; // set to error is there is a revoke
 
   if (!Rec) { return(Rec); }
 
@@ -844,16 +606,11 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	}
     }
 
-  /* Get public key */
-  if (!ErrorMsg)
-	{
-	Rec = SealGetDNS(Rec);
-	ErrorMsg = SealGetText(Rec,"@error");
-	}
-
   /* Decode the encoded components */
   if (!ErrorMsg)
 	{
+	// Decode parts, including identifying any "@sigdate"
+	// Also ensures that a signature "s" exists.
 	Rec = SealValidateDecodeParts(Rec);
 	ErrorMsg = SealGetText(Rec,"@error");
 	}
@@ -875,38 +632,67 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	ErrorMsg = SealGetText(Rec,"@error");
 	}
 
-  /* Check revokes */
-  if (!ErrorMsg)
-	{
-	Rec = SealValidateRevoke(Rec);
-	ErrorMsg = SealGetText(Rec,"@error");
+  /*****
+   DNS...
+   There may be multiple DNS records.
+   Find the first one that verifies.
+   If ANY revoke, track it, but still check if any verify.
+   Only keep the error if NONE of them verify.
+
+   There are TWO things that need to be checked.
+   1. Is the public key revoked?
+   2. If it's not revoked, did the public key verify the signature?
+   If any dns entries verify AND is not revoked, then that is good and it's done.
+   If every dns entry fails AND there's a revoke, then report the revoke.
+   If every dns entry fails AND no revoke, then report that it was unable to verify.
+   *****/
+  if (!ErrorMsg) // only loop if there's no error (yet)
+    {
+    // foreach DNS record, load dns txt record. Stop when there are no more records.
+    for(dnsnum=0; (dnstxt=SealDNSGet(Rec,dnsnum)) != NULL; dnsnum++)
+      {
+      /* Copy DNS components to the record for verifying */
+      Rec = SealDel(Rec,"@error"); // assume no error so far
+
+      /* Check revokes */
+      Rec = SealValidateRevoke(Rec,dnstxt);
+      if (SealGetText(Rec,"@error"))
+        {
+	IsRevoke=SealCopy2(IsRevoke,"@error",Rec,"@error");
+	continue; // it's revoked! Stop checking!
 	}
 
-  /* Check if the decoded digest matches the known digest. */
-  if (!ErrorMsg)
-	{
-	Rec = SealValidateSig(Rec);
-	ErrorMsg = SealGetText(Rec,"@error");
-	}
+      /* Check if the decoded digest matches the known digest. */
+      Rec = SealValidateSig(Rec,dnstxt);
+      if (!SealGetText(Rec,"@error")) { break; } // It worked!
+      } // foreach DNS record
+    } // if checking DNS
 
   // Report any errors or findings
-  if (ErrorMsg)
+  ErrorMsg = SealGetText(Rec,"@error");
+  if (!dnstxt && IsRevoke) // If no valid DNS and there's a revoke, then report it!
+	{
+	ReturnCode |= 0x01; // at least one file is invalid
+	_SealVerifyShow(Rec,signum,SealGetText(IsRevoke,"@error"));
+	}
+  else if (ErrorMsg) // Else: If there is any error, then report it!
 	{
 	ReturnCode |= 0x01; // at least one file is invalid
 	_SealVerifyShow(Rec,signum,ErrorMsg);
 	}
-  else
+  else // No error and no revoke! There's a match!
 	{
 	_SealVerifyShow(Rec,signum,NULL);
 	}
 
   /* Verify the src details, if present.
      Failure to verify warns, does not error */
-  if (!ErrorMsg)
+  if (!ErrorMsg && !IsRevoke)
     {
     SealSrcVerify(Rec);
     }
 
+  SealFree(IsRevoke);
   return(Rec);
 } /* SealVerify() */
 
@@ -960,9 +746,6 @@ sealfield *	SealVerifyBlock	(sealfield *Args,
     // Retain state
     Args = SealCopy2(Args,"@s",Rec,"@s");
     Args = SealCopy2(Args,"@p",Rec,"@s");
-    Args = SealCopy2(Args,"@dnscachelast",Rec,"@dnscachelast"); // store any cached DNS
-    Args = SealCopy2(Args,"@public",Rec,"@public"); // store any cached DNS
-    Args = SealCopy2(Args,"@publicbin",Rec,"@publicbin"); // store any cached DNS
     Args = SealAddText(Args,"@sflags",SealGetText(Rec,"@sflags"));
     Args = SealDel(Args,"@RecEnd");
 
@@ -973,4 +756,3 @@ sealfield *	SealVerifyBlock	(sealfield *Args,
 Abort:
   return(Args);
 } /* SealVerifyBlock() */
-

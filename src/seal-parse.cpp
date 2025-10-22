@@ -31,6 +31,8 @@
 #include "seal.hpp"
 #include "seal-parse.hpp"
 
+const char* SignatureFormats[] = {"HEX_LOWER", "HEX_UPPER", "BASE64", "BIN", "INVALID"};
+
 struct {
   int len;
   const char *code;
@@ -334,17 +336,17 @@ void	SealBase64Decode	(sealfield *Data)
   sealfield *D=NULL;
   byte d[16];
   byte *tmp; // swap memory
-  size_t dlen;
+  size_t dlen,b64len;
 
   // Do the decoding inline
   if (!Data || !Data->ValueLen) { return; }
 
   // Make sure the data is valid Base64 characters.
-  for(dlen=0; dlen < Data->ValueLen; dlen++)
+  for(b64len=dlen=0; dlen < Data->ValueLen; dlen++)
     {
     if (isspace(Data->Value[dlen])) { continue; } // skip whitespace
-    else if (isalnum(Data->Value[dlen])) { ; } // A-Z, a-z, 0-9
-    else if (strchr("+/",Data->Value[dlen])) { ; } // + -
+    else if (isalnum(Data->Value[dlen])) { b64len++; } // A-Z, a-z, 0-9
+    else if (strchr("+/",Data->Value[dlen])) { b64len++; } // + -
     else if (Data->Value[dlen]=='=')
       {
       while((dlen < Data->ValueLen) && (Data->Value[dlen]=='=')) { dlen++; }
@@ -354,11 +356,12 @@ void	SealBase64Decode	(sealfield *Data)
     }
 
   // Make sure it ends with "=" padding
-  while(Data->ValueLen % 4)
+  while(b64len % 4)
     {
     // Append data, but don't change the Data pointer!
     Data->Value = (byte*)realloc(Data->Value,Data->ValueLen+4); // reallocate with additional room
-    Data->Value[Data->ValueLen] = '='; // append the "=" padding
+    Data->Value[b64len] = '='; // append the "=" padding
+    b64len++;
     Data->ValueLen++;
     memset(Data->Value + Data->ValueLen,0,3); // clear out padding bytes
     }
@@ -647,3 +650,63 @@ Done:
   return(Rec);
 } /* SealParse() */
 
+/**************************************
+ SealGetSF(): Given a signature format string, get the enum.
+ Returns INVALID on unsupported/unknown format.
+ **************************************/
+SealSignatureFormat SealGetSF(const char* sf) {
+    if (strstr(sf, "base64")) {
+        return BASE64;
+    } else if (strstr(sf, "HEX")) {
+        return HEX_UPPER;
+    } else if (strstr(sf, "hex")) {
+        return HEX_LOWER;
+    } else if (strstr(sf, "bin")) {
+        return BIN;
+    }
+    return INVALID; // Default for unknown formats/ no format
+} /* SealGetSF() */
+
+/**************************************
+ SealEncode(): Encode data based on the signature format.
+ **************************************/
+void SealEncode(sealfield *data, SealSignatureFormat sf) {
+    if (!data) { return; }
+
+    switch (sf) {
+      case HEX_UPPER:
+        SealHexEncode(data, true);
+        break;
+      case HEX_LOWER:
+        SealHexEncode(data, false);
+        break;
+      case BASE64:
+        SealBase64Encode(data);
+        break;
+      case BIN:
+      case INVALID:
+        // Do nothing, already in binary or invalid format
+        break;
+    }
+} /* SealEncode() */
+
+/**************************************
+ SealDecode(): Decode data based on the signature format.
+ **************************************/
+void SealDecode(sealfield *data, SealSignatureFormat sf) {
+    if (!data) { return; }
+
+    switch (sf) {
+      case HEX_UPPER:
+      case HEX_LOWER:
+        SealHexDecode(data);
+        break;
+      case BASE64:
+        SealBase64Decode(data);
+        break;
+      case BIN:
+      case INVALID:
+        // Do nothing, already in binary or invalid format
+        break;
+    }
+} /* SealDecode */

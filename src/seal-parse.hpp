@@ -14,6 +14,16 @@
 
 #include "seal.hpp"
 
+enum SealSignatureFormat{
+  HEX_LOWER,
+  HEX_UPPER,
+  BASE64,
+  BIN,
+  INVALID
+};
+
+extern const char* SignatureFormats[];
+
 sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfield *Args);
 void	SealStrDecode	(sealfield *Data);
 void	SealStrEncode	(sealfield *Data);
@@ -23,5 +33,9 @@ void	SealHexDecode	(sealfield *Data);
 void	SealHexEncode	(sealfield *Data, bool IsUpper);
 void	SealBase64Decode	(sealfield *Data);
 void	SealBase64Encode	(sealfield *Data);
+
+SealSignatureFormat SealGetSF(const char* Sf);
+void	SealEncode(sealfield *data, SealSignatureFormat Sf);
+void	SealDecode(sealfield *data, SealSignatureFormat Sf);
 
 #endif
