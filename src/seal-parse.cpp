@@ -336,17 +336,17 @@ void	SealBase64Decode	(sealfield *Data)
   sealfield *D=NULL;
   byte d[16];
   byte *tmp; // swap memory
-  size_t dlen;
+  size_t dlen,b64len;
 
   // Do the decoding inline
   if (!Data || !Data->ValueLen) { return; }
 
   // Make sure the data is valid Base64 characters.
-  for(dlen=0; dlen < Data->ValueLen; dlen++)
+  for(b64len=dlen=0; dlen < Data->ValueLen; dlen++)
     {
     if (isspace(Data->Value[dlen])) { continue; } // skip whitespace
-    else if (isalnum(Data->Value[dlen])) { ; } // A-Z, a-z, 0-9
-    else if (strchr("+/",Data->Value[dlen])) { ; } // + -
+    else if (isalnum(Data->Value[dlen])) { b64len++; } // A-Z, a-z, 0-9
+    else if (strchr("+/",Data->Value[dlen])) { b64len++; } // + -
     else if (Data->Value[dlen]=='=')
       {
       while((dlen < Data->ValueLen) && (Data->Value[dlen]=='=')) { dlen++; }
@@ -356,11 +356,12 @@ void	SealBase64Decode	(sealfield *Data)
     }
 
   // Make sure it ends with "=" padding
-  while(Data->ValueLen % 4)
+  while(b64len % 4)
     {
     // Append data, but don't change the Data pointer!
     Data->Value = (byte*)realloc(Data->Value,Data->ValueLen+4); // reallocate with additional room
-    Data->Value[Data->ValueLen] = '='; // append the "=" padding
+    Data->Value[b64len] = '='; // append the "=" padding
+    b64len++;
     Data->ValueLen++;
     memset(Data->Value + Data->ValueLen,0,3); // clear out padding bytes
     }

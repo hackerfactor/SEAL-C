@@ -34,6 +34,7 @@
 #include "seal.hpp"
 #include "files.hpp"
 #include "formats.hpp"
+#include "seal-dns.hpp"
 #include "seal-parse.hpp"
 #include "sign.hpp"
 
@@ -661,6 +662,12 @@ int main (int argc, char *argv[])
     return(ReturnCode); // done processing
     }
 
+  // If signing or verifying, load any default dnsfile
+  if (SealGetText(Args,"dnsfile"))
+    {
+    SealDNSLoadFile(SealGetText(Args,"dnsfile"));
+    }
+
   // If signing, get dynamic signing parameters
   if (strchr("sSmM",Mode))
     {
@@ -811,6 +818,8 @@ int main (int argc, char *argv[])
   SealFreePrivateKey(); // if a private key was allocated
   if (Args) { SealFree(Args); Args=NULL; }
   SealFree(CleanArgs); // free memory for completeness
+  if (Verbose > 1) { SealDNSWalk(); }
+  SealDNSFlushCache();
   return(ReturnCode); // done processing
 } /* main() */
 
