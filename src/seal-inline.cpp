@@ -76,11 +76,8 @@ sealfield * SealInlineVerify    (sealfield *Args){
   }
 
   // Determine digest algorithm from pka
-  if (!strcmp(pka, "sha224")) { mdf = EVP_sha224; }
-  else if (!strcmp(pka, "sha256")) { mdf = EVP_sha256; }
-  else if (!strcmp(pka, "sha384")) { mdf = EVP_sha384; }
-  else if (!strcmp(pka, "sha512")) { mdf = EVP_sha512; }
-  else {
+  mdf = SealGetMdfFromString(pka);
+  if (!mdf) {
     Args = SealSetText(Args, "@error", "Unsupported public key digest algorithm (pka)");
     return Args;
   }
