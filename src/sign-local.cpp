@@ -305,7 +305,28 @@ sealfield *	SealSignLocal	(sealfield *Args)
   //EVP_PKEY_sign(ctx, NULL, &siglen, NULL, 0); // get size; does not work with ed25519
 
   /*****
-   Convert it to the output format.
+   Convert it to the output format.  keyalg = SealGetText(Args,"ka");
+  if (keyalg && !strcmp(keyalg,"rsa"))
+    {
+    decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "RSA", EVP_PKEY_KEYPAIR, NULL, NULL);
+    }
+#if INC_ED25519
+  else if (keyalg && !strcmp(keyalg,"ed25519"))
+    {
+    decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "ED25519", EVP_PKEY_KEYPAIR, NULL, NULL);
+    }
+#endif
+  // If more algorithms are supported, this needs to be updated.
+  else if (keyalg) // && !strcmp(keyalg,"ec"))
+    {
+    // everything else currently supported is ec.
+    decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "EC", EVP_PKEY_KEYPAIR, NULL, NULL);
+    }
+  else
+    {
+    fprintf(stderr," ERROR: No key algorithm defined.\n");
+    exit(0x80);
+    }
    Binary signature is stored in sig!
    *****/
   sigFormat = SealGetSF(sf);
@@ -556,6 +577,39 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
 } /* SealGenerateKeyPrivate() */
 
 /**************************************
+ SealGenerateKeyPublic(): Create the public!
+ Depends on OpenSSL 3.x.
+ **************************************/
+ sealfield *   SealGenerateKeyPublic(sealfield *Args, EVP_PKEY *keypair)
+ {
+    OSSL_ENCODER_CTX *encoder = NULL;
+    // Save public key as DER!
+    encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair,
+	EVP_PKEY_PUBLIC_KEY,
+	//OSSL_KEYMGMT_SELECT_ALL_PARAMETERS | OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
+	//EVP_PKEY_KEY_PARAMETERS | EVP_PKEY_PUBLIC_KEY,
+	"DER", NULL, NULL);
+  if (!encoder)
+    {
+    fprintf(stderr," ERROR: Unable to generate the public key.\n");
+    // don't delete the private keyfile since it can still generate public keys
+    exit(0x80);
+    }
+    // Save binary public key to memory (I'll base64-encode it without the headers)
+    {
+    BIO *bio = BIO_new(BIO_s_mem());
+    i2d_PUBKEY_bio(bio, keypair);
+    size_t derlen;
+    unsigned char *derdata;
+    derlen = BIO_get_mem_data(bio, &derdata);
+    Args = SealSetBin(Args,"@pubder",derlen,derdata);
+    SealBase64Encode(SealSearch(Args,"@pubder"));
+    BIO_free(bio);
+    }
+    return Args;
+} /*SealGenerateKeyPublic()*/
+
+/**************************************
  SealGenerateKeys(): Create the public and private keys!
  Depends on OpenSSL 3.x.
  **************************************/
@@ -565,7 +619,6 @@ void	SealGenerateKeys	(sealfield *Args)
   FILE *fp;
   sealfield *vf;
   EVP_PKEY *keypair = NULL;
-  OSSL_ENCODER_CTX *encoder = NULL;
   char *pubfile=NULL;
 
   vf = SealSearch(Args,"dnsfile");
@@ -585,30 +638,7 @@ void	SealGenerateKeys	(sealfield *Args)
   // Load or generate the private key.
   keypair = SealGenerateKeyPrivate(Args);
 
-  // Save public key as DER!
-  encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair,
-	EVP_PKEY_PUBLIC_KEY,
-	//OSSL_KEYMGMT_SELECT_ALL_PARAMETERS | OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
-	//EVP_PKEY_KEY_PARAMETERS | EVP_PKEY_PUBLIC_KEY,
-	"DER", NULL, NULL);
-  if (!encoder)
-    {
-    fprintf(stderr," ERROR: Unable to generate the public key.\n");
-    // don't delete the private keyfile since it can still generate public keys
-    exit(0x80);
-    }
-
-  // Save binary public key to memory (I'll base64-encode it without the headers)
-  {
-  BIO *bio = BIO_new(BIO_s_mem());
-  i2d_PUBKEY_bio(bio, keypair);
-  size_t derlen;
-  unsigned char *derdata;
-  derlen = BIO_get_mem_data(bio, &derdata);
-  Args = SealSetBin(Args,"@pubder",derlen,derdata);
-  SealBase64Encode(SealSearch(Args,"@pubder"));
-  BIO_free(bio);
-  }
+  Args = SealGenerateKeyPublic(Args, keypair);
 
   // Create DNS entry!
   fp = fopen(pubfile,"wb");

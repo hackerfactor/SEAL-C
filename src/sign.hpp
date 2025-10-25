@@ -15,12 +15,14 @@
 #include "seal.hpp"
 #include "files.hpp"
 
-// For key generation
-void	SealGenerateKeys	(sealfield *Args);
-void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf);
-
 // For key management
 #include <openssl/evp.h>
+
+// For key generation
+void	SealGenerateKeys	(sealfield *Args);
+sealfield * SealGenerateKeyPublic(sealfield *Args, EVP_PKEY *keypair);
+void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf);
+
 void	SealFreePrivateKey	();
 EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args);
 
