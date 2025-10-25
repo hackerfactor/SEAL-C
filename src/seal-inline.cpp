@@ -36,6 +36,12 @@ sealfield *	SealGetPublicKey	(sealfield *Args)
 
   keypair = SealLoadPrivateKey(Args);
   Args = SealGenerateKeyPublic(Args, keypair);
+  if(!SealSearch(Args, "@pubder"))
+  {
+    printf("ERROR: Could not generate public key for inline signature\n");
+    exit(0x80);
+  }
+  Args = SealCopy(Args, "pk", "@pubder");
   return Args;
 } /*SealGetPublicKey()*/
 
