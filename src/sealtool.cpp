@@ -396,6 +396,7 @@ void	Usage	(const char *progname)
   // NIST Approved: P-256 = prime256v1; default if you say "ec"
   // NIST Approved: P-384 = secp384r1
   printf("  -K, --keyalg alg     :: Key algorithm (rsa, ec, P-256; default: rsa)\n");
+  printf("    Use '-K list' to see all supported algorithms.\n");
   // EVP_KEYMGMT_do_all_provided(NULL, print_km, NULL);
   printf("  --kv number          :: Unique key version (default: 1)\n");
   printf("  --uid text           :: Unique key identifier (default: not set)\n");
@@ -595,7 +596,10 @@ int main (int argc, char *argv[])
       case 'd': Args = SealSetText(Args,"domain",optarg); break;
       case 'i': Args = SealSetText(Args,"id",optarg); break;
       case 'I': Args = SealSetText(Args,"src",optarg); break;
-      case 'K': Args = SealSetText(Args,"keyalg",optarg); break;
+      case 'K':
+	Args = SealSetText(Args,"keyalg",optarg);
+	if (!strcmp(optarg,"list")) { ListKeyAlgorithms(); exit(0); }
+	break;
       case 'k': Args = SealSetText(Args,"keyfile",optarg); break;
       case 'o': Args = SealSetText(Args,"outfile",optarg); break;
       case 'O': Args = SealSetText(Args,"options",optarg); break;

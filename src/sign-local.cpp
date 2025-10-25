@@ -61,6 +61,39 @@
 EVP_PKEY *PrivateKey=NULL;
 
 /********************************************************
+ ListKeyAlgorithms(): List all supported ka values
+ ********************************************************/
+void	ListKeyAlgorithms	()
+{
+  // What are valid ka values?
+  printf("The following values are supported for -K/--keyalg:\n");
+  printf("  rsa\n");
+  printf("  ec (same as prime256v1)\n"); // default
+  printf("  P-256 (same as prime256v1)\n");
+  printf("  P-384 (same as secp384r1)\n");
+
+  // find every EC
+  EC_builtin_curve *curves = NULL;
+  size_t crv,crv_len=0;
+  crv_len = EC_get_builtin_curves(NULL,0);
+  curves = (EC_builtin_curve*)OPENSSL_malloc(sizeof(*curves) * crv_len);
+  if (EC_get_builtin_curves(curves, crv_len)) // get list
+    {
+    for(crv=0; crv < crv_len; crv++)
+	{
+	const char *sname = OBJ_nid2sn(curves[crv].nid);
+	if (!sname) { continue; }
+	if (curves[crv].comment && strchr(curves[crv].comment,'\n')) { continue; } // no special cases
+	printf("  %s",sname);
+	if (curves[crv].comment) { printf(" (%s)",curves[crv].comment); }
+	printf("\n");
+	}
+    }
+  OPENSSL_free(curves);
+
+} /* ListKeyAlgorithms() */
+
+/********************************************************
  SealFreePrivateKey(): release the private key.
  ********************************************************/
 void	SealFreePrivateKey	()
@@ -117,9 +150,24 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
     }
 #endif
   // If more algorithms are supported, this needs to be updated.
-  else if (keyalg) // && !strcmp(keyalg,"ec"))
+  // Ref: openssl ecparam -list_curves | grep NIST
+  else if (keyalg) // any ec variation
     {
-    // everything else currently supported is ec.
+    int nid = OBJ_sn2nid(keyalg); // check the short name
+    if (nid == NID_undef) { nid = OBJ_ln2nid(keyalg); } // check the long name
+    // Make sure it's a valid EC parameter
+    if (nid != NID_undef)
+	{
+	EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+        if (group == NULL) { nid = NID_undef; } // not an EC
+	else { EC_GROUP_free(group); }
+	}
+    if (nid == NID_undef) // if still unknown
+	{
+	fprintf(stderr," ERROR: Unknown key algorithm.\n");
+	exit(0x80);
+	}
+    // it's supported!
     decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "EC", EVP_PKEY_KEYPAIR, NULL, NULL);
     }
   else

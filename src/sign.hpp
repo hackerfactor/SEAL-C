@@ -16,6 +16,7 @@
 #include "files.hpp"
 
 // For key generation
+void	ListKeyAlgorithms	(); // list all supported key algorithms
 void	SealGenerateKeys	(sealfield *Args);
 void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf);
 
