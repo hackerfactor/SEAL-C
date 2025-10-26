@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "seal.hpp"
+#include "sign.hpp"
 #include "files.hpp"
 #include "seal-parse.hpp"
 #include "ns_parse.hpp"
@@ -188,6 +189,18 @@ int	_SealDNSnet	(char *Domain)
       strcpy(dnew->TXT,s);
 
       dnew->Rec = SealParse(SealGetSize(vBuf,"r"),(byte*)SealGetText(vBuf,"r"),0,NULL);
+
+      // If the ka is defined but unknown, then ignore this TXT record.
+      s = SealGetText(dnew->Rec,"ka");
+      if (s && (CheckKeyAlgorithm(s) == 0))
+        {
+	// Unknown! Don't cache it.
+	free(dnew->Domain);
+	free(dnew->TXT);
+	SealFree(dnew->Rec);
+	free(dnew);
+	continue;
+	}
 
       // Decode any known-binary fields
       if (SealSearch(dnew->Rec,"p"))

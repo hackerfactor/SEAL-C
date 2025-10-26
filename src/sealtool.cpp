@@ -5,10 +5,13 @@
  Main program.
 
  Return codes:
+   bits:
    0x00 No issues.
    0x01 At least one signature is invalid.
    0x02 At least one file without a signature.
-   0x03 Both 0x01 and 0x02
+   0x04 At least one file could not be validated.
+   0x08 At least one file could not be authenticated.
+   0x10 At least one file is revoked.
    0x80 Error
  ************************************************/
 // C headers
@@ -429,6 +432,7 @@ void	Usage	(const char *progname)
   printf("\n");
   printf("  Common signing options (for local and remote)\n");
   printf("  -d, --domain domain  :: DNS entry with the public key (default: localhost.localdomain)\n");
+  printf("  --testdomain domain  :: For debugging and testing: use this domain in the SEAL record\n");
   printf("  -o, --outfile fname  :: Output filename\n");
   printf("               Include '%%d' for directory name without final /\n");
   printf("               Include '%%b' for base filename\n");
@@ -457,11 +461,13 @@ void	Usage	(const char *progname)
   printf("  --srcd text          :: Optional: Specify the source digest value. Must match the srca encoding. When present, src/srcf will be validated against it, but that validation will NOT prevent signing.\n");
   printf("  --srcf file          :: Optional: Specify a source file for computing the checksum (for signing or validation). When signing, the filename will NOT be included in the SEAL record.\n");
   printf("\n");
-  printf("  Return codes:\n");
+  printf("  Return codes bits:\n");
   printf("    0x00 All files have valid signatures.\n");
   printf("    0x01 At least one signature is invalid.\n");
   printf("    0x02 At least one file without a signature.\n");
-  printf("    0x03 Both 0x01 and 0x02\n");
+  printf("    0x04 At least one file could not be validated.\n");
+  printf("    0x08 At least one file could not be authenticated.\n");
+  printf("    0x10 At least one file is revoked.\n");
   printf("    0x80 Error\n");
 } /* Usage() */
 
@@ -473,7 +479,7 @@ int main (int argc, char *argv[])
   sealfield *Args=NULL, *CleanArgs;
   mmapfile *Mmap=NULL;
   int c;
-  int Mode='v';
+  int Mode='v'; // verify, signing local, signing manual, signing remote, etc.
   int FileFormat='@';
   bool IsURL=false; // for signing, use URL?
   bool IsLocal=false; // for signing, use local?
@@ -571,6 +577,8 @@ int main (int argc, char *argv[])
     {"srcf",      required_argument, NULL, 1}, // source file
     {"srca",      required_argument, NULL, 1}, // source digest encoding
     {"srcd",      required_argument, NULL, 1}, // source digest
+    // debugging and regression testing
+    {"testdomain", required_argument, NULL, 1},
     // modes
     {NULL,0,NULL,0}
     };
@@ -644,7 +652,7 @@ int main (int argc, char *argv[])
     } // while reading args
 
   // Idiot check values: No double-quotes!
-  Args = SealParmCheck(Args);
+  Args = SealParmCheck(Args,Mode);
   IsURL = SealIsURL(Args);
   IsLocal = SealIsLocal(Args);
   IsSidecar = SealGetText(Args,"sidecar") ? true : false;
