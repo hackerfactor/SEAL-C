@@ -269,8 +269,8 @@ void	SealDNSLoadFile	(const char *Fname)
   dnew->Rec = SealParse(SealGetSize(vBuf,"r"),(byte*)SealGetText(vBuf,"r"),0,NULL);
   if (!dnew->Rec || !SealSearch(dnew->Rec,"seal")) // failed to parse?
 	{
-	free(dnew);
 	SealFree(dnew->Rec);
+	free(dnew);
 	MmapFree(Mmap);
 	SealFree(vBuf);
 	return;
