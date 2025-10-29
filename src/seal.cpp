@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <string.h>
 #include "seal.hpp"
+#include "sign.hpp"
 
 #define PAD 4 /* padding to prevent overflow; should not be needed */
 
@@ -840,7 +841,7 @@ byte *	SealGetBin	(sealfield *vfhead, const char *Field)
 /**************************************
  SealParmCheck(): Check for sane input parameters.
  **************************************/
-sealfield *	SealParmCheck	(sealfield *Args)
+sealfield *	SealParmCheck	(sealfield *Args, char Mode)
 {
   sealfield *vf;
   uint16_t u16=0;
@@ -852,6 +853,21 @@ sealfield *	SealParmCheck	(sealfield *Args)
   Args = SealDel(Args,"digestalg");
   Args = SealCopy(Args,"ka","keyalg");
   Args = SealDel(Args,"keyalg");
+
+  // Check key algorithm
+  int cka; // check key algorithm
+  cka = CheckKeyAlgorithm(SealGetText(Args,"ka"));
+  if (cka == 0)
+	{
+	fprintf(stderr,"ERROR: Invalid parameter (-K %s). See `-K list'.\n",SealGetText(Args,"ka"));
+	exit(0x80);
+	}
+  // If I'm generating, then keep the specific key algorithm.
+  // If I'm not generating, then change any longer ec name to "ec"
+  if ((Mode != 'g') && (cka==2))
+	{
+	Args = SealSetText(Args,"ka","ec");
+	}
 
   // Check parameters
   for(vf=Args; vf; vf=vf->Next)
@@ -917,18 +933,6 @@ sealfield *	SealParmCheck	(sealfield *Args)
 		(int)vf->FieldLen, vf->Field);
 	exit(0x80);
 	}
-      }
-
-    // Value already checked and 'u16' already loaded with the value
-    if ((vf->FieldLen==2) && !memcmp(vf->Field,"ka",2))
-      {
-      if (!strcmp((char*)vf->Value,"rsa")) { ; } // supported
-      // else if (!strcmp((char*)vf->Value,"ed25519")) { ; } // supported
-      else if (!strcmp((char*)vf->Value,"ec")) // supported
-	{
-	Args = SealSetText(Args,"ka","ec");
-	}
-      // else: assume it's some kind of EC
       }
 
     // kv, uid: [A-Za-z0-9.+/-]

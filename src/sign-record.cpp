@@ -72,7 +72,10 @@ sealfield *	SealRecord	(sealfield *Args)
 
   // Add the domain
   Args = SealAddText(Args,"@record"," d=\"");
-  Args = SealAddText(Args,"@record",SealGetText(Args,"domain"));
+  if (SealSearch(Args,"testdomain"))
+    { Args = SealAddText(Args,"@record",SealGetText(Args,"testdomain")); }
+  else
+    { Args = SealAddText(Args,"@record",SealGetText(Args,"domain")); }
   Args = SealAddText(Args,"@record","\"");
 
   // Add the public key if inline mode is being used

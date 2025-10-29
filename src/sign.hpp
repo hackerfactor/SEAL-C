@@ -15,6 +15,12 @@
 #include "seal.hpp"
 #include "files.hpp"
 
+// For key generation
+int	CheckKeyAlgorithm	(const char *keyalg); // 1=rsa, 2=ec, 0=unknown
+void	ListKeyAlgorithms	(); // list all supported key algorithms
+void	SealGenerateKeys	(sealfield *Args);
+void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf);
+
 // For key management
 #include <openssl/evp.h>
 

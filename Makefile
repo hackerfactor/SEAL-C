@@ -58,6 +58,7 @@ test:
 	tests/test-local.sh
 	tests/test-remote.sh
 	tests/test-manual.sh
+	tests/test-revoke.sh
 
 test-clean:
 	rm -rf tests/*.dir

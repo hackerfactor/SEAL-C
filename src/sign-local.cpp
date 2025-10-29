@@ -61,6 +61,70 @@
 EVP_PKEY *PrivateKey=NULL;
 
 /********************************************************
+ CheckKeyAlgorithm(): Is this a known and supported key algorithm?
+ Returns: 0=no, 1=rsa, 2=ec
+ ********************************************************/
+int	CheckKeyAlgorithm	(const char *keyalg)
+{
+  if (!keyalg) { return(0); }
+  if (!strcmp(keyalg,"rsa")) { return(1); }
+  if (!strcmp(keyalg,"ec")) { return(2); }
+  if (!strcmp(keyalg,"P-256")) { return(2); }
+  if (!strcmp(keyalg,"P-384")) { return(2); }
+
+  // Check if the keyalg is known */
+  int nid = OBJ_sn2nid(keyalg); // check the short name
+  if (nid == NID_undef) { nid = OBJ_ln2nid(keyalg); } // check the long name
+  // Make sure it's a valid EC parameter
+  if (nid != NID_undef)
+	{
+	EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+	if (group == NULL) { nid = NID_undef; } // not an EC
+	else { EC_GROUP_free(group); }
+	}
+  if (nid != NID_undef) // if known
+	{
+	return(2); // it's EC!
+	}
+
+  // it's unsupported!
+  return(0);
+} /* CheckKeyAlgorithm() */
+
+/********************************************************
+ ListKeyAlgorithms(): List all supported ka values
+ ********************************************************/
+void	ListKeyAlgorithms	()
+{
+  // What are valid ka values?
+  printf("The following values are supported for -K/--keyalg:\n");
+  printf("  rsa\n");
+  printf("  ec (same as prime256v1)\n"); // default
+  printf("  P-256 (same as prime256v1)\n");
+  printf("  P-384 (same as secp384r1)\n");
+
+  // find every EC
+  EC_builtin_curve *curves = NULL;
+  size_t crv,crv_len=0;
+  crv_len = EC_get_builtin_curves(NULL,0);
+  curves = (EC_builtin_curve*)OPENSSL_malloc(sizeof(*curves) * crv_len);
+  if (EC_get_builtin_curves(curves, crv_len)) // get list
+    {
+    for(crv=0; crv < crv_len; crv++)
+	{
+	const char *sname = OBJ_nid2sn(curves[crv].nid);
+	if (!sname) { continue; }
+	if (curves[crv].comment && strchr(curves[crv].comment,'\n')) { continue; } // no special cases
+	printf("  %s",sname);
+	if (curves[crv].comment) { printf(" (%s)",curves[crv].comment); }
+	printf("\n");
+	}
+    }
+  OPENSSL_free(curves);
+
+} /* ListKeyAlgorithms() */
+
+/********************************************************
  SealFreePrivateKey(): release the private key.
  ********************************************************/
 void	SealFreePrivateKey	()
@@ -94,6 +158,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   FILE *fp;
   OSSL_DECODER_CTX *decoder=NULL;
   char *keyfile, *keyalg;
+  int cka;
 
   // Only load it once
   if (PrivateKey) { SealFreePrivateKey(); }
@@ -106,7 +171,9 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
     }
 
   keyalg = SealGetText(Args,"ka");
-  if (keyalg && !strcmp(keyalg,"rsa"))
+  cka = CheckKeyAlgorithm(keyalg);
+
+  if (cka==1) // rsa
     {
     decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "RSA", EVP_PKEY_KEYPAIR, NULL, NULL);
     }
@@ -117,9 +184,9 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
     }
 #endif
   // If more algorithms are supported, this needs to be updated.
-  else if (keyalg) // && !strcmp(keyalg,"ec"))
+  // Ref: openssl ecparam -list_curves | grep NIST
+  else if (cka==2) // any ec variation
     {
-    // everything else currently supported is ec.
     decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "EC", EVP_PKEY_KEYPAIR, NULL, NULL);
     }
   else
@@ -477,7 +544,8 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
     }
 
   // Generate the key
-  if (!strcmp((char*)(vf->Value),"rsa"))
+  int cka = CheckKeyAlgorithm((char*)vf->Value);
+  if (cka==1) // RSA
     {
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
     if (!pctx ||
@@ -486,6 +554,17 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
 	(EVP_PKEY_keygen(pctx, &keypair) != 1))
 	{ keypair=NULL; }
     if (pctx) { EVP_PKEY_CTX_free(pctx); }
+    }
+  else if (!strcmp((char*)(vf->Value),"ec")) // generic ec
+    {
+    // "ec" is a generic class. When generating, assume P-256 for now.
+    keypair = EVP_EC_gen("P-256");
+    Args = SealSetText(Args,"ka","ec");
+    }
+  else if (cka == 2) // some kind of specific elliptic curve
+    {
+    keypair = EVP_EC_gen((char*)(vf->Value));
+    Args = SealSetText(Args,"ka","ec");
     }
 #if INC_ED25519
   else if (!strcmp((char*)(vf->Value),"ed25519")) 
@@ -499,17 +578,6 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
     if (pctx) { EVP_PKEY_CTX_free(pctx); }
     }
 #endif
-  else if (!strcmp((char*)(vf->Value),"ec")) 
-    {
-    // "ec" is a generic class. When generating, assume P-256 for now.
-    keypair = EVP_EC_gen("P-256");
-    Args = SealSetText(Args,"ka","ec");
-    }
-  else // some kind of specific elliptic curve
-    {
-    keypair = EVP_EC_gen((char*)(vf->Value));
-    Args = SealSetText(Args,"ka","ec");
-    }
 
   if (!keypair)
     {

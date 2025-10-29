@@ -59,21 +59,21 @@ static inline int res_nquery(res_state statp,
  _SealVerifyShow(): Display results
  ErrorMsg is set when the signature is invalid.
  ********************************************************/
-void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
+void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 {
   sealfield *vf;
   char *Txt;
   unsigned int i;
 
   // Show header
-  if (ErrorMsg)
-	{
-	printf(" SEAL record #%ld is invalid: %s.\n",signum,ErrorMsg);
-	}
-  else
-	{
-	printf(" SEAL record #%ld is valid.\n",signum);
-	}
+  printf(" SEAL record #%ld is ",signum);
+  if (rc & 0x10) { printf("revoked"); }
+  else if (rc & 0x01) { printf("invalid"); }
+  else if (rc & 0x02) { printf("unsigned"); }
+  else if (rc & 0x04) { printf("not validated"); }
+  else if (rc & 0x08) { printf("not autenticated"); }
+  else { printf("valid"); }
+  if (Msg) { printf(": %s\n",Msg); }
 
   // Show digest (if verbose)
   if (Verbose)
@@ -155,7 +155,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	Txt = SealGetText(Rec,"@sigdate");
 	if (Txt && Txt[0])
 	  {
-	  if (ErrorMsg) { printf("  Unverified Signed"); }
+	  if (rc & 0x07) { printf("  Unverified Signed"); }
 	  else { printf("  Signed"); }
 	  printf(" on %.4s-%.2s-%.2s",Txt,Txt+4,Txt+6);
 	  printf(" at %.2s:%.2s:%.2s",Txt+8,Txt+10,Txt+12);
@@ -164,7 +164,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	  }
 
 	Txt = SealGetText(Rec,"d");
-	if (ErrorMsg) { printf("  Unverified Signed By:"); }
+	if (rc & 0x07) { printf("  Unverified Signed By:"); }
 	else { printf("  Signed By:"); }
 	printf(" %s",Txt);
 
@@ -178,7 +178,7 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	Txt = SealGetText(Rec,"copyright");
 	if (Txt && Txt[0])
 	  {
-	  if (ErrorMsg) { printf("  Unverified Copyright:"); }
+	  if (rc & 0x07) { printf("  Unverified Copyright:"); }
 	  else { printf("  Copyright:"); }
 	  printf(" %s\n",Txt);
 	  }
@@ -186,130 +186,27 @@ void	_SealVerifyShow	(sealfield *Rec, long signum, const char *ErrorMsg)
 	Txt = SealGetText(Rec,"info");
 	if (Txt && Txt[0])
 	  {
-	  if (ErrorMsg) { printf("  Unverified Comment:"); }
+	  if (rc & 0x07) { printf("  Unverified Comment:"); }
 	  else { printf("  Comment:"); }
 	  printf(" %s\n",Txt);
 	  }
 	}
 } /* _SealVerifyShow() */
 
-#pragma GCC visibility pop
-
 /********************************************************
- SealValidateDecodeParts(): Given seal record with signature, decode the signature.
- NOTE: This does NOT check the crypto!
- Returns: Errors are detailed in '@error'
- On success:
-   Decoded signature is in '@sigbin'
-   Any timestamp is in '@sigdate'
-   and no '@error'
- ********************************************************/
-sealfield *	SealValidateDecodeParts	(sealfield *Rec)
-{
-  char *SigFormat;
-  char *Sig;
-  size_t siglen,datelen=0;
-  SealSignatureFormat sigFormat;
-
-  if (!Rec) // should never happen
-    {
-    Rec = SealSetText(Rec,"@error","no record to check");
-    return(Rec);
-    }
-
-  SigFormat = SealGetText(Rec,"sf"); // always defined
-
-  Sig = SealGetText(Rec,"s");
-  if (!Sig)
-    {
-    Rec = SealSetText(Rec,"@error","signature not found");
-    return(Rec);
-    }
-  siglen = strlen(Sig);
-
-  // Verify the format
-  datelen=0; // if it's > 0, then there's a date string
-  Rec = SealDel(Rec,"@sigdate");
-  if (SigFormat && !strncmp(SigFormat,"date",4))
-    {
-    // Make sure the date is correct
-    datelen = 14; // YYYYMMDDhhmmss
-    if (isdigit(SigFormat[4]))
-      {
-      datelen += 1 + SigFormat[4]-'0';
-      }
-
-    // date + ":" + sig; the sig better be at least 1 character
-    if ((siglen <= datelen+2) || (Sig[datelen]!=':') ||
-	((datelen > 14) && (Sig[14]!='.')) )
-      {
-      Rec = SealSetText(Rec,"@error","signature date does not match the specified format");
-      return(Rec);
-      }
-    Rec = SealSetTextLen(Rec,"@sigdate",datelen,Sig);
-    datelen++; // skip the ':'
-    }
-
-  // Decode to binary
-  if (Sig)
-    {
-    /*****
-     Decode the signature into binary
-     I should be doing this in SealValidateSig(), but I've
-     already loaded the signature and datelen here.
-     (No need to repeat this process.)
-     *****/
-    Rec = SealDel(Rec,"@sigbin");
-    Rec = SealSetBin(Rec,"@sigbin",siglen-datelen,(byte*)Sig+datelen);
-
-    // Remove any padding
-    sealfield *s;
-    s = SealSearch(Rec,"@sigbin");
-    while((s->ValueLen > 1) && isspace(s->Value[s->ValueLen-1])) { s->ValueLen--; }
-
-    // Decode the signature
-    sigFormat = SealGetSF(SigFormat);
-    if (sigFormat == INVALID) 
-      {
-      Rec = SealSetText(Rec, "@error", "unsupported signature encoding");
-      }
-    SealDecode(SealSearch(Rec, "@sigbin"), sigFormat);
-
-    if (SealSearch(Rec, "@sigbin")->ValueLen < 1) 
-      {
-      if (sigFormat == BASE64) 
-        {
-        Rec = SealSetText(Rec, "@error", "base64 signature failed to decode");
-        } 
-      else if (sigFormat == HEX_LOWER || sigFormat == HEX_UPPER) 
-        {
-        Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
-        }
-    }
-
-    // To help with debugging
-    sealfield *sf;
-    sf = SealSearch(Rec,"@sigbin");
-    if (sf) { sf->Type = 'x'; }
-    } // decode to binary
-
-  return(Rec);
-} /* SealValidateDecodeParts() */
-
-/********************************************************
- SealValidateRevoke(): Given seal record with DNS results,
+ _SealValidateRevoke(): Given seal record with DNS results,
  see if it is revoked.
- Returns: Errors are detailed in '@error'
- On success, decoded signature is in '@sigbin' (and not '@error').
+ This is called AFTER checking the signatures.
+ Returns:
+   Specific revokes are flagged by '@revoke'
+   Errors are detailed in '@error'
+ On success, decoded signature is in '@sigbin' (and no '@error').
  ********************************************************/
-sealfield *	SealValidateRevoke	(sealfield *Rec, sealfield *dnstxt)
+sealfield *	_SealValidateRevoke	(sealfield *Rec, sealfield *dnstxt)
 {
-  bool IsInvalid=false;
+  bool IsRevoke=false;
   char *SigDate;
-  char *Sig;
   char *Revoke;
-  char *Public;
-  char *PublicDigest;
 
   if (!Rec || !dnstxt) // should never happen
     {
@@ -318,81 +215,48 @@ sealfield *	SealValidateRevoke	(sealfield *Rec, sealfield *dnstxt)
     }
 
   Revoke = SealGetText(dnstxt,"r");
-  Public = SealGetText(dnstxt,"p");
-  PublicDigest = SealGetText(dnstxt,"pkd");
   SigDate = SealGetText(Rec,"@sigdate"); // may not exist
-  Sig = SealGetText(Rec,"s");
 
-  // Verify that components exist (should already be set)
-  if (!Sig || !Sig[0])
+  if (!Revoke) { ; } // no revoke? Done!
+  else if (!Revoke[0] || !strcmp(Revoke,"revoke")) { IsRevoke=true; } // no date? Revoke!
+  else if (!SigDate) { IsRevoke=true; } // No date? Revoke!
+  else // See if sigdate predates revocation
     {
-    Rec = SealSetText(Rec,"@error","no signature found");
-    return(Rec);
+    int minlen,minlen1,minlen2;
+    minlen1 = strlen(SigDate);
+    minlen2 = strlen(Revoke);
+    minlen = (minlen1 < minlen2) ? minlen1 : minlen2;
+    if (strncmp(SigDate,Revoke,minlen) >= 0) { IsRevoke=true; } // if it's revoked
+    // else: Not revoked!
     }
 
-  /*****
-   Multiple conditions and revoke methods.
-   1. If there's a DNS "r=", then it's probably revoked.
-      Check the date.
-      - If there is no date in the sig, then it's revoked.
-      - If there is a date and it's newer than r=, then it's revoked.
-      - If there is a date and the sig is older, then it's valid.
-   2. No r=?  If there is no DNS entry, then it cannot be validated.
-      This isn't revoked; this is unknown.
-   3. No r= and public key is not defined
-      This isn't revoked; this is unknown.
-   4. No r= and public key is defined as empty or "revoked"
-      Then it is revoked.
-   5. No r= and the public keys is defined as /something/?
-      Let the key try to validate the signature!
-   *****/
-  if (Revoke && SigDate)
+  if (IsRevoke) // if it's revoked, tag it
     {
-    int r,s;
-    for(r=s=0; Revoke[r] && SigDate[s]; r++)
-      {
-      if (!isdigit(Revoke[r])) { continue; } // only watch dates
-      if (!isdigit(SigDate[s])) { IsInvalid=true; break; } // invalid == revoked
-      if (Revoke[r] < SigDate[s]) { IsInvalid=true; break; }
-      if (Revoke[r] > SigDate[s]) { break; } // signature is older!
-      s++;
-      }
-    if (!Revoke[r]) { IsInvalid=true; } // if it made it all the way, then revoke
-    // If revoked finished early, then it's not revoked!
-    }
-  else if (Revoke) { IsInvalid=true; }
-  // If p or pkd is set to an empty string, then that is a revoke
-  else if (Public && !strcasecmp(Public,"revoke")) { IsInvalid=true; } // revoked (explicit)
-  else if (PublicDigest && !strcasecmp(PublicDigest,"revoke")) { IsInvalid=true; } // revoked (explicit)
-  else if (Public && !Public[0]) { IsInvalid=true; } // revoked (no value)
-  else if (PublicDigest && !PublicDigest[0]) { IsInvalid=true; } // revoked (no value)
-
-  if (IsInvalid)
-    {
-    Rec = SealSetText(Rec,"@error","public key revoked");
+    Rec = SealSetText(Rec,"@revoke","public key revoked");
     }
 
   return(Rec);
-} /* SealValidateRevoke() */
+} /* _SealValidateRevoke() */
 
 /********************************************************
- SealValidateSig(): Given seal record with DNS results,
+ _SealValidateSig(): Given seal record with DNS results,
  and decoded binary signature, see if it validates!!!
- This is only called if SealValidateDecodeParts() and
- SealValidateRevoke() worked (no '@error').
- Returns: Errors are detailed in '@error'
+ Called by SealValidate().
+ This is only called if SealValidateDecodeParts() worked.
+ Returns: Errors are detailed in '@error', revoke is set in '@revoke'.
  ********************************************************/
-sealfield *	SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
+sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
 {
   const EVP_MD* (*mdf)(void);
   EVP_PKEY *PubKey=NULL;
   EVP_PKEY_CTX *PubKeyCtx=NULL;
-  char *keyalg, *digestalg, *sigstr, *dnsstr;
+  char *keyalg, *digestalg;
   sealfield *sigbin, *digestbin, *pubkey;
   unsigned long e;
 
   /*****
    If you're calling this function, then we have:
+   Correct dnstxt record
    '@sigbin' = binary signature
    '@digest1' = binary digest
    '@digest2' = (optional) binary digest
@@ -403,23 +267,6 @@ sealfield *	SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
    It should match the digest.
      decode_ka(publicbin,sigbin) == digest
    *****/
-
-  // Make sure signature and dns versions match
-  sigstr = SealGetText(Rec,"seal");
-  dnsstr = SealGetText(Rec,"seal");
-  if (!sigstr || !dnsstr || strcmp(sigstr,dnsstr))
-    {
-    Rec = SealSetText(Rec,"@error","mismatched SEAL version");
-    goto Done;
-    }
-
-  sigstr = SealGetText(Rec,"id");
-  dnsstr = SealGetText(Rec,"id");
-  if (dnsstr && (!sigstr || strcmp(sigstr,dnsstr)))
-    {
-    Rec = SealSetText(Rec,"@error","mismatched SEAL IDs");
-    goto Done;
-    }
 
   digestalg = SealGetText(Rec,"da"); // SEAL's 'da' parameter
   mdf = SealGetMdfFromString(digestalg);
@@ -437,17 +284,11 @@ sealfield *	SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
     goto Done;
     }
 
-  keyalg = SealGetText(Rec,"ka");
+  // Check if ka matches DNS
+  keyalg = SealGetText(Rec,"ka"); // get seal record's ka; better exist!
   if (!keyalg) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no public key algorithm defined");
-    goto Done;
-    }
-  // Check if ka matches DNS
-  dnsstr = SealGetText(dnstxt,"ka");
-  if (!dnsstr || strcmp(dnsstr,keyalg))
-    {
-    Rec = SealSetText(Rec,"@error","mismatched key algorithm");
     goto Done;
     }
 
@@ -553,12 +394,119 @@ sealfield *	SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
 	Rec = SealSetText(Rec,"@error","signature mismatch");
 	}
 
+  // Made it here? It validatd!
+  // Check if it is revoked.
+  Rec = _SealValidateRevoke(Rec,dnstxt);
+
 Done:
   // Free structures when done.
   if (PubKeyCtx) { EVP_PKEY_CTX_free(PubKeyCtx); }
   if (PubKey) { EVP_PKEY_free(PubKey); }
   return(Rec);
-} /* SealValidateSig() */
+} /* _SealValidateSig() */
+
+#pragma GCC visibility pop
+
+/********************************************************
+ SealValidateDecodeParts(): Given seal record with signature, decode the signature.
+ NOTE: This does NOT check the crypto!
+ Returns: Errors are detailed in '@error'
+ On success:
+   Decoded signature is in '@sigbin'
+   Any timestamp is in '@sigdate'
+   and no '@error'
+ ********************************************************/
+sealfield *	SealValidateDecodeParts	(sealfield *Rec)
+{
+  char *SigFormat;
+  char *Sig;
+  size_t siglen,datelen=0;
+  SealSignatureFormat sigFormat;
+
+  if (!Rec) // should never happen
+    {
+    Rec = SealSetText(Rec,"@error","no record to check");
+    return(Rec);
+    }
+
+  SigFormat = SealGetText(Rec,"sf"); // always defined
+
+  Sig = SealGetText(Rec,"s");
+  if (!Sig)
+    {
+    Rec = SealSetText(Rec,"@error","signature not found");
+    return(Rec);
+    }
+  siglen = strlen(Sig);
+
+  // Verify the format
+  datelen=0; // if it's > 0, then there's a date string
+  Rec = SealDel(Rec,"@sigdate");
+  if (SigFormat && !strncmp(SigFormat,"date",4))
+    {
+    // Make sure the date is correct
+    datelen = 14; // YYYYMMDDhhmmss
+    if (isdigit(SigFormat[4]))
+      {
+      datelen += 1 + SigFormat[4]-'0';
+      }
+
+    // date + ":" + sig; the sig better be at least 1 character
+    if ((siglen <= datelen+2) || (Sig[datelen]!=':') ||
+	((datelen > 14) && (Sig[14]!='.')) )
+      {
+      Rec = SealSetText(Rec,"@error","signature date does not match the specified format");
+      return(Rec);
+      }
+    Rec = SealSetTextLen(Rec,"@sigdate",datelen,Sig);
+    datelen++; // skip the ':'
+    }
+
+  // Decode to binary
+  if (Sig)
+    {
+    /*****
+     Decode the signature into binary
+     I should be doing this in _SealValidateSig(), but I've
+     already loaded the signature and datelen here.
+     (No need to repeat this process.)
+     *****/
+    Rec = SealDel(Rec,"@sigbin");
+    Rec = SealSetBin(Rec,"@sigbin",siglen-datelen,(byte*)Sig+datelen);
+
+    // Remove any padding
+    sealfield *s;
+    s = SealSearch(Rec,"@sigbin");
+    while((s->ValueLen > 1) && isspace(s->Value[s->ValueLen-1])) { s->ValueLen--; }
+
+    // Decode the signature
+    sigFormat = SealGetSF(SigFormat);
+    if (sigFormat == INVALID) 
+      {
+      Rec = SealSetText(Rec, "@error", "unsupported signature encoding");
+      }
+    SealDecode(SealSearch(Rec, "@sigbin"), sigFormat);
+
+    if (SealSearch(Rec, "@sigbin")->ValueLen < 1) 
+      {
+      if (sigFormat == BASE64) 
+        {
+        Rec = SealSetText(Rec, "@error", "base64 signature failed to decode");
+        } 
+      else if (sigFormat == HEX_LOWER || sigFormat == HEX_UPPER) 
+        {
+        Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
+        }
+    }
+
+    // To help with debugging
+    sealfield *sf;
+    sf = SealSearch(Rec,"@sigbin");
+    if (sf) { sf->Type = 'x'; }
+    } // decode to binary
+
+  return(Rec);
+} /* SealValidateDecodeParts() */
 
 /********************************************************
  SealVerify(): Given seal record, see if it validates.
@@ -568,10 +516,16 @@ Done:
 sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 {
   char *ErrorMsg=NULL;
-  sealfield *dnstxt;
+  char *RevokeMsg=NULL;
+  sealfield *dnstxt=NULL;
   int dnsnum; // which dns record number?
   long signum; // signature number
-  sealfield *IsRevoke=NULL; // set to error is there is a revoke
+  char *rec_sv,*dns_sv; // for matching seal version strings
+  char *rec_id,*dns_id; // for matching uid strings
+  char *rec_ka,*dns_ka; // for matching ka strings
+  char *rec_kv,*dns_kv; // for matching kv strings
+  char *dns_str;
+  bool IsValid=true; // assume it is valid
 
   if (!Rec) { return(Rec); }
 
@@ -636,63 +590,127 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
    DNS...
    There may be multiple DNS records.
    Find the first one that verifies.
-   If ANY revoke, track it, but still check if any verify.
+   If ANY have a global revoke, track it, but still check if any verify.
    Only keep the error if NONE of them verify.
 
-   There are TWO things that need to be checked.
-   1. Is the public key revoked?
-   2. If it's not revoked, did the public key verify the signature?
-   If any dns entries verify AND is not revoked, then that is good and it's done.
-   If every dns entry fails AND there's a revoke, then report the revoke.
-   If every dns entry fails AND no revoke, then report that it was unable to verify.
+   This sets multiple output flags:
+     @revoke-global: If set, then any non-verified signature is a revoke
+     @revoke: If set, then the signature is revoked.
+     @error: If set and no dnstxt, then this denotes the error.
+     dnstxt: If set, then the signature validated. (May still have @revoke or @error.)
    *****/
   if (!ErrorMsg) // only loop if there's no error (yet)
     {
     // foreach DNS record, load dns txt record. Stop when there are no more records.
-    for(dnsnum=0; (dnstxt=SealDNSGet(Rec,dnsnum)) != NULL; dnsnum++)
+    rec_sv = SealGetText(Rec,"seal");
+    rec_id = SealGetText(Rec,"uid");
+    rec_ka = SealGetText(Rec,"ka");
+    rec_kv = SealGetText(Rec,"kv");
+    for(dnsnum=0; (dnstxt=SealDNSGet(Rec,dnsnum)) != NULL; dnsnum++) // foreach dns record...
       {
       /* Copy DNS components to the record for verifying */
       Rec = SealDel(Rec,"@error"); // assume no error so far
 
-      /* Check revokes */
-      Rec = SealValidateRevoke(Rec,dnstxt);
-      if (SealGetText(Rec,"@error"))
+      /******************************************************
+       Check if the DNS record applies to this SEAL record.
+       ******************************************************/
+      // Must be same seal version
+      // seal version must match (default to "1")
+      dns_sv = SealGetText(dnstxt,"seal");
+      if (!rec_sv || !dns_sv) { continue; } // both must be defined
+      else if (!strcmp(dns_sv,rec_sv)) { ; } // explicit match
+      else { continue; } // missed
+
+      // If DNS has ka, then seal record must match
+      dns_ka = SealGetText(dnstxt,"ka");
+      if (dns_ka && (!rec_ka || strcmp(dns_ka,rec_ka))) { continue; }
+
+      // If DNS has a uid, then seal record must match
+      dns_id = SealGetText(dnstxt,"uid");
+      if (dns_id && (!rec_id || strcmp(dns_id,rec_id))) { continue; }
+
+      // kv must match (default to "1")
+      dns_kv = SealGetText(dnstxt,"kv");
+      if (rec_kv && dns_kv && !strcmp(dns_kv,rec_kv)) { ; } // explicit match
+      else if (!rec_kv && !dns_kv) { ; } // dual implicit match
+      else if (rec_kv && !dns_kv && !strcmp(rec_kv,"1")) { ; } // implicit match
+      else if (!rec_kv && dns_kv && !strcmp(dns_kv,"1")) { ; } // implicit match
+      else { continue; } // missed
+
+      /*****
+       TBD: If Rec contains inline-pubkey, then either:
+       (A) match full p=, or
+       (B) match digest using pka= and pkd=
+       If neither matches, then it doesn't apply (continue).
+       *****/
+
+      /*********************************
+       All mandatory fields matches!
+       *********************************/
+      // Check for global revoked when no pubkey defined
+      dns_str = SealGetText(dnstxt,"p");
+      if (!dns_str) { dns_str = SealGetText(dnstxt,"pkd"); }
+      if (!dns_str || !dns_str[0] || !strcmp(dns_str,"revoke"))
         {
-	IsRevoke=SealCopy2(IsRevoke,"@error",Rec,"@error");
-	continue; // it's revoked! Stop checking!
+	Rec = SealSetText(Rec,"@revoke-global","domain default revoke");
+	continue;
 	}
 
+      // There's a public key! See if it matched
       /* Check if the decoded digest matches the known digest. */
-      Rec = SealValidateSig(Rec,dnstxt);
+      Rec = _SealValidateSig(Rec,dnstxt);
+      if (SealGetText(Rec,"@revoke")) { break; } // It is revoked!
       if (!SealGetText(Rec,"@error")) { break; } // It worked!
       } // foreach DNS record
     } // if checking DNS
 
   // Report any errors or findings
+  RevokeMsg = SealGetText(Rec,"@revoke");
   ErrorMsg = SealGetText(Rec,"@error");
-  if (!dnstxt && IsRevoke) // If no valid DNS and there's a revoke, then report it!
+  if (RevokeMsg) // If no valid DNS and there's a revoke, then report it!
 	{
-	ReturnCode |= 0x01; // at least one file is invalid
-	_SealVerifyShow(Rec,signum,SealGetText(IsRevoke,"@error"));
+	IsValid = false;
+	ReturnCode |= 0x10; // at least one file is invalid (validated, but revoked)
+	_SealVerifyShow(Rec,0x10,signum,RevokeMsg);
 	}
   else if (ErrorMsg) // Else: If there is any error, then report it!
 	{
+	IsValid = false;
 	ReturnCode |= 0x01; // at least one file is invalid
-	_SealVerifyShow(Rec,signum,ErrorMsg);
+	_SealVerifyShow(Rec,0x01,signum,ErrorMsg);
 	}
-  else // No error and no revoke! There's a match!
+  else if (dnstxt) // No error and no revoke! There's a match!
 	{
-	_SealVerifyShow(Rec,signum,NULL);
+	_SealVerifyShow(Rec,0,signum,NULL);
+	}
+  else // Failed to verify against dns
+	{
+	RevokeMsg = SealGetText(Rec,"@revoke-global");
+	if (RevokeMsg)
+	  {
+	  IsValid = false;
+	  ReturnCode |= 0x11; // at least one file is invalid
+	  _SealVerifyShow(Rec,0x11,signum,RevokeMsg);
+	  }
+	else if (SealSearch(Rec,"pk")) // was this a public key authentication?
+	  {
+	  ReturnCode |= 0x08; // at least one file could not be attributed
+	  _SealVerifyShow(Rec,0x08,signum,"could not validate");
+	  }
+	else
+	  {
+	  ReturnCode |= 0x04; // at least one file could not be validated
+	  _SealVerifyShow(Rec,0x04,signum,"could not validate");
+	  }
 	}
 
   /* Verify the src details, if present.
      Failure to verify warns, does not error */
-  if (!ErrorMsg && !IsRevoke)
+  if (IsValid)
     {
     SealSrcVerify(Rec);
     }
 
-  SealFree(IsRevoke);
   return(Rec);
 } /* SealVerify() */
 

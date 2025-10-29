@@ -121,7 +121,7 @@ sealfield *	SealSearch	(sealfield *vf, const char *Field);
 sealfield *	SealCopy	(sealfield *vfhead, const char *NewField, const char *OldField);
 sealfield *	SealCopy2	(sealfield *vfhead2, const char *Field2, sealfield *vfhead1, const char *Field1);
 sealfield *	SealMove	(sealfield *vfhead, const char *NewField, const char *OldField);
-sealfield *	SealParmCheck	(sealfield *Args);
+sealfield *	SealParmCheck	(sealfield *Args, char Mode);
 
 // Binary data
 byte *	SealGetBin	(sealfield *vfhead, const char *Field);
