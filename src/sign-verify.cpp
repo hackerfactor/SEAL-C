@@ -239,36 +239,21 @@ sealfield *	_SealValidateRevoke	(sealfield *Rec, sealfield *dnstxt)
 } /* _SealValidateRevoke() */
 
 /********************************************************
- _SealValidateSig(): Given seal record with DNS results,
- and decoded binary signature, see if it validates!!!
- Called by SealValidate().
- This is only called if SealValidateDecodeParts() worked.
- Returns: Errors are detailed in '@error', revoke is set in '@revoke'.
+ _SealValidateDigest(): Given public key verify the digest
+ This is to allow the same code to be used for both inline
+ and dns validation.
  ********************************************************/
-sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
+sealfield * _SealValidateDigest(sealfield *Rec, sealfield *pubkey)
 {
-  const EVP_MD* (*mdf)(void);
   EVP_PKEY *PubKey=NULL;
   EVP_PKEY_CTX *PubKeyCtx=NULL;
-  char *keyalg, *digestalg;
-  sealfield *sigbin, *digestbin, *pubkey;
   unsigned long e;
-
-  /*****
-   If you're calling this function, then we have:
-   Correct dnstxt record
-   '@sigbin' = binary signature
-   '@digest1' = binary digest
-   '@digest2' = (optional) binary digest
-   'ka' = key algorthtm
-   And we know the record is not revoked.
-
-   Use the public key with the key algorith to decode the signature.
-   It should match the digest.
-     decode_ka(publicbin,sigbin) == digest
-   *****/
+  const EVP_MD* (*mdf)(void);
+  sealfield *sigbin, *digestbin;
+  char *keyalg, *digestalg;
 
   digestalg = SealGetText(Rec,"da"); // SEAL's 'da' parameter
+
   mdf = SealGetMdfFromString(digestalg);
   if (!mdf)
 	{
@@ -276,27 +261,18 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
 	exit(0x80);
 	}
 
-  // Prepare the public key
-  pubkey = SealSearch(dnstxt,"@p-bin");
-  if (!pubkey) // should never happen
-    {
-    Rec = SealSetText(Rec,"@error","no public key found");
-    goto Done;
-    }
-
-  // Check if ka matches DNS
   keyalg = SealGetText(Rec,"ka"); // get seal record's ka; better exist!
   if (!keyalg) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no public key algorithm defined");
-    goto Done;
+    goto DigestDone;
     }
 
   sigbin = SealSearch(Rec,"@sigbin");
   if (!sigbin) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no signature found");
-    goto Done;
+    goto DigestDone;
     }
 
   digestbin = SealSearch(Rec,"@digest2");
@@ -304,7 +280,7 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
   if (!digestbin) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no digest found");
-    goto Done;
+    goto DigestDone;
     }
 
   // Load public key into EVP_PKEY structure
@@ -315,7 +291,7 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
   if (!bio)
 	{
 	Rec = SealSetText(Rec,"@error","failed to load public key into memory");
-	goto Done;
+	goto DigestDone;
 	}
   /* Convert BIO to public key */
   PubKey = d2i_PUBKEY_bio(bio, NULL);
@@ -325,7 +301,7 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
   if (!PubKey)
 	{
 	Rec = SealSetText(Rec,"@error","failed to import public key");
-	goto Done;
+	goto DigestDone;
 	}
 
   // Prepare public key for verifying
@@ -386,23 +362,57 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
 	}
 
   // Check the signature!
-  sigbin = SealSearch(Rec,"@sigbin");
-  digestbin = SealSearch(Rec,"@digest2");
-  if (!digestbin) { digestbin = SealSearch(Rec,"@digest1"); }
   if (EVP_PKEY_verify(PubKeyCtx, sigbin->Value, sigbin->ValueLen, digestbin->Value, digestbin->ValueLen) != 1)
 	{
 	Rec = SealSetText(Rec,"@error","signature mismatch");
 	}
 
-  // Made it here? It validatd!
-  // Check if it is revoked.
-  Rec = _SealValidateRevoke(Rec,dnstxt);
-
-Done:
+DigestDone:
   // Free structures when done.
   if (PubKeyCtx) { EVP_PKEY_CTX_free(PubKeyCtx); }
   if (PubKey) { EVP_PKEY_free(PubKey); }
-  return(Rec);
+  return Rec;
+}
+/********************************************************
+ _SealValidateSig(): Given seal record with DNS results,
+ and decoded binary signature, see if it validates!!!
+ Called by SealValidate().
+ This is only called if SealValidateDecodeParts() worked.
+ Returns: Errors are detailed in '@error', revoke is set in '@revoke'.
+ ********************************************************/
+sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
+{
+  sealfield *pubkey;
+
+  /*****
+   If you're calling this function, then we have:
+   Correct dnstxt record
+   '@sigbin' = binary signature
+   '@digest1' = binary digest
+   '@digest2' = (optional) binary digest
+   'ka' = key algorthtm
+   And we know the record is not revoked.
+
+   Use the public key with the key algorith to decode the signature.
+   It should match the digest.
+     decode_ka(publicbin,sigbin) == digest
+   *****/
+
+  // Prepare the public key
+  pubkey = SealSearch(dnstxt,"@p-bin");
+  if (!pubkey) // should never happen
+    {
+    Rec = SealSetText(Rec,"@error","no public key found");
+    return Rec;
+    }
+  
+  Rec = _SealValidateDigest(Rec, pubkey);
+  if (SealSearch(Rec, "@error")) { return Rec; }
+
+  // Made it here? It validatd!
+  // Check if it is revoked.
+  Rec = _SealValidateRevoke(Rec,dnstxt);
+  return Rec;
 } /* _SealValidateSig() */
 
 #pragma GCC visibility pop
