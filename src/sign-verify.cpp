@@ -536,6 +536,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
   char *rec_kv,*dns_kv; // for matching kv strings
   char *dns_str;
   bool IsValid=true; // assume it is valid
+  bool IsInline=false;
 
   if (!Rec) { return(Rec); }
 
@@ -595,6 +596,19 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	Rec = SealDoubleDigest(Rec);
 	ErrorMsg = SealGetText(Rec,"@error");
 	}
+
+  /*****
+   * Check if the record is inline
+   * If inline verify the record, then do the DNS checks
+   * else continue with the normal verifications
+  */
+  if(!ErrorMsg && SealSearch(Rec, "pk"))
+    {
+    IsInline = true;
+    printf("I'm inline\n");
+    Rec = _SealValidateDigest(Rec, SealSearch(Rec, "pk"));
+    printf("validated\n");
+    }
 
   /*****
    DNS...
