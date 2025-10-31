@@ -46,10 +46,10 @@ sealfield *	SealGetPublicKey	(sealfield *Args)
 } /*SealGetPublicKey()*/
 
 /********************************************************
- SealInlineVerify(): For an inline signature, verify that the
+ SealInlineAuthenticate(): For an inline signature, verify that the
  public key digest (pkd) matches the public key (pk).
  ********************************************************/
-sealfield * SealInlineVerify    (sealfield *Args){
+sealfield * SealInlineAuthenticate    (sealfield *Args){
   char *pk, *pkd, *pka;
   const EVP_MD* (*mdf)(void);
   char *pkdCalc;
