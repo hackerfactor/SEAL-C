@@ -715,6 +715,10 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	}
   else if (ErrorMsg) // Else: If there is any error, then report it!
 	{
+    if(IsInline && IsValid) //Validated, but could not authenitcate
+      { 
+      _SealVerifyShow(Rec, 0x08, signum, "could not authenticate");
+      }
 	IsValid = false;
 	ReturnCode |= 0x01; // at least one file is invalid
 	_SealVerifyShow(Rec,0x01,signum,ErrorMsg);
