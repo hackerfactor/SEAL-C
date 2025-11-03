@@ -604,9 +604,12 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
   */
   if(!ErrorMsg && SealSearch(Rec, "pk"))
     {
-printf("THIS IS INLINE\n");
+    sealfield *pubkey_bin;
     IsInline = true;
-    Rec = _SealValidateDigest(Rec, SealSearch(Rec, "pk"));
+    Rec = SealCopy(Rec, "@pk-bin", "pk");
+    pubkey_bin = SealSearch(Rec, "@pk-bin");
+    SealBase64Decode(pubkey_bin);
+    Rec = _SealValidateDigest(Rec, pubkey_bin);
     ErrorMsg = SealGetText(Rec,"@error");
     // Needed because otherwise an inline sig will be validated, but not authenticated
     if(ErrorMsg){ IsValid = false; }
