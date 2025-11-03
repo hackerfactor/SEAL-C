@@ -604,10 +604,12 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
   */
   if(!ErrorMsg && SealSearch(Rec, "pk"))
     {
+printf("THIS IS INLINE\n");
     IsInline = true;
-    printf("I'm inline\n");
     Rec = _SealValidateDigest(Rec, SealSearch(Rec, "pk"));
-    printf("validated\n");
+    ErrorMsg = SealGetText(Rec,"@error");
+    // Needed because otherwise an inline sig will be validated, but not authenticated
+    if(ErrorMsg){ IsValid = false; }
     }
 
   /*****
@@ -662,11 +664,22 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
       else { continue; } // missed
 
       /*****
-       TBD: If Rec contains inline-pubkey, then either:
+       If Rec contains inline-pubkey, then either:
        (A) match full p=, or
        (B) match digest using pka= and pkd=
        If neither matches, then it doesn't apply (continue).
        *****/
+      if(IsInline)
+        {
+        // The public key was already validated, and it being here means it was authenticated, if nto revoked
+        if(SealGetText(dnstxt,"p") == SealGetText(Rec, "pk"))
+          {
+          Rec = _SealValidateRevoke(Rec,dnstxt);
+          break; //regardless of if it is revoked the record was found
+          }
+        Rec = SealInlineAuthenticate(Rec);
+        if (!SealGetText(Rec,"@error")) { break; } // It worked!
+        }
 
       /*********************************
        All mandatory fields matches!
@@ -727,7 +740,6 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	  _SealVerifyShow(Rec,0x04,signum,"could not validate");
 	  }
 	}
-
   /* Verify the src details, if present.
      Failure to verify warns, does not error */
   if (IsValid)
