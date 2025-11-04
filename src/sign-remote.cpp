@@ -60,6 +60,13 @@ sealfield *	SealSignURL	(sealfield *Args)
   CURLcode crc; // curl return code
   char errbuf[CURL_ERROR_SIZE];
 
+  // No network? Got nothing.
+  if (SealSearch(Args,"no-net"))
+    {
+    fprintf(stderr," ERROR: --no-net is set; cannot do remote signing. Aborting.\n");
+    exit(0x80);
+    }
+
   // Make sure there's a known API URL!
   if (!SealIsURL(Args)) // Caller should make sure this never happens
     {

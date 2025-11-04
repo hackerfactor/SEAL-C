@@ -383,7 +383,7 @@ void	Usage	(const char *progname)
   printf("  -h, -?, --help    :: Show help; this usage\n");
   printf("  --config file.cfg :: Optional configuration file (default: $XDG_CONFIG_HOME/seal/config)\n");
   printf("  --showconfig      :: For debugging: display all parameters after loading the config file and command-line.\n");
-  printf("  --no-net          :: Optional: disable all network access (for use in an offline environment)\n");
+  printf("  --no-net          :: Optional: disable all network access (for use in offline environments)\n");
   printf("  -v                :: Verbose debugging (probably not what you want)\n");
   printf("  -V, --version     :: Show the code version and exit.\n");
   printf("\n");
@@ -558,6 +558,7 @@ int main (int argc, char *argv[])
     {"keyfile",   required_argument, NULL, 'k'},
     {"Manual",    required_argument, NULL, 'M'},
     {"manual",    required_argument, NULL, 'm'},
+    {"no-net",    no_argument, NULL, 0},
     {"outfile",   required_argument, NULL, 'o'},
     {"options",   required_argument, NULL, 'O'},
     {"showconfig", no_argument, NULL, 0},

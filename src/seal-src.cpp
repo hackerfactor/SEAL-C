@@ -118,6 +118,7 @@ char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFo
 /**************************************
  SealGetDigestFromURL(): Call the src URL 
  and calculate the Digest for the given algorthim
+ Returns: digest, or NULL on failure.
  **************************************/
 char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFormat srcaSf, const EVP_MD* (*mdf)(void))
 {
@@ -126,6 +127,8 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   CURLcode crc; // curl return code
   char * src;
   char errbuf[CURL_ERROR_SIZE];
+
+  if (SealSearch(Args,"no-net")) { return(NULL); }
 
   src = SealGetText(Args,"src");
   crc = curl_global_init(CURL_GLOBAL_DEFAULT);
