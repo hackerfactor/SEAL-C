@@ -716,10 +716,6 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	}
   else if (ErrorMsg) // Else: If there is any error, then report it!
 	{
-    if(IsInline && IsValid) //Validated, but could not authenitcate
-      { 
-      _SealVerifyShow(Rec, 0x08, signum, "could not authenticate");
-      }
 	IsValid = false;
 	ReturnCode |= 0x01; // at least one file is invalid
 	_SealVerifyShow(Rec,0x01,signum,ErrorMsg);
@@ -737,10 +733,10 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	  ReturnCode |= 0x11; // at least one file is invalid
 	  _SealVerifyShow(Rec,0x11,signum,RevokeMsg);
 	  }
-	else if (SealSearch(Rec,"pk")) // was this a public key authentication?
+    else if (IsInline && IsValid) // was this a public key authentication?
 	  {
 	  ReturnCode |= 0x08; // at least one file could not be attributed
-	  _SealVerifyShow(Rec,0x08,signum,"could not validate");
+	  _SealVerifyShow(Rec,0x08,signum,"validated, could not authenticate");
 	  }
 	else
 	  {
