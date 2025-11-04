@@ -373,27 +373,6 @@ sealfield *	SealSignLocal	(sealfield *Args)
 
   /*****
    Convert it to the output format.  keyalg = SealGetText(Args,"ka");
-  if (keyalg && !strcmp(keyalg,"rsa"))
-    {
-    decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "RSA", EVP_PKEY_KEYPAIR, NULL, NULL);
-    }
-#if INC_ED25519
-  else if (keyalg && !strcmp(keyalg,"ed25519"))
-    {
-    decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "ED25519", EVP_PKEY_KEYPAIR, NULL, NULL);
-    }
-#endif
-  // If more algorithms are supported, this needs to be updated.
-  else if (keyalg) // && !strcmp(keyalg,"ec"))
-    {
-    // everything else currently supported is ec.
-    decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "EC", EVP_PKEY_KEYPAIR, NULL, NULL);
-    }
-  else
-    {
-    fprintf(stderr," ERROR: No key algorithm defined.\n");
-    exit(0x80);
-    }
    Binary signature is stored in sig!
    *****/
   sigFormat = SealGetSF(sf);
