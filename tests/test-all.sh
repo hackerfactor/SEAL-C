@@ -7,7 +7,7 @@ cd $(dirname "$0")
 TEST_SCRIPTS=(
   "test-local.sh:Local Signing"
   "test-remote.sh:Remote Signing"
-  "test-inline.sh":Inline Signing
+  "test-inline.sh":"Inline Signing"
   "test-revoke.sh:Revocation"
   "test-manual.sh:Manual"
 )
