@@ -1,7 +1,28 @@
 #!/bin/bash
 # End-to-End test suite for local signing
 
+##################################
+# Check for dependencies
+##################################
+command -v exiftool >/dev/null 2>&1
+if [ $? != 0 ] ; then
+  echo "ERROR: exiftool not installed."
+  echo "Install exiftool from https://exiftool.org/"
+  exit 1
+fi
+
+# Ensure it's the correct version
+exifver=$(exiftool -ver)
+awk -v var="$exifver" -v val="13.03" 'BEGIN { exit (var < val ? 0 : 1) }' > /dev/null 2>&1
+if [ $? == 0 ] ; then
+  echo "ERROR: exiftool too old; found version $exifver, need 13.03 or later."
+  echo "Install exiftool from https://exiftool.org/"
+  exit 1
+fi
+
+##################################
 # Everything is relative to this test directory.
+##################################
 cd $(dirname "$0")
 
 TESTDIR=test-manual.dir
