@@ -14,7 +14,7 @@ TESTDIR=test-inline.dir
 rm -rf $TESTDIR
 mkdir $TESTDIR
 
-echo "##### Local Key Generation Test"
+echo "##### Local Inline Key Generation Test"
 for ka in rsa ec ; do
   # generate keys
   ../bin/sealtool -g --ka "$ka" -D "$TESTDIR/sign-$ka.dns" -k "$TESTDIR/sign-$ka.key" --genpass '' -p
@@ -45,12 +45,18 @@ for ka in rsa ec ; do
 
     # Verify local signing
     echo ""
-    echo "#### Verify Local $da $ka $sf"
+    echo "#### Verify Local Inline $da $ka $sf"
     ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" $TESTDIR/test-*local-inline-$da-$ka-$sfname*
     if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
 
+    # Verify with --no-net (should fail to authenticate)
+    echo ""
+    echo "#### Verify Local Inline with --no-net $da $ka $sf"
+    ../bin/sealtool --no-net $TESTDIR/test-*local-inline-$da-$ka-$sfname*
+    rc="$?"
+    # 8 = not authenticated. The signature is valid, but cannot be authenticated due to --no-net.
+    if [ "$rc" != "8" ] ; then echo "Failed. Expected rc=8, got $rc."; exit 1; fi
   done #sf
 done # ka
 done # da
-
 exit 0
