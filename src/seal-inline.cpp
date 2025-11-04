@@ -6,7 +6,6 @@
   pk=     :: a public key (also refered to as 'p' when in the dns entry in non inline format)
   pka=    :: algorithim used to generate the pkd
   pkd=    :: digest of the public key
-  dnsfile=:: path to local dns file for retrieving the public key
 
   pk is set in the order of precedence of commandline > dnsfile > dns
  ************************************************/
