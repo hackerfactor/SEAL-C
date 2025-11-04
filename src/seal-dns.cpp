@@ -334,7 +334,12 @@ sealfield *	SealDNSGet	(sealfield *Args, int DNSRecordNumber)
       }
     }
 
-  // did not exist in cache, so get it!
+  // Not exist in cache!
+
+  // Abort if there is no network.
+  if (SealSearch(Args,"no-net")) { return(NULL); }
+
+  // Go get it!
   if (!d && !DefaultDomain)
     {
     if (!_SealDNSnet(Domain)) { return(NULL); }

@@ -73,7 +73,8 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
   else if (rc & 0x04) { printf("not validated"); }
   else if (rc & 0x08) { printf("not autenticated"); }
   else { printf("valid"); }
-  if (Msg) { printf(": %s\n",Msg); }
+  if (Msg) { printf(": %s",Msg); }
+  printf("\n");
 
   // Show digest (if verbose)
   if (Verbose)
@@ -794,6 +795,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args,
 
     // Keep srcf if it came from Args
     Rec = SealCopy2(Rec,"srcf",Args,"srcf");
+    Rec = SealCopy2(Rec,"no-net",Args,"no-net");
 
     // Found a signature!  Verify the data!
     Rec = SealVerify(Rec,Mmap,MmapPre);
