@@ -372,7 +372,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
   //EVP_PKEY_sign(ctx, NULL, &siglen, NULL, 0); // get size; does not work with ed25519
 
   /*****
-   Convert it to the output format.  keyalg = SealGetText(Args,"ka");
+   Convert it to the output format. 
    Binary signature is stored in sig!
    *****/
   sigFormat = SealGetSF(sf);
