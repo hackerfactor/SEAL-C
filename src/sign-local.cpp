@@ -624,6 +624,39 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
 } /* SealGenerateKeyPrivate() */
 
 /**************************************
+ SealGenerateKeyPublic(): Create the public!
+ Depends on OpenSSL 3.x.
+ **************************************/
+ sealfield *   SealGenerateKeyPublic(sealfield *Args, EVP_PKEY *keypair)
+ {
+    OSSL_ENCODER_CTX *encoder = NULL;
+    // Save public key as DER!
+    encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair,
+	EVP_PKEY_PUBLIC_KEY,
+	//OSSL_KEYMGMT_SELECT_ALL_PARAMETERS | OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
+	//EVP_PKEY_KEY_PARAMETERS | EVP_PKEY_PUBLIC_KEY,
+	"DER", NULL, NULL);
+  if (!encoder)
+    {
+    fprintf(stderr," ERROR: Unable to generate the public key.\n");
+    // don't delete the private keyfile since it can still generate public keys
+    exit(0x80);
+    }
+    // Save binary public key to memory (I'll base64-encode it without the headers)
+    {
+    BIO *bio = BIO_new(BIO_s_mem());
+    i2d_PUBKEY_bio(bio, keypair);
+    size_t derlen;
+    unsigned char *derdata;
+    derlen = BIO_get_mem_data(bio, &derdata);
+    Args = SealSetBin(Args,"@pubder",derlen,derdata);
+    SealBase64Encode(SealSearch(Args,"@pubder"));
+    BIO_free(bio);
+    }
+    return Args;
+} /*SealGenerateKeyPublic()*/
+
+/**************************************
  SealGenerateKeys(): Create the public and private keys!
  Depends on OpenSSL 3.x.
  **************************************/
@@ -633,7 +666,6 @@ void	SealGenerateKeys	(sealfield *Args)
   FILE *fp;
   sealfield *vf;
   EVP_PKEY *keypair = NULL;
-  OSSL_ENCODER_CTX *encoder = NULL;
   char *pubfile=NULL;
 
   vf = SealSearch(Args,"dnsfile");
@@ -653,30 +685,7 @@ void	SealGenerateKeys	(sealfield *Args)
   // Load or generate the private key.
   keypair = SealGenerateKeyPrivate(Args);
 
-  // Save public key as DER!
-  encoder = OSSL_ENCODER_CTX_new_for_pkey(keypair,
-	EVP_PKEY_PUBLIC_KEY,
-	//OSSL_KEYMGMT_SELECT_ALL_PARAMETERS | OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
-	//EVP_PKEY_KEY_PARAMETERS | EVP_PKEY_PUBLIC_KEY,
-	"DER", NULL, NULL);
-  if (!encoder)
-    {
-    fprintf(stderr," ERROR: Unable to generate the public key.\n");
-    // don't delete the private keyfile since it can still generate public keys
-    exit(0x80);
-    }
-
-  // Save binary public key to memory (I'll base64-encode it without the headers)
-  {
-  BIO *bio = BIO_new(BIO_s_mem());
-  i2d_PUBKEY_bio(bio, keypair);
-  size_t derlen;
-  unsigned char *derdata;
-  derlen = BIO_get_mem_data(bio, &derdata);
-  Args = SealSetBin(Args,"@pubder",derlen,derdata);
-  SealBase64Encode(SealSearch(Args,"@pubder"));
-  BIO_free(bio);
-  }
+  Args = SealGenerateKeyPublic(Args, keypair);
 
   // Create DNS entry!
   fp = fopen(pubfile,"wb");
