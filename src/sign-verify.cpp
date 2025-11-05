@@ -736,7 +736,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
     else if (IsInline && IsValid) // was this a public key authentication?
 	  {
 	  ReturnCode |= 0x08; // at least one file could not be attributed
-	  _SealVerifyShow(Rec,0x08,signum,"validated, could not authenticate");
+	  _SealVerifyShow(Rec,0x08,signum,"validated, but could not authenticate");
 	  }
 	else
 	  {

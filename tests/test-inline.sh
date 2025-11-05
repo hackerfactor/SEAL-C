@@ -18,7 +18,7 @@ echo "##### Local Inline Key Generation Test"
 for ka in rsa ec ; do
   # generate keys
   ../bin/sealtool -g --ka "$ka" -D "$TESTDIR/sign-$ka.dns" -k "$TESTDIR/sign-$ka.key" --genpass '' -p
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed to generate keys."; exit 1; fi
 done # ka
 
 echo ""
@@ -40,7 +40,7 @@ for ka in rsa ec ; do
 	j=${i/..\/regression/$TESTDIR}
 	out=${j/-unsigned/-signed-local-inline-$da-$ka-$sfname}
 	../bin/sealtool -s -p -k "$TESTDIR/sign-$ka.key" --ka "$ka" --da "$da" --sf "$sf" -o "$out" "$i"
-	if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+	if [ "$?" != "0" ] ; then echo "Failed to sign."; exit 1; fi
     done
 
     # Verify local signing
