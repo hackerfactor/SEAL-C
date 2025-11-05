@@ -1,17 +1,18 @@
 # Building the code
 SEAL command-line tool (sealtool).
 
-This code is written in C (but I compile it with g++ because it has more error messages).
+This code is written in C (but it's compiled with g++ because g++ has more informative error messages).
 
 ## Requirements
 1. g++ version 9.x or later
-2. OpenSSL version 3.x. (If you run `openssl version` and it says 1.x, then it won't work.) You need the developer code installed. (For my system, I downloaded the latest version directly from [OpenSSL](https://openssl-library.org/source/index.html) and compiled it. I did this because the default package provided by Debian and Ubuntu is far from the most recent version.)
+2. OpenSSL version 3.x. (If you run `openssl version` and it says 1.x, then it won't work.) You need the developer code installed. (For my system, I downloaded the latest version directly from [OpenSSL](https://openssl-library.org/source/index.html) and compiled it. I did this because the default package provided by Debian and Ubuntu is not the most recent version.)
 3. libcurl (developer libraries). On Ubuntu, I use: `apt install libcurl4-openssl-dev`
-4. `make`
+4. ExifTool version 13.03 or later. It's best to install directly from [https://exiftool.org](https://exiftool.org). Only required for the test scripts.
+5. `make`
 
 For debugging:
-5. Electric Fence (libefence): `apt install electric-fence`
-6. Valgrind: `apt install valgrind`
+6. Electric Fence (libefence): `apt install electric-fence`
+7. Valgrind: `apt install valgrind`
 
 ## Build
 1. Clone this repository
@@ -24,7 +25,7 @@ This will generate two files:
 - seal-rsa.key: Your private key. Don't share this.
 - seal-rsa.dns: Your public key, formatted and ready to be put in your DNS TXT field.
 
-Second, sign a picture. I have some regression testing pictures in the regression/ directory.
+Second, sign a picture. there are some regression testing pictures in the `regression/` directory.
   `bin/sealtool -s -d example.com -K rsa -k seal-rsa.key regression/test-unsigned.png`
 - This says that the public key is in the DNS TXT record for "example.com" and uses RSA encryption.
 - You can change the encoding format (e.g., `--sf date3:base64`) and specify a user identifier (e.g., `--id BobNotBill`).
@@ -102,8 +103,8 @@ This contains the computed signature for your provided digest. You can now repla
 ## Current Status
 This is the initial release.
 - It supports a wide range of image, audio, video, and document files -- with more being added. All common web formats are supported, including JPEG, PNG, WebP, PDF, and MP4.
-- It supports RSA and elliptic curve (EC using prime256v1 and secp256r1).
+- It supports RSA and elliptic curve (EC using prime256v1, secp256r1, and others).
 - Needs an autogen for building the code. (How do I make autogen require openssl 3.x?)
 
-If you see any problems, let me know!
+If you see any problems, let us know!
 
