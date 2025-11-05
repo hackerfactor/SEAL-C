@@ -47,7 +47,7 @@ for ka in rsa ec ; do
     echo ""
     echo "#### Verify Local Inline $da $ka $sf"
     ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" $TESTDIR/test-*local-inline-$da-$ka-$sfname*
-    if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+    if [ "$?" != "0" ] ; then echo "Failed to verify local signing."; exit 1; fi
 
     # Verify with --no-net (should fail to authenticate)
     echo ""
@@ -55,7 +55,7 @@ for ka in rsa ec ; do
     ../bin/sealtool --no-net $TESTDIR/test-*local-inline-$da-$ka-$sfname*
     rc="$?"
     # 8 = not authenticated. The signature is valid, but cannot be authenticated due to --no-net.
-    if [ "$rc" != "8" ] ; then echo "Failed. Expected rc=8, got $rc."; exit 1; fi
+    if [ "$rc" != "8" ] ; then echo "Failed during no-net verify. Expected rc=8, got $rc."; exit 1; fi
   done #sf
 done # ka
 done # da
