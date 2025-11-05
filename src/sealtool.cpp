@@ -447,6 +447,10 @@ void	Usage	(const char *progname)
   printf("  -A, --digestalg alg  :: Digest (hash) algorithm  (default: sha256)\n");
   printf("               Supports: sha224, sha256, sha384, sha512\n");
   printf("  --kv number          :: Unique key version (default: 1)\n");
+  printf("  -p, --inline         :: Include the public key in the SEAL record.\n");
+  printf("               -p permits public keys that are too long for DNS.\n");
+  printf("               -p also permits cryptographic validation, even if\n");
+  printf("               the signer cannot be authenticated. (E.g., no network)\n");
   printf("  --sf text            :: Signing format (default: HEX)\n");
   printf("  --sidecar filename   :: Optional: generate a sidecar signature\n");
   printf("\n");
