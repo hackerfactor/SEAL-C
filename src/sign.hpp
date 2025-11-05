@@ -23,6 +23,12 @@ void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf);
 
 // For key management
 #include <openssl/evp.h>
+
+// For key generation
+void	SealGenerateKeys	(sealfield *Args);
+sealfield * SealGenerateKeyPublic(sealfield *Args, EVP_PKEY *keypair);
+void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf);
+
 void	SealFreePrivateKey	();
 EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args);
 
@@ -55,4 +61,8 @@ sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd
 // Source References
 sealfield *     SealSrcGet      (sealfield *Args);
 void	SealSrcVerify	(sealfield *Args);
+
+// Inline Signing
+sealfield * SealGetPublicKey    (sealfield *Args);
+sealfield * SealInlineAuthenticate    (sealfield *Args);
 #endif

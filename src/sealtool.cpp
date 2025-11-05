@@ -561,6 +561,7 @@ int main (int argc, char *argv[])
     {"no-net",    no_argument, NULL, 0},
     {"outfile",   required_argument, NULL, 'o'},
     {"options",   required_argument, NULL, 'O'},
+    {"inline",    no_argument, NULL, 'p'},
     {"showconfig", no_argument, NULL, 0},
     {"Sign",      no_argument, NULL, 'S'},
     {"sign",      no_argument, NULL, 's'},
@@ -568,6 +569,8 @@ int main (int argc, char *argv[])
     {"sf",        required_argument, NULL, 1},
     {"kv",        required_argument, NULL, 1}, // must be numeric >= 0
     {"uid",       required_argument, NULL, 1},
+    {"pk",       required_argument, NULL, 1},
+    {"pka",       required_argument, NULL, 1},
     // informational
     {"info",      required_argument, NULL, 1},
     {"comment",   required_argument, NULL, 'c'},
@@ -583,7 +586,7 @@ int main (int argc, char *argv[])
     // modes
     {NULL,0,NULL,0}
     };
-  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghI:i:K:k:M:m:o:O:Ssu:VvW?",long_options,&long_option_index)) != -1)
+  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghI:i:K:k:M:m:o:O:pSsu:VvW?",long_options,&long_option_index)) != -1)
     {
     switch(c)
       {
@@ -612,6 +615,7 @@ int main (int argc, char *argv[])
       case 'k': Args = SealSetText(Args,"keyfile",optarg); break;
       case 'o': Args = SealSetText(Args,"outfile",optarg); break;
       case 'O': Args = SealSetText(Args,"options",optarg); break;
+      case 'p': Args = SealSetText(Args, "inline", "True"); break; // Any value being set means it is true
       case 'u': Args = SealSetText(Args,"apiurl",optarg); break;
 
       case 'G': // generate password (not in usage; really insecure)
@@ -686,6 +690,10 @@ int main (int argc, char *argv[])
     {
     // Populate src
     Args = SealSrcGet(Args);
+    
+    // Handle getting the public key if inline signing
+    Args = SealGetPublicKey(Args);
+
     /*****
      When signing, no digest gets the size of the signature (@sigsize).
      This never changes between calls, so do it now.
@@ -835,4 +843,3 @@ int main (int argc, char *argv[])
   SealDNSFlushCache();
   return(ReturnCode); // done processing
 } /* main() */
-

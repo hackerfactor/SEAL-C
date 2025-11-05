@@ -240,36 +240,21 @@ sealfield *	_SealValidateRevoke	(sealfield *Rec, sealfield *dnstxt)
 } /* _SealValidateRevoke() */
 
 /********************************************************
- _SealValidateSig(): Given seal record with DNS results,
- and decoded binary signature, see if it validates!!!
- Called by SealValidate().
- This is only called if SealValidateDecodeParts() worked.
- Returns: Errors are detailed in '@error', revoke is set in '@revoke'.
+ _SealValidateDigest(): Given public key verify the digest
+ This is to allow the same code to be used for both inline
+ and dns validation.
  ********************************************************/
-sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
+sealfield * _SealValidateDigest(sealfield *Rec, sealfield *pubkey)
 {
-  const EVP_MD* (*mdf)(void);
   EVP_PKEY *PubKey=NULL;
   EVP_PKEY_CTX *PubKeyCtx=NULL;
-  char *keyalg, *digestalg;
-  sealfield *sigbin, *digestbin, *pubkey;
   unsigned long e;
-
-  /*****
-   If you're calling this function, then we have:
-   Correct dnstxt record
-   '@sigbin' = binary signature
-   '@digest1' = binary digest
-   '@digest2' = (optional) binary digest
-   'ka' = key algorthtm
-   And we know the record is not revoked.
-
-   Use the public key with the key algorith to decode the signature.
-   It should match the digest.
-     decode_ka(publicbin,sigbin) == digest
-   *****/
+  const EVP_MD* (*mdf)(void);
+  sealfield *sigbin, *digestbin;
+  char *keyalg, *digestalg;
 
   digestalg = SealGetText(Rec,"da"); // SEAL's 'da' parameter
+
   mdf = SealGetMdfFromString(digestalg);
   if (!mdf)
 	{
@@ -277,27 +262,18 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
 	exit(0x80);
 	}
 
-  // Prepare the public key
-  pubkey = SealSearch(dnstxt,"@p-bin");
-  if (!pubkey) // should never happen
-    {
-    Rec = SealSetText(Rec,"@error","no public key found");
-    goto Done;
-    }
-
-  // Check if ka matches DNS
   keyalg = SealGetText(Rec,"ka"); // get seal record's ka; better exist!
   if (!keyalg) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no public key algorithm defined");
-    goto Done;
+    goto DigestDone;
     }
 
   sigbin = SealSearch(Rec,"@sigbin");
   if (!sigbin) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no signature found");
-    goto Done;
+    goto DigestDone;
     }
 
   digestbin = SealSearch(Rec,"@digest2");
@@ -305,7 +281,7 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
   if (!digestbin) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no digest found");
-    goto Done;
+    goto DigestDone;
     }
 
   // Load public key into EVP_PKEY structure
@@ -316,7 +292,7 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
   if (!bio)
 	{
 	Rec = SealSetText(Rec,"@error","failed to load public key into memory");
-	goto Done;
+	goto DigestDone;
 	}
   /* Convert BIO to public key */
   PubKey = d2i_PUBKEY_bio(bio, NULL);
@@ -326,7 +302,7 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
   if (!PubKey)
 	{
 	Rec = SealSetText(Rec,"@error","failed to import public key");
-	goto Done;
+	goto DigestDone;
 	}
 
   // Prepare public key for verifying
@@ -387,23 +363,57 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
 	}
 
   // Check the signature!
-  sigbin = SealSearch(Rec,"@sigbin");
-  digestbin = SealSearch(Rec,"@digest2");
-  if (!digestbin) { digestbin = SealSearch(Rec,"@digest1"); }
   if (EVP_PKEY_verify(PubKeyCtx, sigbin->Value, sigbin->ValueLen, digestbin->Value, digestbin->ValueLen) != 1)
 	{
 	Rec = SealSetText(Rec,"@error","signature mismatch");
 	}
 
-  // Made it here? It validatd!
-  // Check if it is revoked.
-  Rec = _SealValidateRevoke(Rec,dnstxt);
-
-Done:
+DigestDone:
   // Free structures when done.
   if (PubKeyCtx) { EVP_PKEY_CTX_free(PubKeyCtx); }
   if (PubKey) { EVP_PKEY_free(PubKey); }
-  return(Rec);
+  return Rec;
+}
+/********************************************************
+ _SealValidateSig(): Given seal record with DNS results,
+ and decoded binary signature, see if it validates!!!
+ Called by SealValidate().
+ This is only called if SealValidateDecodeParts() worked.
+ Returns: Errors are detailed in '@error', revoke is set in '@revoke'.
+ ********************************************************/
+sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
+{
+  sealfield *pubkey;
+
+  /*****
+   If you're calling this function, then we have:
+   Correct dnstxt record
+   '@sigbin' = binary signature
+   '@digest1' = binary digest
+   '@digest2' = (optional) binary digest
+   'ka' = key algorthtm
+   And we know the record is not revoked.
+
+   Use the public key with the key algorith to decode the signature.
+   It should match the digest.
+     decode_ka(publicbin,sigbin) == digest
+   *****/
+
+  // Prepare the public key
+  pubkey = SealSearch(dnstxt,"@p-bin");
+  if (!pubkey) // should never happen
+    {
+    Rec = SealSetText(Rec,"@error","no public key found");
+    return Rec;
+    }
+  
+  Rec = _SealValidateDigest(Rec, pubkey);
+  if (SealSearch(Rec, "@error")) { return Rec; }
+
+  // Made it here? It validatd!
+  // Check if it is revoked.
+  Rec = _SealValidateRevoke(Rec,dnstxt);
+  return Rec;
 } /* _SealValidateSig() */
 
 #pragma GCC visibility pop
@@ -527,6 +537,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
   char *rec_kv,*dns_kv; // for matching kv strings
   char *dns_str;
   bool IsValid=true; // assume it is valid
+  bool IsInline=false;
 
   if (!Rec) { return(Rec); }
 
@@ -588,6 +599,24 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	}
 
   /*****
+   * Check if the record is inline
+   * If inline verify the record, then do the DNS checks
+   * else continue with the normal verifications
+  */
+  if(!ErrorMsg && SealSearch(Rec, "pk"))
+    {
+    sealfield *pubkey_bin;
+    IsInline = true;
+    Rec = SealCopy(Rec, "@pk-bin", "pk");
+    pubkey_bin = SealSearch(Rec, "@pk-bin");
+    SealBase64Decode(pubkey_bin);
+    Rec = _SealValidateDigest(Rec, pubkey_bin);
+    ErrorMsg = SealGetText(Rec,"@error");
+    // Needed because otherwise an inline sig will be validated, but not authenticated
+    if(ErrorMsg){ IsValid = false; }
+    }
+
+  /*****
    DNS...
    There may be multiple DNS records.
    Find the first one that verifies.
@@ -639,11 +668,22 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
       else { continue; } // missed
 
       /*****
-       TBD: If Rec contains inline-pubkey, then either:
+       If Rec contains inline-pubkey, then either:
        (A) match full p=, or
        (B) match digest using pka= and pkd=
        If neither matches, then it doesn't apply (continue).
        *****/
+      if(IsInline)
+        {
+        // The public key was already validated, and it being here means it was authenticated, if nto revoked
+        if(SealGetText(dnstxt,"p") == SealGetText(Rec, "pk"))
+          {
+          Rec = _SealValidateRevoke(Rec,dnstxt);
+          break; //regardless of if it is revoked the record was found
+          }
+        Rec = SealInlineAuthenticate(Rec);
+        if (!SealGetText(Rec,"@error")) { break; } // It worked!
+        }
 
       /*********************************
        All mandatory fields matches!
@@ -693,10 +733,10 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	  ReturnCode |= 0x11; // at least one file is invalid
 	  _SealVerifyShow(Rec,0x11,signum,RevokeMsg);
 	  }
-	else if (SealSearch(Rec,"pk")) // was this a public key authentication?
+    else if (IsInline && IsValid) // was this a public key authentication?
 	  {
 	  ReturnCode |= 0x08; // at least one file could not be attributed
-	  _SealVerifyShow(Rec,0x08,signum,"could not validate");
+	  _SealVerifyShow(Rec,0x08,signum,"validated, but could not authenticate");
 	  }
 	else
 	  {
@@ -704,7 +744,6 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	  _SealVerifyShow(Rec,0x04,signum,"could not validate");
 	  }
 	}
-
   /* Verify the src details, if present.
      Failure to verify warns, does not error */
   if (IsValid)
