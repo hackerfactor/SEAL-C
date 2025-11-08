@@ -58,21 +58,30 @@ This code currently supports static-files only. It does not support streaming da
 |WEBM  |Yes|Yes|
 
 |Document Format|Read Support|Write Support|
-|------|-------------|------------|
-|PDF |Yes|Yes|
-|XML|Yes|Yes|
-|HTML|Yes|Yes|
-|Plain Text|Yes|Yes|
-|OpenDocument (docx, pptx, etc.)|Coming soon|Coming soon|
+|---------------|------------|-------------|
+|PDF            |Yes         |Yes|
+|XML            |Yes         |Yes|
+|HTML           |Yes         |Yes|
+|Plain Text     |Yes         |Yes|
+|OpenDocument (docx, pptx, etc.)|Yes via ZIP|Yes via ZIP|
+|Electronic Publication (epub)|Yes via ZIP|Yes via ZIP|
+
+|Package Format|Read Support|Write Support|
+|--------------|------------|-------------|
+|Java Archive (JAR)|Yes via ZIP|Yes via ZIP|
+|Android Application Package (APK)|Yes via ZIP|Yes via ZIP|
+|iOS Application Archive (iPA)|Yes via ZIP|Yes via ZIP|
+|Mozilla Extension (XPI)|Yes via ZIP|Yes via ZIP|
 
 |Container Format|Read Support|Write Support|About|
-|------|-------------|------------|-----|
-|EXIF  |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats. SEAL supports all top-level EXIF records. (Nested EXIF records are unsupported due to the ambiguous scope.)
-|XMP |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files. SEAL supports all top-level XMP records. (Nested XMP records are unsupported due to the ambiguous scope.)
-|RIFF |Yes|Yes|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files. SEAL supports *all* RIFF-based files.|
-|ISO-BMFF |Yes|Yes|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used by MP4, 3GP, HEIF, HEIC, AVIF, DIVX, and many other common media files. SEAL supports *all* ISO-BMFF files.|
-|Matroska |Yes|Yes|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio). SEAL supports all Matroska-based media files.|
-|ZIP |Coming soon. |Coming soon.|ZIP is an archive container that can hold multiple files. The OpenDocument formats use ZIP.|
+|----------------|------------|-------------|-----|
+|EXIF            |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|EXIF is a standard format for storing metadata. It is often found in JPEG, PNG, and a few other file formats. SEAL supports all top-level EXIF records. (Nested EXIF records are unsupported due to the ambiguous scope.)|
+|XMP             |Yes|Yes: See [Manual Signing](BUILD.md#manualsigning)|XMP is a standard text-based format for storing metadata. It may appear in a wide range of files. SEAL supports all top-level XMP records. (Nested XMP records are unsupported due to the ambiguous scope.)|
+|RIFF            |Yes|Yes|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files. SEAL supports *all* RIFF-based files.|
+|ISO-BMFF        |Yes|Yes|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used by MP4, 3GP, HEIF, HEIC, AVIF, DIVX, and many other common media files. SEAL supports *all* ISO-BMFF files.|
+|Matroska        |Yes|Yes|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio). SEAL supports all Matroska-based media files.|
+|ZIP             |Yes|Yes|ZIP is an archive container that can hold multiple files. OpenDocument formats (docx, odt, pptx, epub, etc.), common package archives, and more bundle their files in a ZIP archive.|
+|ZIP64           |Yes|Yes|ZIP64 is an extension to ZIP that supports extremely large files. (Regular ZIP has a maximum of 65,535 files the total archive can be no larger than 4 gigabytes (4GB). ZIP64 permits 18 quintillion files with a maximum size of 16 exabytes (16EB; that's 1.8&times;10>sup>19<//sup> bytes).|
 
 This is *not* every file format that `sealtool` supports! Many formats are based on other formats. (CR2 is based on TIFF, DIVX is based on RIFF, etc.). Similar formats are likely already supported. `sealtool` will only parse files when it recognizing the file format.
 
