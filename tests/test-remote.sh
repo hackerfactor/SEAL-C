@@ -27,7 +27,6 @@ for ka in rsa ec ; do
     echo "#### Remote Signing $da $ka $sf"
     for i in ../regression/test-unsigned*"$FMT" ; do
 	ext=${i##*.}
-	if [ "$ext" == "zip" ] ; then continue ; fi # unsupported right now
 
 	j=${i/..\/regression/$TESTDIR}
 	out=${j/-unsigned/-signed-remote-$da-$ka-$sfname}

@@ -29,7 +29,6 @@ for sf in 'base64' 'date3:base64' ; do
     echo "#### Remote Signing with Revocation $da $ka $sf"
     for i in ../regression/test-unsigned*"$FMT" ; do
 	ext=${i##*.}
-	if [ "$ext" == "zip" ] ; then continue ; fi # unsupported right now
 
 	j=${i/..\/regression/$TESTDIR}
 	out=${j/-unsigned/-signed-$testnum-$da-$ka-$sfname}

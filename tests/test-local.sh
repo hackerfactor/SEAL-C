@@ -35,8 +35,6 @@ for ka in rsa ec ; do
     echo ""
     for i in ../regression/test-unsigned*"$FMT" ; do
 	ext=${i##*.}
-	if [ "$ext" == "zip" ] ; then continue ; fi # unsupported right now
-
 	j=${i/..\/regression/$TESTDIR}
 	out=${j/-unsigned/-signed-local-$da-$ka-$sfname}
 	../bin/sealtool -s -k "$TESTDIR/sign-$ka.key" --ka "$ka" --da "$da" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
@@ -80,8 +78,7 @@ for sf in 'date3:hex' ; do
   sfname=${sf/:/_}
   for i in ../regression/test-unsigned*"$FMT" ; do
 	ext=${i##*.}
-	if [ "$ext" == "zip" ] ; then continue ; fi # unsupported right now
-
+	if [ "$ext" == "zip" ] ; then continue ; fi # unsupported
 	j=${i/..\/regression/$TESTDIR}
 	out1=${j/-unsigned/-signed-local-append1-$ka-$sfname}
 	out2=${j/-unsigned/-signed-local-append2-$ka-$sfname}

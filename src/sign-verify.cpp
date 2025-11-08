@@ -62,7 +62,7 @@ static inline int res_nquery(res_state statp,
 void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 {
   sealfield *vf;
-  char *Txt;
+  char *Txt, *TxtEmbedName;
   unsigned int i;
 
   // Show header
@@ -109,18 +109,18 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 	vf = SealSearch(Rec,"@digestrange");
 	if (vf && (vf->ValueLen > 0)) // better always be defined!
 	  {
-	  size_t *rangeval, MaxRange;
-
+	  size_t *rangeval, MaxRange, EmbedOffset;
+	  EmbedOffset = SealGetU64index(Rec,"@embedbytes",0); // possible embedded offset
 	  rangeval = (size_t*)(vf->Value);
 	  MaxRange = vf->ValueLen / sizeof(size_t);
 	  printf("  Signed Bytes: ");
 	  for(i=0; i < MaxRange; i++)
 	    {
-	    if (i%2) { printf("-%lu",(unsigned long)(rangeval[i])-1); } // end
+	    if (i%2) { printf("-%lu",(unsigned long)(rangeval[i])-1+EmbedOffset); } // end
 	    else // start
 	      {
 	      if (i > 0) { printf(", "); }
-	      printf("%lu",(unsigned long)(rangeval[i]));
+	      printf("%lu",(unsigned long)(rangeval[i]+EmbedOffset));
 	      }
 	    }
 	  printf("\n");
@@ -129,24 +129,25 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 
   // Show range
   Txt = SealGetText(Rec,"@sflags0");
+  TxtEmbedName = SealGetText(Rec,"@embedname");
   if (Txt)
 	{
 	printf("  Signature Spans: ");
-	if (strchr(Txt,'F')) { printf("Start of file"); }
+	if (strchr(Txt,'F')) { printf("Start of %s",TxtEmbedName ? TxtEmbedName : "file"); }
 	else if (strchr(Txt,'P')) { printf("Start of previous signature"); }
 	else if (strchr(Txt,'p')) { printf("End of previous signature"); }
 	else if (strchr(Txt,'S')) { printf("Start of signature"); }
 	else if (strchr(Txt,'s')) { printf("End of signature"); }
-	else if (strchr(Txt,'f')) { printf("End of file"); }
+	else if (strchr(Txt,'f')) { printf("End of %s",TxtEmbedName ? TxtEmbedName : "file"); }
 	else { printf("Absolute offset"); }
 	printf(" to ");
 	Txt = SealGetText(Rec,"@sflags1");
-	if (strchr(Txt,'f')) { printf("end of file"); }
+	if (strchr(Txt,'f')) { printf("end of %s",TxtEmbedName ? TxtEmbedName : "file"); }
 	else if (strchr(Txt,'s')) { printf("end of signature"); }
 	else if (strchr(Txt,'S')) { printf("start of signature"); }
 	else if (strchr(Txt,'p')) { printf("end of previous signature"); }
 	else if (strchr(Txt,'P')) { printf("start of previous signature"); }
-	else if (strchr(Txt,'F')) { printf("start of file"); }
+	else if (strchr(Txt,'F')) { printf("start of %s",TxtEmbedName ? TxtEmbedName : "file"); }
 	else { printf("absolute offset"); }
 	printf("\n");
 	}
@@ -792,6 +793,10 @@ sealfield *	SealVerifyBlock	(sealfield *Args,
     // Keep srcf if it came from Args
     Rec = SealCopy2(Rec,"srcf",Args,"srcf");
     Rec = SealCopy2(Rec,"no-net",Args,"no-net");
+
+    // Range is used when doing subsets within a file (like an embedded zip)
+    Rec = SealCopy2(Rec,"@embedname",Args,"@embedname");
+    Rec = SealCopy2(Rec,"@embedbytes",Args,"@embedbytes");
 
     // Found a signature!  Verify the data!
     Rec = SealVerify(Rec,Mmap,MmapPre);

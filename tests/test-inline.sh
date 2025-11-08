@@ -35,19 +35,21 @@ for ka in rsa ec ; do
     echo ""
     for i in ../regression/test-unsigned*"$FMT" ; do
 	ext=${i##*.}
-	if [ "$ext" == "zip" ] ; then continue ; fi # unsupported right now
-
 	j=${i/..\/regression/$TESTDIR}
 	out=${j/-unsigned/-signed-local-inline-$da-$ka-$sfname}
+	#echo "../bin/sealtool -s -p -k '$TESTDIR/sign-$ka.key' --ka '$ka' --da '$da' --sf '$sf' -o '$out' '$i'"
 	../bin/sealtool -s -p -k "$TESTDIR/sign-$ka.key" --ka "$ka" --da "$da" --sf "$sf" -o "$out" "$i"
-	if [ "$?" != "0" ] ; then echo "Failed to sign."; exit 1; fi
+	rc="$?"
+	if [ "$rc" != "0" ] ; then echo "Failed to sign. (rc=$rc)"; exit 1; fi
     done
 
     # Verify local signing
     echo ""
     echo "#### Verify Local Inline $da $ka $sf"
+    #echo "../bin/sealtool --ka '$ka' --dnsfile '$TESTDIR/sign-$ka.dns' $TESTDIR/test-*local-inline-$da-$ka-$sfname*"
     ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" $TESTDIR/test-*local-inline-$da-$ka-$sfname*
-    if [ "$?" != "0" ] ; then echo "Failed to verify local signing."; exit 1; fi
+    rc="$?"
+    if [ "$rc" != "0" ] ; then echo "Failed to verify local signing. (rc=$rc)"; exit 1; fi
 
     # Verify with --no-net (should fail to authenticate)
     echo ""
