@@ -80,12 +80,12 @@ This code currently supports static-files only. It does not support streaming da
 |RIFF            |Yes|Yes|The Resource Interchange File Format (RIFF) is a container format used by WAV, AVI, and a few other (less common) media files. SEAL supports *all* RIFF-based files.|
 |ISO-BMFF        |Yes|Yes|ISO's Base Media File Format (BMFF, also called ISO-14496) is a container format used by MP4, 3GP, HEIF, HEIC, AVIF, DIVX, and many other common media files. SEAL supports *all* ISO-BMFF files.|
 |Matroska        |Yes|Yes|Matroska is a flexible container format used by WebM, MKV (video), and MKA (audio). SEAL supports all Matroska-based media files.|
-|ZIP             |Yes|Yes|ZIP is an archive container that can hold multiple files. OpenDocument formats (docx, odt, pptx, epub, etc.), common package archives, and more bundle their files in a ZIP archive.|
-|ZIP64           |Yes|Yes|ZIP64 is an extension to ZIP that supports extremely large files. (Regular ZIP has a maximum of 65,535 files the total archive can be no larger than 4 gigabytes (4GB). ZIP64 permits 18 quintillion files with a maximum size of 16 exabytes (16EB; that's 1.8&times;10>sup>19<//sup> bytes).|
+|ZIP             |Yes|Yes|ZIP is an archive container that can hold multiple files. OpenDocument formats (docx, odt, pptx, epub, etc.), common package archives, and more bundle their files in ZIP archives.|
+|ZIP64           |Yes|Yes|ZIP64 is an extension to ZIP that supports extremely large files. (Regular ZIP has a maximum of 65,535 files and the total archive can be no larger than 4 gigabytes (4GB). ZIP64 permits 18 quintillion files with a maximum size of 16 exabytes (16EB; that's 1.8&times;10<sup>19</sup> bytes).|
 
 This is *not* every file format that `sealtool` supports! Many formats are based on other formats. (CR2 is based on TIFF, DIVX is based on RIFF, etc.). Similar formats are likely already supported. `sealtool` will only parse files when it recognizing the file format.
 
 Have a format you need that isn't supported? Let us know!
 
 ## Sidecars
-All media formats (both known and unknown), and all read-only media, is supported through the use of a _sidecar_. A _sidecar_ stores the SEAL record in a separate file. This way, you can sign real-only media, such as a forensic drive image or legal evidence, without altering the source media.
+All media formats (both known and unknown), and all read-only media, can be supported through the use of a _sidecar_. A _sidecar_ stores the SEAL record in a separate file. This way, you can sign real-only media, such as a forensic drive image or legal evidence, without altering the source media.
