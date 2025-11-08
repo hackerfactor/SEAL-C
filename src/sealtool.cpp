@@ -619,7 +619,7 @@ int main (int argc, char *argv[])
       case 'k': Args = SealSetText(Args,"keyfile",optarg); break;
       case 'o': Args = SealSetText(Args,"outfile",optarg); break;
       case 'O': Args = SealSetText(Args,"options",optarg); break;
-      case 'p': Args = SealSetText(Args, "inline", "True"); break; // Any value being set means it is true
+      case 'p': Args = SealSetText(Args, "@inline", "True"); break; // Any value being set means it is true
       case 'u': Args = SealSetText(Args,"apiurl",optarg); break;
 
       case 'G': // generate password (not in usage; really insecure)

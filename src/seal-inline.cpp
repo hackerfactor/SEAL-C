@@ -31,15 +31,15 @@ sealfield *	SealGetPublicKey	(sealfield *Args)
 {
   EVP_PKEY *keypair = NULL;
   // Nothing to do if not inline format, or pk is already defined via command line parameter
-  if(!SealSearch(Args,"inline") || SealGetText(Args, "pk")) {return Args; }
+  if(!SealSearch(Args,"@inline") || SealGetText(Args, "pk")) {return Args; }
 
   keypair = SealLoadPrivateKey(Args);
   Args = SealGenerateKeyPublic(Args, keypair);
   if(!SealSearch(Args, "@pubder"))
-  {
+    {
     printf("ERROR: Could not generate public key for inline signature\n");
     exit(0x80);
-  }
+    }
   Args = SealCopy(Args, "pk", "@pubder");
   return Args;
 } /*SealGetPublicKey()*/

@@ -59,8 +59,6 @@ const EVP_MD* (*SealGetMdfFromString(const char *da))(void)
   return NULL;
 } /* SealGetMdfFromString() */
 
-
-
 /**************************************
  SealDigest(): Given a file, compute the digest!
  This uses 'da', 'b', 's', and 'p' arguments.

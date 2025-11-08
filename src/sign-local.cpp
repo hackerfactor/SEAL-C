@@ -685,6 +685,7 @@ void	SealGenerateKeys	(sealfield *Args)
   // Load or generate the private key.
   keypair = SealGenerateKeyPrivate(Args);
 
+  // Generate the public key
   Args = SealGenerateKeyPublic(Args, keypair);
 
   // Create DNS entry!
@@ -696,17 +697,58 @@ void	SealGenerateKeys	(sealfield *Args)
     }
   vf = SealSearch(Args,"seal");
   fprintf(fp,"seal=%.*s",(int)vf->ValueLen,vf->Value);
+
+  // Store key version
+  vf = SealSearch(Args,"kv");
+  PrintDNSstring(fp,"kv",vf);
+
+  // Store key algorithm
   vf = SealSearch(Args,"ka");
   PrintDNSstring(fp,"ka",vf);
-
-  // Store vf if it isn't the default value
-  vf = SealSearch(Args,"kv");
-  if (vf && strcmp((char*)vf->Value,"1")) { PrintDNSstring(fp,"kv",vf); }
 
   // Store uid if it exists
   vf = SealSearch(Args,"uid");
   if (vf) { PrintDNSstring(fp,"uid",vf); }
-  fprintf(fp," p=%s",SealGetText(Args,"@pubder")); // value is base64 public key!
+
+  // Store public key
+  if (SealSearch(Args,"@inline"))
+    {
+    char *pka;
+    sealfield *pkd;
+
+    pka = SealGetText(Args,"da");
+    fprintf(fp," pka=%s",pka);
+
+    // Compute the public key's digest
+    const EVP_MD* (*mdf)(void);
+    mdf = SealGetMdfFromString(pka);
+    EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
+    EVP_DigestInit(ctx64, mdf());
+
+    // pubder is base64 encoded. I need it decoded.
+    Args = SealCopy(Args,"@pubraw","@pubder");
+    pkd = SealSearch(Args,"@pubraw");
+    SealBase64Decode(pkd);
+    EVP_DigestUpdate(ctx64,pkd->Value,pkd->ValueLen);
+
+    // Store the final public key digest
+    unsigned int mdsize;
+    mdsize = EVP_MD_size(mdf()); // digest size
+    Args = SealAlloc(Args,"@pkdigest",mdsize,'b'); // binary digest
+    pkd = SealSearch(Args,"@pkdigest");
+    EVP_DigestFinal(ctx64,pkd->Value,&mdsize); // store the digest
+    EVP_MD_CTX_free(ctx64);
+
+    // Base64-encode the public key digest
+    SealBase64Encode(pkd);
+
+    // Store the new public key
+    fprintf(fp," pkd=%.*s",(uint)(pkd->ValueLen),pkd->Value);
+    }
+  else // store full public key
+    {
+    fprintf(fp," p=%s",SealGetText(Args,"@pubder")); // value is base64 public key!
+    }
   Args = SealDel(Args,"@pubder");
 
   // No comments in DNS; limited space!
