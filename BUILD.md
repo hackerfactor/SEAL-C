@@ -101,7 +101,21 @@ $ sealtool -M '08a69e78b54266759cfdf45e5a4a89e60dfea5ecf27bd6b4db83b92294dc2b9c'
 This contains the computed signature for your provided digest. You can now replace the placeholder template in your file with this signature.
 
 ## Inline Public Key
-Use the `p`/`inline` flag with local or remote signing to sign using the inline public key format. You can also use this flag to determine which version of the DNS entry is generated when creating the keys. See the specifications for more options.
+Inline public keys store the public key in the SEAL record rather than in DNS. While this validates the cryptography, it does not authenticate the signedr. To authenticate the signer, you still need DNS access. Examples uses for inline public keys:
+* This option permits validating the cryptography even if DNS is unavailable. This can happen when working offline or in an air-gapped environment.
+* Future cryptography. The current supported cryptographic algorithms all use keys that can fit inside a DNS TXT record. However, future algoriths (e.g., post-quantum cryptography) may have very long public keys that cannot fit in a DNS TXT record. This inline option permits storing the long public key with the file and a small authenticating digest in the DNS TXT record.
+
+Use the `-p` or `--inline` flag with local or remote signing to sign using the inline public key format. You can also use this flag to determine which version of the DNS entry is generated when creating the keys.
+
+For example, to generate a DNS record for that only includes the public key's digest:
+```
+sealtool -D mykeys.dns -k mykeys.key -g -p --keyalg ec
+```
+To sign a file using inline public keys:
+```
+sealtool -s -k mykeys.key --keyalg ec -d example.com -p file.jpg
+```
+See the specifications for more options.
 
 ## Current Status
 This is the initial release.
