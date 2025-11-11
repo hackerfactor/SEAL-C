@@ -42,7 +42,7 @@ sealfield *	SealRecord	(sealfield *Args)
     "copyright",
     "info",
     "src",
-    "srca",
+    "srca", // special: only include if srcd is present
     "srcd",
     // Never include srcf! That's always a local file.
     "id",
@@ -55,11 +55,20 @@ sealfield *	SealRecord	(sealfield *Args)
   // Start record
   Args = SealSetText(Args,"@record","<seal");
 
-  // Add every field (if it exists
+  // Add every field (if it exists)
   for(f=0; Fields[f]; f++)
     {
     vf = SealSearch(Args,Fields[f]);
     if (!vf || !vf->ValueLen) { continue; }
+
+    // srca is a special case: only include when srcd is present
+    if (!strcmp(Fields[f],"srca"))
+      {
+      sealfield *vf1;
+      vf1 = SealSearch(Args,"srcd");
+      if (!vf1 || !vf1->ValueLen) { continue; }
+      }
+
     Args = SealCopy(Args,"@copy",Fields[f]);
     vf = SealSearch(Args,"@copy");
     SealStrEncode(vf);
