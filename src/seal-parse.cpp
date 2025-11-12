@@ -349,7 +349,7 @@ void	SealBase64Decode	(sealfield *Data)
     else if (strchr("+/",Data->Value[dlen])) { b64len++; } // + -
     else if (Data->Value[dlen]=='=')
       {
-      while((dlen < Data->ValueLen) && (Data->Value[dlen]=='=')) { dlen++; }
+      while((dlen < Data->ValueLen) && (Data->Value[dlen]=='=')) { dlen++; b64len++; }
       if (dlen < Data->ValueLen) { Data->ValueLen=dlen; break; } // Found last "="
       }
     else { return; } // invalid character
