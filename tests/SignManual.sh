@@ -27,6 +27,9 @@ fi
 
 # get the digest
 digest=$(../bin/sealtool -v "$Fname" | grep -e '^ *Digest: ' | awk '{print $2}')
+if [ "$?" != "0" ] || [ "$digest" == "" ] ; then
+  exit 1
+fi
 echo "  Digest: $digest"
 
 # get the record with the signature
