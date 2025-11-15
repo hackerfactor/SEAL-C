@@ -24,8 +24,10 @@ COPY . ./
 
 RUN make all
 
-#RUN cd tests \
-#	&& /bin/bash ./test-all.sh
+RUN --mount=type=secret,id=apikey,env=SIGNMYDATA_APIKEY \
+	--mount=type=secret,id=signid,env=SIGNMYDATA_ID \
+	cd tests \
+	&& ./test-all-ci.sh
 
 FROM debian:stable-slim AS publish
 
@@ -38,3 +40,4 @@ RUN apt-get update \
 COPY --from=build "/app/bin/sealtool" "/usr/local/bin/"
 
 ENTRYPOINT ["/usr/local/bin/sealtool"]
+

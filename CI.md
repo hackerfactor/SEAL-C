@@ -26,13 +26,14 @@ In order to build the project automatically in GitHub follow these steps:
 15. Go back to your other tab/browser window and click "New repository secret"
 16. Name this secret `CR_TOKEN` and put enter your token into the Secret box
 17. Click "Add secret"
-18. Kick off a manual workflow run:
+18. If you want to run all of the tests on each build, add secrets named `SIGNMYDATA_APIKEY` and `SIGNMYDATA_ID` so that you can use [signmydata.com](https://signmydata.com/) for remote tests. 
+19. Kick off a manual workflow run:
     1. Navigate to the repo
     2. Click the "Actions" tab at the top
     3. Select the "ci" workflow from the left nav
     4. Click the "Run workflow" dropdown on the right
     5. Choose the green "Run workflow" button
-19. Once the build has succeded it pushes a container into the GitHub Container Registry - though it may not be linked to the project. To link it:
+20. Once the build has succeded it pushes a container into the GitHub Container Registry - though it may not be linked to the project. To link it:
     1. Navigate to your GitHub profile page (click your icon in the top right and choose "Profile")
     2. Choose the "Packages" tab at the top
     3. You should see a container registry named after the project, click it
