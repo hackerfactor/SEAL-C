@@ -379,6 +379,7 @@ void	print_km	(EVP_KEYMGMT *km, void *param)
  **************************************/
 void	Usage	(const char *progname)
 {
+  printf("SEAL version %s\n",SEAL_VERSION);
   printf("Usage: %s [options] file [file...]\n",progname);
   printf("  -h, -?, --help    :: Show help; this usage\n");
   printf("  --config file.cfg :: Optional configuration file (default: $XDG_CONFIG_HOME/seal/config)\n");
@@ -702,8 +703,17 @@ int main (int argc, char *argv[])
      When signing, no digest gets the size of the signature (@sigsize).
      This never changes between calls, so do it now.
      *****/
-    if (IsURL && strchr("SM",Mode)) { Args = SealSignURL(Args); }
+    if (strchr("SM",Mode))
+	{
+	if (!IsURL)
+	  {
+	  fprintf(stderr,"ERROR: No remote URL provided for signing.\n");
+	  exit(0x80);
+	  }
+	Args = SealSignURL(Args);
+	}
     else if (IsLocal && strchr("sm",Mode)) { Args = SealSignLocal(Args); }
+
     // Must have sigsize!
     if (SealGetU32index(Args,"@sigsize",0)==0)
 	{
