@@ -401,6 +401,7 @@ void	Usage	(const char *progname)
   // NIST Approved: P-384 = secp384r1
   printf("  -K, --keyalg alg     :: Key algorithm (rsa, ec, P-256; default: rsa)\n");
   printf("    Use '-K list' to see all supported algorithms.\n");
+  printf("  --keybits bits       :: For algs with defined key sizes (e.g., rsa), specify bit size (default: %d)\n",REC_BITS_RSA);
   // EVP_KEYMGMT_do_all_provided(NULL, print_km, NULL);
   printf("  --kv number          :: Unique key version (default: 1)\n");
   printf("  --uid text           :: Unique key identifier (default: not set)\n");
@@ -434,6 +435,7 @@ void	Usage	(const char *progname)
   printf("  Common signing options (for local and remote)\n");
   printf("  -d, --domain domain  :: DNS entry with the public key (default: localhost.localdomain)\n");
   printf("  --testdomain domain  :: For debugging and testing: use this domain in the SEAL record\n");
+  printf("  --deprecated         :: Enable deprecated ciphers for generating and signing.\n");
   printf("  -o, --outfile fname  :: Output filename\n");
   printf("               Include '%%d' for directory name without final /\n");
   printf("               Include '%%b' for base filename\n");
@@ -495,7 +497,7 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"b","F~S,s~f"); // default byte range is everything
   Args = SealSetText(Args,"digestalg","sha256");
   Args = SealSetText(Args,"keyalg","rsa");
-  Args = SealSetText(Args,"keybits","2048");
+  Args = SealSetText(Args,"keybits",REC_BITS_RSA_TEXT);
   Args = SealSetText(Args,"keyfile","./seal-private.pem");
   Args = SealSetText(Args,"outfile","./%b-seal%e");
   Args = SealSetText(Args,"options","");
@@ -549,6 +551,7 @@ int main (int argc, char *argv[])
     {"generate",  no_argument, NULL, 'g'},
     {"genpass" ,  no_argument, NULL, 'G'},
     {"da",        required_argument, NULL, 'A'},
+    {"deprecated",no_argument, NULL, 0},
     {"digestalg", required_argument, NULL, 'A'},
     {"apikey",    required_argument, NULL, 'a'},
     {"apiurl",    required_argument, NULL, 1},
@@ -615,7 +618,7 @@ int main (int argc, char *argv[])
       case 'I': Args = SealSetText(Args,"src",optarg); break;
       case 'K':
 	Args = SealSetText(Args,"keyalg",optarg);
-	if (!strcmp(optarg,"list")) { ListKeyAlgorithms(); exit(0); }
+	if (!strcmp(optarg,"list")) { ListKeyAlgorithms(Args); exit(0); }
 	break;
       case 'k': Args = SealSetText(Args,"keyfile",optarg); break;
       case 'o': Args = SealSetText(Args,"outfile",optarg); break;

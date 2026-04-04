@@ -15,9 +15,17 @@
 #include "seal.hpp"
 #include "files.hpp"
 
+// In the future, as cipher become outdates, change these.
+// Minimum and recommended bit sizes, as of 2026
+#define MIN_BITS_RSA	2048 /* for RSA, >= 2048 is considered strong */
+#define REC_BITS_RSA	2048 /* for RSA, recommend 2048 */
+#define REC_BITS_RSA_TEXT	"2048"
+#define MIN_BITS_EC	224 /* For EC, >=224 is generally considered strong */
+#define REC_BITS_EC	256 /* For EC, recomment 256 */
+
 // For key generation
 int	CheckKeyAlgorithm	(const char *keyalg); // 1=rsa, 2=ec, 0=unknown
-void	ListKeyAlgorithms	(); // list all supported key algorithms
+void	ListKeyAlgorithms	(sealfield *Args); // list all supported key algorithms
 void	SealGenerateKeys	(sealfield *Args);
 void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf);
 

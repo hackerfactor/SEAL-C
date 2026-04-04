@@ -64,17 +64,34 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
   sealfield *vf;
   char *Txt, *TxtEmbedName;
   unsigned int i;
+  bool CheckWeak=true;
 
   // Show header
   printf(" SEAL record #%ld is ",signum);
-  if (rc & 0x10) { printf("revoked"); }
-  else if (rc & 0x01) { printf("invalid"); }
-  else if (rc & 0x02) { printf("unsigned"); }
+  if (rc & 0x10) { printf("revoked"); CheckWeak=false; }
+  else if (rc & 0x01) { printf("invalid"); CheckWeak=false; }
+  else if (rc & 0x02) { printf("unsigned"); CheckWeak=false; }
   else if (rc & 0x04) { printf("not validated"); }
   else if (rc & 0x08) { printf("not autenticated"); }
   else { printf("valid"); }
   if (Msg) { printf(": %s",Msg); }
   printf("\n");
+
+  // Check for weak signatures
+  if (CheckWeak)
+    {
+    uint Bits;
+    Bits = (unsigned int)SealGetIindex(Rec,"@PublicAlgBits",0);
+    vf = SealSearch(Rec,"@PublicAlgName"); // should exist
+    if (vf)
+	{
+	if ( (!strcasecmp((char*)vf->Value,"rsa") && (Bits < MIN_BITS_RSA)) ||
+	     (!strcasecmp((char*)vf->Value,"ec") && (Bits < MIN_BITS_EC)) )
+	  {
+	  printf("  Warning: Signed using a weak algorithm: %s, %u bits\n",vf->Value,Bits);
+	  }
+	}
+    }
 
   // Show digest (if verbose)
   if (Verbose)
@@ -745,6 +762,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	  _SealVerifyShow(Rec,0x04,signum,"could not validate");
 	  }
 	}
+
   /* Verify the src details, if present.
      Failure to verify warns, does not error */
   if (IsValid)

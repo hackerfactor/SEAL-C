@@ -117,10 +117,19 @@ sealtool -s -k mykeys.key --keyalg ec -d example.com -p file.jpg
 ```
 See the specifications for more options.
 
+## Cryptograpy
+This code defaults to RSA-2048, but supports a wide range of ciphers (use `sealtool -K list` to see all of them). However, it also supports weak ciphers (use `--deprecated`). Why support old ciphers?
+- Signatures should be valid for a long time (years or decades). File that should have valid signatures for extended durations should use stronger ciphers.
+- Technology keeps advancing. What is "strong" today may be "weak" tomorrow. For this reason, weak signatures are supported but are flagged with a warning about being weak.
+- In order to test weak ciphers, we support generating weak keys and signing with weak ciphers.
+
+> [!WARNING]
+> Do not intentionally use weak ciphers for production use.
+
 ## Current Status
-This is the initial release.
-- It supports a wide range of image, audio, video, and document files -- with more being added. All common web formats are supported, including JPEG, PNG, WebP, PDF, and MP4.
-- It supports RSA and elliptic curve (EC using prime256v1, secp256r1, and others).
+This release:
+- Supports a wide range of image, audio, video, and document files -- with more being added. All common web formats are supported, including JPEG, PNG, WebP, PDF, and MP4.
+- Supports RSA and elliptic curve (EC using prime256v1, secp256r1, and others).
 - Needs an autogen for building the code. (How do I make autogen require openssl 3.x?)
 
 If you see any problems, let us know!

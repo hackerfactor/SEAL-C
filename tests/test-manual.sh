@@ -36,17 +36,17 @@ if [ "$FMT" == "" ] || [ "$FMT" == ".jpg" ] ; then
   echo ""
   echo "#### Manual Non-standard JPEG comment"
   ./SignManual.sh -Comment $TESTDIR/test-signed-remote-manual-comment.jpg
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $TESTDIR/test-signed-remote-manual-comment.jpg"; exit 1; fi
 
   echo ""
   echo "#### Manual EXIF"
   ./SignManual.sh -EXIF:seal $TESTDIR/test-signed-remote-manual-exif.jpg
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $TESTDIR/test-signed-remote-manual-exif.jpg"; exit 1; fi
 
   echo ""
   echo "#### Manual XMP"
   ./SignManual.sh -XMP:seal $TESTDIR/test-signed-remote-manual-xmp.jpg
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $TESTDIR/test-signed-remote-manual-xmp.jpg"; exit 1; fi
 fi
 
 exit 0

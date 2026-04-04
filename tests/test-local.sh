@@ -18,7 +18,7 @@ echo "##### Local Key Generation Test"
 for ka in rsa ec ; do
   # generate keys
   ../bin/sealtool -g --ka "$ka" -D "$TESTDIR/sign-$ka.dns" -k "$TESTDIR/sign-$ka.key" --genpass ''
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $TESTDIR/sign-$ka.key"; exit 1; fi
 done # ka
 
 echo ""
@@ -38,14 +38,14 @@ for ka in rsa ec ; do
 	j=${i/..\/regression/$TESTDIR}
 	out=${j/-unsigned/-signed-local-$da-$ka-$sfname}
 	../bin/sealtool -s -k "$TESTDIR/sign-$ka.key" --ka "$ka" --da "$da" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
-	if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+	if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
     done
 
     # Verify local signing
     echo ""
     echo "#### Verify Local $da $ka $sf"
     ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" $TESTDIR/test-*local-$da-$ka-$sfname*
-    if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+    if [ "$?" != "0" ] ; then echo "Failed: $TESTDIR/test-*local-$da-$ka-$sfname*"; exit 1; fi
 
   done #sf
 done # ka
@@ -64,10 +64,10 @@ if [ "$FMT" == "" ] || [ "$FMT" == ".png" ] ; then
     out=${j/-unsigned/-signed-local-pngchunk-$opt-$ka-$sfname}
     echo ""
     ../bin/sealtool -v -s -k "$TESTDIR/sign-$ka.key" --options "$opt" --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
-    if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+    if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
     echo ""
     ../bin/sealtool -v --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out"
-    if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+    if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
   done
 fi
 
@@ -86,14 +86,14 @@ for sf in 'date3:hex' ; do
 	# create but leave open for appending
 	echo ""
 	../bin/sealtool -v -s -k "$TESTDIR/sign-$ka.key" --options append --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out1" "$i"
-	if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+	if [ "$?" != "0" ] ; then echo "Failed: $out1"; exit 1; fi
 	echo ""
 	../bin/sealtool -v --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out1"
-	if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+	if [ "$?" != "0" ] ; then echo "Failed: $out1"; exit 1; fi
 	# append
 	echo ""
 	../bin/sealtool -v -s -k "$TESTDIR/sign-$ka.key" --options append --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out2" "$out1"
-	if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+	if [ "$?" != "0" ] ; then echo "Failed: $out2"; exit 1; fi
 	echo ""
 	../bin/sealtool -v --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out2"
 	# finalize
@@ -102,7 +102,7 @@ for sf in 'date3:hex' ; do
 	if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
 	echo ""
 	../bin/sealtool -v --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out3"
-	if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+	if [ "$?" != "0" ] ; then echo "Failed: $out3"; exit 1; fi
   done
 done #sf
 done # ka
@@ -121,11 +121,11 @@ for srcsf in hex HEX base64 ; do
   j=${i/..\/regression/$TESTDIR}
   out=${j/-unsigned/-signed-local-src-file-$ka-$da-$srcsf}
   ../bin/sealtool -s -k "$TESTDIR/sign-$ka.key" --ka "$ka" --da "$da" --srcf "../regression/test-unsigned.png" --srca "$srca" -o "$out" "$i"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
 
   echo "#### Verifying Local with local src reference ($ka, $srca)"
   ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
 done # srcsf
 done # ka
 done # da
@@ -145,11 +145,11 @@ for srcsf in hex HEX base64 ; do
   j=${i/..\/regression/$TESTDIR}
   out=${j/-unsigned/-signed-local-src-url-$ka-$da-$srcsf}
   ../bin/sealtool -s -k "$TESTDIR/sign-$ka.key" --ka "$ka" --da "$da" --src "$src_url" --srca "$srca" -o "$out" "$i"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
 
   echo "#### Verifying Local with URL src reference ($ka, $srca)"
   ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" "$out"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
 done # srcsf
 done # ka
 done # da

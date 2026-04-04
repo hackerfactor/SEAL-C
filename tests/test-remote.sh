@@ -31,15 +31,16 @@ for ka in rsa ec ; do
 	j=${i/..\/regression/$TESTDIR}
 	out=${j/-unsigned/-signed-remote-$da-$ka-$sfname}
 	../bin/sealtool -S --da "$da" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" -o "$out" "$i"
-        if [ "$?" != "0" ] ; then echo "Failed."; exit; fi
+        if [ "$?" != "0" ] ; then echo "Failed: $out"; exit; fi
     done
 
     # Verify remote signing
     echo ""
     echo "#### Verify Remote $da $ka $sf"
     ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
-    if [ "$?" != "0" ] ; then echo "Failed."; exit; fi
+    if [ "$?" != "0" ] ; then echo "Failed: $TESTDIR/test-*remote-$da-$ka-$sfname*"; exit; fi
 
+    echo ""; echo "### Pausing..."; sleep 10;  # pause to prevent flooding the server
   done #sf
 done # ka
 done # da
@@ -58,15 +59,17 @@ for srcsf in hex HEX base64 ; do
   j=${i/..\/regression/$TESTDIR}
   out=${j/-unsigned/-signed-local-src-file-$ka-$da-$srcsf}
   ../bin/sealtool -S --da "$da" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" --srcf "../regression/test-unsigned.png" --srca "$srca" -o "$out" "$i"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
   ../bin/sealtool --srcf "../regression/test-unsigned.png" $TESTDIR/test-*remote-$da-$ka-$sfname*
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $TESTDIR/test-*remote-$da-$ka-$sfname*"; exit 1; fi
 
   # Verify remote signing
   echo ""
   echo "#### Verify Remote $da $ka $sf"
   ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $TESTDIR/test-*remote-$da-$ka-$sfname*"; exit 1; fi
+
+  echo ""; echo "### Pausing..."; sleep 10;  # pause to prevent flooding the server
 
 done # srcsf
 done # ka
@@ -87,18 +90,21 @@ for srcsf in hex HEX base64 ; do
   j=${i/..\/regression/$TESTDIR}
   out=${j/-unsigned/-signed-local-src-url-$ka-$da-$srcsf}
   ../bin/sealtool -S --da "$da" --ka "$ka" --sf "$sf" -C "Sample Copyright" -c "Sample Comment" --src "$src_url" --srca "$srca" -o "$out" "$i"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
   ../bin/sealtool "$out"
-  if [ "$?" != "0" ] ; then echo "Failed."; exit 1; fi
+  if [ "$?" != "0" ] ; then echo "Failed: $out"; exit 1; fi
 
   # Verify remote signing
   echo ""
   echo "#### Verify Remote $da $ka $sf"
   ../bin/sealtool $TESTDIR/test-*remote-$da-$ka-$sfname*
-  if [ "$?" != "0" ] ; then echo "Failed."; exit; fi
+  if [ "$?" != "0" ] ; then echo "Failed $TESTDIR/test-*remote-$da-$ka-$sfname*"; exit; fi
+
+  echo ""; echo "### Pausing..."; sleep 10;  # pause to prevent flooding the server
 
 done # srcsf
 done # ka
 done # da
 
+echo "" ; echo "### Done"
 exit 0

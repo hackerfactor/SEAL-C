@@ -5,7 +5,7 @@
  Handling certs: generation, signing, and verifying.
 
  NOTE: Most of this code is in C, not C++.
- Why C?  I like think it's a simpler language.
+ Why C?  I think it's a simpler language.
  I find C++ is often too unreadable where there are too many nested classes
  or "<<" output operators.  And overloading operators can negatively impact
  readability, especially when the overloading is not intuitive.
@@ -54,6 +54,7 @@
 #include <openssl/rsa.h> // rsa algorithm
 #include <openssl/ec.h> // elliptic curve algorithms
 #include <openssl/x509.h>
+#include <openssl/pem.h> // needed for loading legacy ciphers
 
 // Include ed25519? (Disabled; doesn't work yet.)
 #define INC_ED25519 0
@@ -94,8 +95,12 @@ int	CheckKeyAlgorithm	(const char *keyalg)
 /********************************************************
  ListKeyAlgorithms(): List all supported ka values
  ********************************************************/
-void	ListKeyAlgorithms	()
+void	ListKeyAlgorithms	(sealfield *Args)
 {
+  bool UseDeprecated=false;
+  bool IsWeak;
+  if (SealSearch(Args,"deprecated")) { UseDeprecated=true; }
+
   // What are valid ka values?
   printf("The following values are supported for -K/--keyalg:\n");
   printf("  rsa\n");
@@ -106,22 +111,55 @@ void	ListKeyAlgorithms	()
   // find every EC
   EC_builtin_curve *curves = NULL;
   size_t crv,crv_len=0;
+  int bits = 0;
+
   crv_len = EC_get_builtin_curves(NULL,0);
   curves = (EC_builtin_curve*)OPENSSL_malloc(sizeof(*curves) * crv_len);
   if (EC_get_builtin_curves(curves, crv_len)) // get list
     {
     for(crv=0; crv < crv_len; crv++)
 	{
+	// EC_get_builtin_curves lists everything, including unsupported ciphers.
+	// Test to see if it is available!
+	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
+	EVP_PKEY_paramgen_init(ctx);
+	if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, curves[crv].nid) <= 0)
+	  {
+	  // Not available
+          EVP_PKEY_CTX_free(ctx);
+	  continue;
+          }
+	// It is available!
+
+	// Get bit size
+	IsWeak=false;
+	EC_GROUP *group = EC_GROUP_new_by_curve_name(curves[crv].nid);
+	if (group)
+	  {
+	  bits = EC_GROUP_get_degree(group);
+	  EC_GROUP_free(group);
+	  if (bits < MIN_BITS_EC) { IsWeak=true; }
+	  }
+	else { bits=0; }
+
+        EVP_PKEY_CTX_free(ctx); // done with ctx
+
+	// Check for weak ciphers
+	if (IsWeak && !UseDeprecated) { continue; }
+
+	// Show the cipher
 	const char *sname = OBJ_nid2sn(curves[crv].nid);
 	if (!sname) { continue; }
 	if (curves[crv].comment && strchr(curves[crv].comment,'\n')) { continue; } // no special cases
 	printf("  %s",sname);
 	if (curves[crv].comment) { printf(" (%s)",curves[crv].comment); }
+
+	if (IsWeak) { printf("; weak cipher"); }
+
 	printf("\n");
 	}
     }
   OPENSSL_free(curves);
-
 } /* ListKeyAlgorithms() */
 
 /********************************************************
@@ -159,6 +197,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   OSSL_DECODER_CTX *decoder=NULL;
   char *keyfile, *keyalg;
   int cka;
+  int rc;
 
   // Only load it once
   if (PrivateKey) { SealFreePrivateKey(); }
@@ -209,13 +248,32 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
     }
 
   // Decode from file!
-  // First assume no password.
+
+  // Check if it needs a password
+  bool NeedPwd=false;
+  {
+  char Buf[84];
+  memset(Buf,0,84);
+  rc = fread(Buf,80,1,fp); // rc is ignored
+  if (strstr(Buf,"ENCRYPTED")) { NeedPwd=true; }
+  }
+
   // If it works, then no password was needed.
   // If it fails, then try a password!
-  int rc;
   rewind(fp);
-  rc = OSSL_DECODER_from_fp(decoder, fp); // assume no password
-  if (rc != 1) // failed; need password
+
+  if (!NeedPwd)
+    {
+    rc = OSSL_DECODER_from_fp(decoder, fp); // assume no password
+    if (rc != 1) // Didn't load? Check for legacy ciphers!
+      {
+      rewind(fp);
+      PrivateKey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+      if (PrivateKey) { rc=1; }
+      }
+    }
+
+  if (NeedPwd) // need password
     {
     unsigned char *pwd;
     bool FreePwd=false;
@@ -237,11 +295,45 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
       }
     // else: No password already failed.
     }
-  if (rc != 1)
+
+  // Did it load the private key?
+  if (rc != 1) // failed to load
     {
     fprintf(stderr," ERROR: Unable to load private key file (%s).\n",keyfile);
     exit(0x80);
     }
+
+  // Check for weak bit sizes
+  int bits = EVP_PKEY_get_bits(PrivateKey);
+  int type = EVP_PKEY_get_id(PrivateKey);
+  bool UseDeprecated = SealSearch(Args,"deprecated") ? true : false;
+  //printf("Debug: type=%d  EC=%d RSA=%d bits=%d",type,EVP_PKEY_EC,EVP_PKEY_RSA,bits);
+  if (type == EVP_PKEY_RSA)
+    {
+    Args = SealSetText(Args,"ka","rsa");
+    if (bits < MIN_BITS_RSA)
+	{
+	fprintf(stderr, "WARNING: Signing with a weak RSA-%d key.\n", bits);
+	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(1); }
+	}
+    } 
+  if (type == EVP_PKEY_EC)
+    {
+    Args = SealSetText(Args,"ka","ec");
+    if (bits < MIN_BITS_EC)
+	{
+	fprintf(stderr, "WARNING: Signing with a weak EC-%d key.\n", bits);
+	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(1); }
+	}
+    } 
+#if INC_ED25519
+  else if (type == EVP_PKEY_ED25519)
+    {
+    // Ed25519 is always 256 bits and always secure
+    // No warning needed here unless you want to be pedantic
+    Args = SealSetText(Args,"ka","ed25519");
+    }
+#endif
 
   // If it got here, then it worked.
   OSSL_DECODER_CTX_free(decoder);
@@ -490,9 +582,10 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
     exit(0x80);
     }
   keyfile = (char*)vf->Value;
+  bool UseDeprecated = SealSearch(Args,"deprecated") ? true : false;
 
   vf = SealSearch(Args,"keybits");
-  if (!vf) { Bits=2048; }
+  if (!vf) { Bits=REC_BITS_RSA; }
   else { Bits = atoi((char*)(vf->Value)); }
   // Bits size is already validated
 
@@ -506,8 +599,6 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
   //===========================================
   // If support for other algorithms is added, do it here.
   //===========================================
-
-  // For now, supporing RSA by default.
 
   // If the keyfile exists, re-use it.
   if (access(keyfile,F_OK)==0)
@@ -526,6 +617,12 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
   int cka = CheckKeyAlgorithm((char*)vf->Value);
   if (cka==1) // RSA
     {
+    // NIST deprecated RSA-1024 bits in 2024.
+    if (Bits < MIN_BITS_RSA)
+	{
+	fprintf(stderr,"WARNING: RSA-%u is weak by today's standards. Consider using %d or higher.\n",Bits,REC_BITS_RSA);
+	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(1); }
+	}
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
     if (!pctx ||
 	(EVP_PKEY_keygen_init(pctx) != 1) ||
@@ -536,6 +633,12 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
     }
   else if (!strcmp((char*)(vf->Value),"ec")) // generic ec
     {
+    if (Bits < MIN_BITS_EC)
+	{
+	fprintf(stderr,"WARNING: EC-%u is weak by today's standards. Consider using %d or higher.\n",Bits,REC_BITS_EC);
+	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(1); }
+	}
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
     // "ec" is a generic class. When generating, assume P-256 for now.
     keypair = EVP_EC_gen("P-256");
     Args = SealSetText(Args,"ka","ec");
