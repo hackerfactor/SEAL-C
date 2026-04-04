@@ -197,7 +197,6 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   OSSL_DECODER_CTX *decoder=NULL;
   char *keyfile, *keyalg;
   int cka;
-  int rc;
 
   // Only load it once
   if (PrivateKey) { SealFreePrivateKey(); }
@@ -248,56 +247,12 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
     }
 
   // Decode from file!
-
-  // Check if it needs a password
-  bool NeedPwd=false;
-  {
-  char Buf[84];
-  memset(Buf,0,84);
-  rc = fread(Buf,80,1,fp); // rc is ignored
-  if (strstr(Buf,"ENCRYPTED")) { NeedPwd=true; }
-  }
-
-  // If it works, then no password was needed.
-  // If it fails, then try a password!
   rewind(fp);
-
-  if (!NeedPwd)
-    {
-    rc = OSSL_DECODER_from_fp(decoder, fp); // assume no password
-    if (rc != 1) // Didn't load? Check for legacy ciphers!
-      {
-      rewind(fp);
-      PrivateKey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
-      if (PrivateKey) { rc=1; }
-      }
-    }
-
-  if (NeedPwd) // need password
-    {
-    unsigned char *pwd;
-    bool FreePwd=false;
-    // Try a password!
-    pwd = (unsigned char*)SealGetText(Args,"@genpass");
-    if (!pwd) { pwd = GetPassword(); FreePwd=true; }
-    if (pwd && pwd[0])
-      {
-      // I don't need to set_cipher since the file specifies the cipher.
-      // Set the password.
-      if (OSSL_DECODER_CTX_set_passphrase(decoder,pwd,strlen((char*)pwd)) != 1)
-	{
-	fprintf(stderr," ERROR: Unable to set the password.\n");
-	exit(0x80);
-	}
-      if (FreePwd) { free(pwd); }
-      rewind(fp);
-      rc = OSSL_DECODER_from_fp(decoder, fp); // decode with password
-      }
-    // else: No password already failed.
-    }
+  // PEM_read_PrivateKey handles ec and rsa, and prompts for passwords
+  PrivateKey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
 
   // Did it load the private key?
-  if (rc != 1) // failed to load
+  if (!PrivateKey) // failed to load
     {
     fprintf(stderr," ERROR: Unable to load private key file (%s).\n",keyfile);
     exit(0x80);
@@ -307,7 +262,6 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   int bits = EVP_PKEY_get_bits(PrivateKey);
   int type = EVP_PKEY_get_id(PrivateKey);
   bool UseDeprecated = SealSearch(Args,"deprecated") ? true : false;
-  //printf("Debug: type=%d  EC=%d RSA=%d bits=%d",type,EVP_PKEY_EC,EVP_PKEY_RSA,bits);
   if (type == EVP_PKEY_RSA)
     {
     Args = SealSetText(Args,"ka","rsa");
