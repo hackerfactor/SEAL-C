@@ -118,7 +118,7 @@ sealtool -s -k mykeys.key --keyalg ec -d example.com -p file.jpg
 See the specifications for more options.
 
 ## Cryptograpy
-This code defaults to RSA-2048, but supports a wide range of ciphers (use `sealtool -K list` to see all of them). However, it also supports weak ciphers (use `--deprecated`). Why support old ciphers?
+This code defaults to EC (P-256), but supports a wide range of ciphers (use `sealtool -K list` to see all of them). However, it also supports weak ciphers (use `--deprecated`). Why support old ciphers?
 - Signatures should be valid for a long time (years or decades). File that should have valid signatures for extended durations should use stronger ciphers.
 - Technology keeps advancing. What is "strong" today may be "weak" tomorrow. For this reason, weak signatures are supported but are flagged with a warning about being weak.
 - In order to test weak ciphers, we support generating weak keys and signing with weak ciphers.
