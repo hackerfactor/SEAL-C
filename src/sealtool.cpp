@@ -399,7 +399,7 @@ void	Usage	(const char *progname)
   printf("  -k, --keyfile fname  :: File for storing the private key in PEM format (default: ./seal-private.pem)\n");
   // NIST Approved: P-256 = prime256v1; default if you say "ec"
   // NIST Approved: P-384 = secp384r1
-  printf("  -K, --keyalg alg     :: Key algorithm (rsa, ec, P-256; default: rsa)\n");
+  printf("  -K, --keyalg alg     :: Key algorithm (rsa, ec, P-256; default: ec)\n");
   printf("    Use '-K list' to see all supported algorithms.\n");
   printf("  --keybits bits       :: For algs with defined key sizes (e.g., rsa), specify bit size (default: %d)\n",REC_BITS_RSA);
   // EVP_KEYMGMT_do_all_provided(NULL, print_km, NULL);
@@ -446,7 +446,7 @@ void	Usage	(const char *progname)
   printf("        -O text may contain a comma-separated list of options:\n");
   printf("        append  :: This is an appending signature; not final signature.\n");
   printf("        seAl,SEAL,teXt,tEXt,...  :: PNG: chunk name to use.\n");
-  printf("  -K, --keyalg alg     :: Key algorithm  (default: rsa)\n");
+  printf("  -K, --keyalg alg     :: Key algorithm  (default: ec, P-256)\n");
   printf("  -A, --digestalg alg  :: Digest (hash) algorithm  (default: sha256)\n");
   printf("               Supports: sha224, sha256, sha384, sha512\n");
   printf("  --kv number          :: Unique key version (default: 1)\n");
@@ -496,7 +496,7 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"seal","1"); // SEAL version; currently always '1'
   Args = SealSetText(Args,"b","F~S,s~f"); // default byte range is everything
   Args = SealSetText(Args,"digestalg","sha256");
-  Args = SealSetText(Args,"keyalg","rsa");
+  Args = SealSetText(Args,"keyalg","ec");
   Args = SealSetText(Args,"keybits",REC_BITS_RSA_TEXT);
   Args = SealSetText(Args,"keyfile","./seal-private.pem");
   Args = SealSetText(Args,"outfile","./%b-seal%e");

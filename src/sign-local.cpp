@@ -63,7 +63,7 @@ EVP_PKEY *PrivateKey=NULL;
 
 /********************************************************
  CheckKeyAlgorithm(): Is this a known and supported key algorithm?
- Returns: 0=no, 1=rsa, 2=ec
+ Returns: 0=no, 1=rsa, 2=ec, 3=ed25529
  ********************************************************/
 int	CheckKeyAlgorithm	(const char *keyalg)
 {
@@ -72,6 +72,9 @@ int	CheckKeyAlgorithm	(const char *keyalg)
   if (!strcmp(keyalg,"ec")) { return(2); }
   if (!strcmp(keyalg,"P-256")) { return(2); }
   if (!strcmp(keyalg,"P-384")) { return(2); }
+#if INC_ED25519
+  if (!strcmp(keyalg,"ed25529")) { return(3); }
+#endif
 
   // Check if the keyalg is known */
   int nid = OBJ_sn2nid(keyalg); // check the short name
@@ -107,6 +110,9 @@ void	ListKeyAlgorithms	(sealfield *Args)
   printf("  ec (same as prime256v1)\n"); // default
   printf("  P-256 (same as prime256v1)\n");
   printf("  P-384 (same as secp384r1)\n");
+#if INC_ED25519
+  printf("  ed25529\n");
+#endif
 
   // find every EC
   EC_builtin_curve *curves = NULL;
@@ -138,6 +144,7 @@ void	ListKeyAlgorithms	(sealfield *Args)
 	  {
 	  bits = EC_GROUP_get_degree(group);
 	  EC_GROUP_free(group);
+	  if (bits % 8) { continue; } // not byte-aligned
 	  if (bits < MIN_BITS_EC) { IsWeak=true; }
 	  }
 	else { bits=0; }
@@ -216,7 +223,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
     decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "RSA", EVP_PKEY_KEYPAIR, NULL, NULL);
     }
 #if INC_ED25519
-  else if (keyalg && !strcmp(keyalg,"ed25519"))
+  else if (cka==3) // ed25519
     {
     decoder = OSSL_DECODER_CTX_new_for_pkey(&PrivateKey, "PEM", NULL, "ED25519", EVP_PKEY_KEYPAIR, NULL, NULL);
     }
@@ -265,21 +272,31 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   if (type == EVP_PKEY_RSA)
     {
     Args = SealSetText(Args,"ka","rsa");
+    if (bits % 8)
+	{
+	fprintf(stderr, "ERROR: RSA-%d key is not byte-aligned. Aborting.\n", bits);
+	exit(0x80);
+	}
     if (bits < MIN_BITS_RSA)
 	{
 	fprintf(stderr, "WARNING: Signing with a weak RSA-%d key.\n", bits);
-	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(1); }
+	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(0x80); }
 	}
     } 
-  if (type == EVP_PKEY_EC)
+  else if (type == EVP_PKEY_EC)
     {
     Args = SealSetText(Args,"ka","ec");
+    if (bits % 8)
+	{
+	fprintf(stderr, "ERROR: EC-%d key is not byte-aligned. Aborting.\n", bits);
+	exit(0x80);
+	}
     if (bits < MIN_BITS_EC)
 	{
 	fprintf(stderr, "WARNING: Signing with a weak EC-%d key.\n", bits);
-	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(1); }
+	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(0x80); }
 	}
-    } 
+    }
 #if INC_ED25519
   else if (type == EVP_PKEY_ED25519)
     {
@@ -538,11 +555,6 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
   keyfile = (char*)vf->Value;
   bool UseDeprecated = SealSearch(Args,"deprecated") ? true : false;
 
-  vf = SealSearch(Args,"keybits");
-  if (!vf) { Bits=REC_BITS_RSA; }
-  else { Bits = atoi((char*)(vf->Value)); }
-  // Bits size is already validated
-
   vf = SealSearch(Args,"ka");
   if (!vf)
     {
@@ -571,11 +583,20 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
   int cka = CheckKeyAlgorithm((char*)vf->Value);
   if (cka==1) // RSA
     {
+    vf = SealSearch(Args,"keybits");
+    if (!vf) { Bits=REC_BITS_RSA; }
+    else { Bits = atoi((char*)(vf->Value)); }
+
     // NIST deprecated RSA-1024 bits in 2024.
     if (Bits < MIN_BITS_RSA)
 	{
 	fprintf(stderr,"WARNING: RSA-%u is weak by today's standards. Consider using %d or higher.\n",Bits,REC_BITS_RSA);
-	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(1); }
+	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(0x80); }
+	}
+    if (Bits % 8)
+	{
+	fprintf(stderr,"ERROR: RSA with %u bits is not byte-aligned. Aborting.\n",Bits);
+	exit(0x80);
 	}
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
     if (!pctx ||
@@ -587,11 +608,6 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
     }
   else if (!strcmp((char*)(vf->Value),"ec")) // generic ec
     {
-    if (Bits < MIN_BITS_EC)
-	{
-	fprintf(stderr,"WARNING: EC-%u is weak by today's standards. Consider using %d or higher.\n",Bits,REC_BITS_EC);
-	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(1); }
-	}
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
     // "ec" is a generic class. When generating, assume P-256 for now.
     keypair = EVP_EC_gen("P-256");
@@ -601,15 +617,28 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
     {
     keypair = EVP_EC_gen((char*)(vf->Value));
     Args = SealSetText(Args,"ka","ec");
+    if (keypair)
+	{
+	Bits = EVP_PKEY_get_bits(keypair);
+	if (Bits < MIN_BITS_EC)
+	  {
+	  fprintf(stderr,"WARNING: EC with %u bits is weak by today's standards. Consider using %d or higher.\n",Bits,REC_BITS_EC);
+	  if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(0x80); }
+	  }
+	if (Bits % 8)
+	  {
+	  fprintf(stderr,"ERROR: EC with %u bits is not byte-aligned. Aborting.\n",Bits);
+	  exit(0x80);
+	  }
+	}
     }
 #if INC_ED25519
-  else if (!strcmp((char*)(vf->Value),"ed25519")) 
+  else if (cka == 3) 
     {
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
     if (!pctx ||
 	(EVP_PKEY_keygen_init(pctx) != 1) ||
-	(EVP_PKEY_keygen(pctx, &keypair) != 1) ||
-	(EVP_PKEY_CTX_free(pctx) != 1))
+	(EVP_PKEY_keygen(pctx, &keypair) != 1))
 	{ keypair=NULL; }
     if (pctx) { EVP_PKEY_CTX_free(pctx); }
     }

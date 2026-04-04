@@ -917,24 +917,6 @@ sealfield *	SealParmCheck	(sealfield *Args, char Mode)
 	  }
 	}
 
-    // Value already checked and 'u16' already loaded with the value
-    if ((vf->FieldLen==7) && !memcmp(vf->Field,"keybits",7))
-      {
-      // must be power of 2: 64 or larger
-      if (u16 < 64)
-        {
-	fprintf(stderr," ERROR: Invalid parameter: '%.*s' value is too small (at least 64).\n",
-		(int)vf->FieldLen, vf->Field);
-	exit(0x80);
-	}
-      else if (u16 & (u16-1)) // power of 2?
-        {
-	fprintf(stderr," ERROR: Invalid parameter: '%.*s' value is not a power of 2.\n",
-		(int)vf->FieldLen, vf->Field);
-	exit(0x80);
-	}
-      }
-
     // kv, uid: [A-Za-z0-9.+/-]
     if ((vf->FieldLen==2) && !memcmp(vf->Field,"kv",2))
 	{

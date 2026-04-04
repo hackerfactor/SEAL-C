@@ -18,9 +18,9 @@
 // In the future, as cipher become outdates, change these.
 // Minimum and recommended bit sizes, as of 2026
 #define MIN_BITS_RSA	2048 /* for RSA, >= 2048 is considered strong */
-#define REC_BITS_RSA	2048 /* for RSA, recommend 2048 */
+#define REC_BITS_RSA	3072 /* for RSA, recommend 3072 */
 #define REC_BITS_RSA_TEXT	"2048"
-#define MIN_BITS_EC	224 /* For EC, >=224 is generally considered strong */
+#define MIN_BITS_EC	256 /* For EC, >224 is generally considered strong */
 #define REC_BITS_EC	256 /* For EC, recomment 256 */
 
 // For key generation
