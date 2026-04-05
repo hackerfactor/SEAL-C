@@ -854,6 +854,31 @@ sealfield *	SealParmCheck	(sealfield *Args, char Mode)
   Args = SealCopy(Args,"ka","keyalg");
   Args = SealDel(Args,"keyalg");
 
+  // Special case: rename ciphers
+  // "P-521" is not recognized by OpenSSL 3.x. Change it to the long name.
+  // Add support for "RSA-size"
+  char *val = SealGetText(Args,"ka");
+  if (val)
+    {
+    if (!strcasecmp(val,"P-521")) { Args=SealSetText(Args,"ka","secp521r1"); vf=NULL; }
+    else if (!strcasecmp(val,"P-384")) { Args=SealSetText(Args,"ka","secp384r1"); vf=NULL; }
+    else if (!strcasecmp(val,"P-256")) { Args=SealSetText(Args,"ka","secp256k1"); vf=NULL; }
+    else if (!strncasecmp(val,"RSA-",4) && isdigit(val[4])) // only used for generating or signing
+	{
+	unsigned int Bits;
+	char BitStr[8];
+	Bits = atoi(val+4);
+	if ((Bits%8) || (Bits < 1024) || (Bits > 16384))
+	  {
+	  fprintf(stderr,"ERROR: Unsupported RSA bitsize.\n");
+	  if (Mode == 'g') { exit(0x80); }
+	  }
+	Args=SealSetText(Args,"ka","rsa");
+	snprintf(BitStr,8,"%u",Bits);
+	Args=SealSetText(Args,"keybits",BitStr);
+	}
+    }
+
   // Check key algorithm
   int cka; // check key algorithm
   cka = CheckKeyAlgorithm(SealGetText(Args,"ka"));
@@ -862,6 +887,7 @@ sealfield *	SealParmCheck	(sealfield *Args, char Mode)
 	fprintf(stderr,"ERROR: Invalid parameter (-K %s). See `-K list'.\n",SealGetText(Args,"ka"));
 	exit(0x80);
 	}
+
   // If I'm generating, then keep the specific key algorithm.
   // If I'm not generating, then change any longer ec name to "ec"
   if ((Mode != 'g') && (cka==2))

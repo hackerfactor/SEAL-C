@@ -72,6 +72,7 @@ int	CheckKeyAlgorithm	(const char *keyalg)
   if (!strcmp(keyalg,"ec")) { return(2); }
   if (!strcmp(keyalg,"P-256")) { return(2); }
   if (!strcmp(keyalg,"P-384")) { return(2); }
+  if (!strcmp(keyalg,"P-521")) { return(2); }
 #if INC_ED25519
   if (!strcmp(keyalg,"ed25529")) { return(3); }
 #endif
@@ -100,34 +101,58 @@ int	CheckKeyAlgorithm	(const char *keyalg)
  ********************************************************/
 void	ListKeyAlgorithms	(sealfield *Args)
 {
+  EC_builtin_curve *curves = NULL;
+  EVP_PKEY_CTX *ctx = NULL;
+  EC_GROUP *group = NULL;
+  size_t crv,crv_len=0;
+  int bits = 0;
   bool UseDeprecated=false;
   bool IsWeak;
+
   if (SealSearch(Args,"deprecated")) { UseDeprecated=true; }
 
   // What are valid ka values?
   printf("The following values are supported for -K/--keyalg:\n");
-  printf("  rsa\n");
-  printf("  ec (same as prime256v1)\n"); // default
-  printf("  P-256 (same as prime256v1)\n");
-  printf("  P-384 (same as secp384r1)\n");
-#if INC_ED25519
-  printf("  ed25529\n");
-#endif
+  printf("\n  RSA ciphers:\n");
+  printf("    rsa (same as rsa-%s)\n",REC_BITS_RSA_TEXT);
+  for(bits=1024; bits <= 8192; bits+=1024)
+    {
+    if (bits < MIN_BITS_RSA) { IsWeak=true; } else { IsWeak=false; }
+    if (IsWeak && !UseDeprecated) { continue; }
+    printf("    rsa-%d (RSA with %d bits)",bits,bits);
+    if (IsWeak) { printf("; weak cipher"); }
+    printf("\n");
+    }
+  printf("    rsa-### (RSA with non-standard custom bits)\n");
+  printf("      Non-standard bits may not be usable by all systems.\n");
+  printf("      Longer than 2048 bits may not fit in DNS; use --inline.\n");
 
   // find every EC
-  EC_builtin_curve *curves = NULL;
-  size_t crv,crv_len=0;
-  int bits = 0;
-
   crv_len = EC_get_builtin_curves(NULL,0);
   curves = (EC_builtin_curve*)OPENSSL_malloc(sizeof(*curves) * crv_len);
   if (EC_get_builtin_curves(curves, crv_len)) // get list
     {
+    printf("\n  Elliptic curve ciphers:\n");
+    printf("    ec (same as prime256v1)\n"); // default
+    printf("    P-256 (same as prime256v1, equivalent to RSA-3072, but smaller)\n"); // NIST standard
+    printf("    P-384 (same as secp384r1)\n"); // NIST standard
+    printf("    P-521 (same as secp521r1, equivalent to RSA-16384, but fits in DNS)\n"); // NIST standard
     for(crv=0; crv < crv_len; crv++)
 	{
+	// Check if looking for known
+	switch(curves[crv].nid)
+	  {
+	  case NID_X9_62_prime256v1:
+	  case NID_secp256k1:
+	  case NID_secp384r1:
+	  case NID_secp521r1:
+		break;
+	  default: continue;
+	  }
+
 	// EC_get_builtin_curves lists everything, including unsupported ciphers.
 	// Test to see if it is available!
-	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
+	ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
 	EVP_PKEY_paramgen_init(ctx);
 	if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, curves[crv].nid) <= 0)
 	  {
@@ -139,12 +164,11 @@ void	ListKeyAlgorithms	(sealfield *Args)
 
 	// Get bit size
 	IsWeak=false;
-	EC_GROUP *group = EC_GROUP_new_by_curve_name(curves[crv].nid);
+	group = EC_GROUP_new_by_curve_name(curves[crv].nid);
 	if (group)
 	  {
 	  bits = EC_GROUP_get_degree(group);
 	  EC_GROUP_free(group);
-	  if (bits % 8) { continue; } // not byte-aligned
 	  if (bits < MIN_BITS_EC) { IsWeak=true; }
 	  }
 	else { bits=0; }
@@ -158,14 +182,73 @@ void	ListKeyAlgorithms	(sealfield *Args)
 	const char *sname = OBJ_nid2sn(curves[crv].nid);
 	if (!sname) { continue; }
 	if (curves[crv].comment && strchr(curves[crv].comment,'\n')) { continue; } // no special cases
-	printf("  %s",sname);
+	printf("    %s",sname);
 	if (curves[crv].comment) { printf(" (%s)",curves[crv].comment); }
 
 	if (IsWeak) { printf("; weak cipher"); }
 
 	printf("\n");
 	}
-    }
+
+    printf("\n  Other elliptic curve ciphers may not be universally supported:\n");
+    for(crv=0; crv < crv_len; crv++)
+	{
+	// Check if looking for known
+	switch(curves[crv].nid)
+	  {
+	  case NID_X9_62_prime256v1:
+	  case NID_secp256k1:
+	  case NID_secp384r1:
+	  case NID_secp521r1:
+		continue;
+	  default: break;
+	  }
+
+	// EC_get_builtin_curves lists everything, including unsupported ciphers.
+	// Test to see if it is available!
+	ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
+	EVP_PKEY_paramgen_init(ctx);
+	if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, curves[crv].nid) <= 0)
+	  {
+	  // Not available
+          EVP_PKEY_CTX_free(ctx);
+	  continue;
+          }
+	// It is available!
+
+	// Get bit size
+	IsWeak=false;
+	group = EC_GROUP_new_by_curve_name(curves[crv].nid);
+	if (group)
+	  {
+	  bits = EC_GROUP_get_degree(group);
+	  EC_GROUP_free(group);
+	  if (bits < MIN_BITS_EC) { IsWeak=true; }
+	  }
+	else { bits=0; }
+
+        EVP_PKEY_CTX_free(ctx); // done with ctx
+
+	// Check for weak ciphers
+	if (IsWeak && !UseDeprecated) { continue; }
+
+	// Show the cipher
+	const char *sname = OBJ_nid2sn(curves[crv].nid);
+	if (!sname) { continue; }
+	if (curves[crv].comment && strchr(curves[crv].comment,'\n')) { continue; } // no special cases
+	printf("    %s",sname);
+	if (curves[crv].comment) { printf(" (%s)",curves[crv].comment); }
+
+	if (IsWeak) { printf("; weak cipher"); }
+
+	printf("\n");
+	}
+    } // if EC
+
+#if INC_ED25519
+  // unsupported because it cannot sign extremely large files.
+  printf("  ed25529\n");
+#endif
   OPENSSL_free(curves);
 } /* ListKeyAlgorithms() */
 
@@ -286,11 +369,6 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   else if (type == EVP_PKEY_EC)
     {
     Args = SealSetText(Args,"ka","ec");
-    if (bits % 8)
-	{
-	fprintf(stderr, "ERROR: EC-%d key is not byte-aligned. Aborting.\n", bits);
-	exit(0x80);
-	}
     if (bits < MIN_BITS_EC)
 	{
 	fprintf(stderr, "WARNING: Signing with a weak EC-%d key.\n", bits);
@@ -593,7 +671,7 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
 	fprintf(stderr,"WARNING: RSA-%u is weak by today's standards. Consider using %d or higher.\n",Bits,REC_BITS_RSA);
 	if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(0x80); }
 	}
-    if (Bits % 8)
+    if (Bits % 8) // RSA must be a multiple of 8
 	{
 	fprintf(stderr,"ERROR: RSA with %u bits is not byte-aligned. Aborting.\n",Bits);
 	exit(0x80);
@@ -625,11 +703,13 @@ EVP_PKEY *	SealGenerateKeyPrivate	(sealfield *Args)
 	  fprintf(stderr,"WARNING: EC with %u bits is weak by today's standards. Consider using %d or higher.\n",Bits,REC_BITS_EC);
 	  if (!UseDeprecated) { fprintf(stderr,"ABORTING. Use --deprecated for weak ciphers\n"); exit(0x80); }
 	  }
-	if (Bits % 8)
+#if 0
+	if (Bits % 8) // EC permits padding to the next byte
 	  {
 	  fprintf(stderr,"ERROR: EC with %u bits is not byte-aligned. Aborting.\n",Bits);
 	  exit(0x80);
 	  }
+#endif
 	}
     }
 #if INC_ED25519
