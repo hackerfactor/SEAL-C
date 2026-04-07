@@ -553,6 +553,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
   char *rec_id,*dns_id; // for matching uid strings
   char *rec_ka,*dns_ka; // for matching ka strings
   char *rec_kv,*dns_kv; // for matching kv strings
+  char *rec_pk,*dns_p;  // for matching inline pubkey
   char *dns_str;
   bool IsValid=true; // assume it is valid
   bool IsInline=false;
@@ -694,7 +695,9 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
       if(IsInline)
         {
         // The public key was already validated, and it being here means it was authenticated, if nto revoked
-        if(SealGetText(dnstxt,"p") == SealGetText(Rec, "pk"))
+        dns_p = SealGetText(dnstxt, "p");
+        rec_pk = SealGetText(Rec, "pk");
+        if(dns_p && rec_pk && !strcmp(dns_p, rec_pk))
           {
           Rec = _SealValidateRevoke(Rec,dnstxt);
           break; //regardless of if it is revoked the record was found
