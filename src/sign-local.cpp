@@ -111,6 +111,13 @@ void	ListKeyAlgorithms	(sealfield *Args)
 
   if (SealSearch(Args,"deprecated")) { UseDeprecated=true; }
 
+  /*****
+   2026-04-21:
+   When they become widely available, add post quantum ciphers (PQC):
+     ML-KEM (Kyber): Chrome has it, Firefox doesn't and it not in javascript crypto library.
+     ML-DSA (Dilithium): OpenSSL 3.5+ has it as an add-on, but not by default.
+   *****/
+
   // What are valid ka values?
   printf("The following values are supported for -K/--keyalg:\n");
   printf("\n  RSA ciphers:\n");
@@ -143,7 +150,7 @@ void	ListKeyAlgorithms	(sealfield *Args)
 	switch(curves[crv].nid)
 	  {
 	  case NID_X9_62_prime256v1:
-	  case NID_secp256k1:
+	  // case NID_secp256k1: // supported by chrome, but not firefox
 	  case NID_secp384r1:
 	  case NID_secp521r1:
 		break;
@@ -197,7 +204,7 @@ void	ListKeyAlgorithms	(sealfield *Args)
 	switch(curves[crv].nid)
 	  {
 	  case NID_X9_62_prime256v1:
-	  case NID_secp256k1:
+	  // case NID_secp256k1: // supported by chrome, but not firefox
 	  case NID_secp384r1:
 	  case NID_secp521r1:
 		continue;

@@ -862,7 +862,7 @@ sealfield *	SealParmCheck	(sealfield *Args, char Mode)
     {
     if (!strcasecmp(val,"P-521")) { Args=SealSetText(Args,"ka","secp521r1"); vf=NULL; }
     else if (!strcasecmp(val,"P-384")) { Args=SealSetText(Args,"ka","secp384r1"); vf=NULL; }
-    else if (!strcasecmp(val,"P-256")) { Args=SealSetText(Args,"ka","secp256k1"); vf=NULL; }
+    else if (!strcasecmp(val,"P-256")) { Args=SealSetText(Args,"ka","prime256v1"); vf=NULL; }
     else if (!strncasecmp(val,"RSA-",4) && isdigit(val[4])) // only used for generating or signing
 	{
 	unsigned int Bits;

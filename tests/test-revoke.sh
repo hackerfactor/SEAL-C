@@ -53,9 +53,15 @@ for sf in 'base64' 'date3:base64' ; do
     ## test2..testn revoke specific certs
 	# 16 = 0x10 = revoked + validated
     elif [ "$rc" != "16" ] ; then echo "Failed revoke (rc=$rc)."; exit; fi
+
+    echo ""
+    echo "# Pausing"
+    sleep 10
   done # testnum
 done #sf
 done # ka
 done # da
 
+echo ""
+echo "# Done with revoking test"
 exit 0
