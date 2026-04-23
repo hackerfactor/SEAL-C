@@ -58,6 +58,7 @@ test:
 	tests/test-local.sh
 	tests/test-remote.sh
 	tests/test-manual.sh
+	tests/test-remote-append.sh
 	tests/test-revoke.sh
 	tests/test-srcref.sh
 	tests/test-inline-local.sh
