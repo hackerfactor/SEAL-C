@@ -59,6 +59,9 @@ test:
 	tests/test-remote.sh
 	tests/test-manual.sh
 	tests/test-revoke.sh
+	tests/test-srcref.sh
+	tests/test-inline-local.sh
+	tests/test-inline-remote.sh
 
 test-clean:
 	rm -rf tests/*.dir

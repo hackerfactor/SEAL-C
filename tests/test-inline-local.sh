@@ -10,7 +10,7 @@ if [ "$1" != "" ] ; then
   shift
 fi
 
-TESTDIR=test-inline.dir
+TESTDIR=test-inline-local.dir
 rm -rf $TESTDIR
 mkdir $TESTDIR
 

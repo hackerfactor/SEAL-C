@@ -454,6 +454,7 @@ void	Usage	(const char *progname)
   printf("               -p permits public keys that are too long for DNS.\n");
   printf("               -p also permits cryptographic validation, even if\n");
   printf("               the signer cannot be authenticated. (E.g., no network)\n");
+  printf("  --pk base64          :: Public key in base64\n");
   printf("  --sf text            :: Signing format (default: HEX)\n");
   printf("  --sidecar filename   :: Optional: generate a sidecar signature\n");
   printf("\n");
@@ -577,7 +578,7 @@ int main (int argc, char *argv[])
     {"sf",        required_argument, NULL, 1},
     {"kv",        required_argument, NULL, 1}, // must be numeric >= 0
     {"uid",       required_argument, NULL, 1},
-    {"pk",       required_argument, NULL, 1},
+    {"pk",        required_argument, NULL, 1}, // public key in base64
     {"pka",       required_argument, NULL, 1},
     // informational
     {"info",      required_argument, NULL, 1},

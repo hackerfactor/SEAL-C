@@ -620,8 +620,8 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
    * Check if the record is inline
    * If inline verify the record, then do the DNS checks
    * else continue with the normal verifications
-  */
-  if(!ErrorMsg && SealSearch(Rec, "pk"))
+   *****/
+  if (!ErrorMsg && SealSearch(Rec, "pk"))
     {
     sealfield *pubkey_bin;
     IsInline = true;
@@ -631,7 +631,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
     Rec = _SealValidateDigest(Rec, pubkey_bin);
     ErrorMsg = SealGetText(Rec,"@error");
     // Needed because otherwise an inline sig will be validated, but not authenticated
-    if(ErrorMsg){ IsValid = false; }
+    if (ErrorMsg) { IsValid = false; }
     }
 
   /*****
