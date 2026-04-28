@@ -5,7 +5,7 @@
  Functions for handling file formats.
  ************************************************/
 #ifndef SEAL_FORMATS_HPP
-#define SEAL_FORAMTS_HPP
+#define SEAL_FORMATS_HPP
 
 #include <stdlib.h>
 #include "seal.hpp"

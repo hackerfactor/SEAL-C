@@ -693,8 +693,11 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
        *****/
       if(IsInline)
         {
-        // The public key was already validated, and it being here means it was authenticated, if nto revoked
-        if(SealGetText(dnstxt,"p") == SealGetText(Rec, "pk"))
+        // The public key was already validated, and it being here means it was authenticated, if not revoked
+	char *p,*pk;
+	p = SealGetText(dnstxt,"p");
+	pk = SealGetText(Rec, "pk");
+        if (p && pk && !strcmp(p,pk))
           {
           Rec = _SealValidateRevoke(Rec,dnstxt);
           break; //regardless of if it is revoked the record was found
