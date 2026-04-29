@@ -40,6 +40,9 @@ void	PrintDNSstring	(FILE *fp, const char *Label, sealfield *vf);
 void	SealFreePrivateKey	();
 EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args);
 
+// For key validation
+bool	SealCheckKeyKeyAlg	(const char *ka, sealfield *pbin);
+
 // Build a SEAL record
 sealfield *	SealRecord	(sealfield *Args);
 

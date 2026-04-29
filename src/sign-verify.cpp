@@ -392,6 +392,7 @@ DigestDone:
   if (PubKey) { EVP_PKEY_free(PubKey); }
   return Rec;
 }
+
 /********************************************************
  _SealValidateSig(): Given seal record with DNS results,
  and decoded binary signature, see if it validates!!!
@@ -435,6 +436,37 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
 } /* _SealValidateSig() */
 
 #pragma GCC visibility pop
+
+/********************************************************
+ SealCheckKeyKeyAlg(): Does the key encoding match the key algorithm?
+ Works for pbin being public or private.
+ Returns: true on match, false on miss.
+ ********************************************************/
+bool	SealCheckKeyKeyAlg	(const char *ka, sealfield *pbin)
+{
+  // ka is mandatory (even if redundant because the binary key says the algorithm)
+  // the public/private key must exist.
+  if (!ka || !pbin) { return(false); } // both must exist
+
+  EVP_PKEY *pkey;
+  const uint8_t *ppbin; // d2i moves the pointer; don't let it move
+  ppbin = pbin->Value;
+  // convert to pkey
+  pkey = d2i_PUBKEY(NULL, &ppbin, pbin->ValueLen);
+  if (!pkey) { return(false); } // needs to decode
+
+  if (!strcasecmp(ka,"rsa") && EVP_PKEY_is_a(pkey,"RSA"))
+    {
+    // ka is RSA and key is RSA
+    return(true);
+    }
+  if (!strcasecmp(ka,"ec") && EVP_PKEY_is_a(pkey,"EC"))
+    {
+    // ka is EC and key is EC
+    return(true);
+    }
+  return(false); // nope! mismatch!
+} /* SealCheckKeyKeyAlg() */
 
 /********************************************************
  SealValidateDecodeParts(): Given seal record with signature, decode the signature.
@@ -553,6 +585,9 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
   char *rec_id,*dns_id; // for matching uid strings
   char *rec_ka,*dns_ka; // for matching ka strings
   char *rec_kv,*dns_kv; // for matching kv strings
+  char *rec_pk; // for matching pk strings
+  char *dns_p;  // for DNS keys
+  sealfield *dns_pbin; // for DNS keys
   char *dns_str;
   bool IsValid=true; // assume it is valid
   bool IsInline=false;
@@ -621,7 +656,8 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
    * If inline verify the record, then do the DNS checks
    * else continue with the normal verifications
    *****/
-  if (!ErrorMsg && SealSearch(Rec, "pk"))
+  rec_pk = SealGetText(Rec, "pk");
+  if (!ErrorMsg && rec_pk)
     {
     sealfield *pubkey_bin;
     IsInline = true;
@@ -654,6 +690,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
     rec_id = SealGetText(Rec,"uid");
     rec_ka = SealGetText(Rec,"ka");
     rec_kv = SealGetText(Rec,"kv");
+    rec_pk = SealGetText(Rec,"pk");
     for(dnsnum=0; (dnstxt=SealDNSGet(Rec,dnsnum)) != NULL; dnsnum++) // foreach dns record...
       {
       /* Copy DNS components to the record for verifying */
@@ -685,22 +722,28 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
       else if (!rec_kv && dns_kv && !strcmp(dns_kv,"1")) { ; } // implicit match
       else { continue; } // missed
 
+      // Confirm DNS validation
+      dns_p = SealGetText(dnstxt,"p");
+      dns_pbin = SealSearch(dnstxt,"@p-bin");
+      if (dns_p && !dns_pbin)
+        {
+	// Public key failed to decode
+	continue;
+	}
+
       /*****
        If Rec contains inline-pubkey, then either:
        (A) match full p=, or
        (B) match digest using pka= and pkd=
        If neither matches, then it doesn't apply (continue).
        *****/
-      if(IsInline)
+      if (IsInline)
         {
         // The public key was already validated, and it being here means it was authenticated, if not revoked
-	char *p,*pk;
-	p = SealGetText(dnstxt,"p");
-	pk = SealGetText(Rec, "pk");
-        if (p && pk && !strcmp(p,pk))
+        if (dns_p && rec_pk && !strcmp(dns_p,rec_pk))
           {
           Rec = _SealValidateRevoke(Rec,dnstxt);
-          break; //regardless of if it is revoked the record was found
+          break; // regardless of whether it is revoked, the record was found
           }
         Rec = SealInlineAuthenticate(Rec);
         if (!SealGetText(Rec,"@error")) { break; } // It worked!
@@ -718,10 +761,15 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
 	continue;
 	}
 
+      // Make sure the key matches the key algorithm
+      if (dns_str && !SealCheckKeyKeyAlg(rec_ka,dns_pbin)) { continue; }
+
       // There's a public key! See if it matched
       /* Check if the decoded digest matches the known digest. */
       Rec = _SealValidateSig(Rec,dnstxt);
       if (SealGetText(Rec,"@revoke")) { break; } // It is revoked!
+
+      // Everything matched
       if (!SealGetText(Rec,"@error")) { break; } // It worked!
       } // foreach DNS record
     } // if checking DNS

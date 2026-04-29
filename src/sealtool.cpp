@@ -446,7 +446,7 @@ void	Usage	(const char *progname)
   printf("        -O text may contain a comma-separated list of options:\n");
   printf("        append  :: This is an appending signature; not final signature.\n");
   printf("        seAl,SEAL,teXt,tEXt,...  :: PNG: chunk name to use.\n");
-  printf("  -K, --keyalg alg     :: Key algorithm  (default: ec, P-256)\n");
+  // -K / --keyalg is ignored when signing or verifying; it is only used for key generation
   printf("  -A, --digestalg alg  :: Digest (hash) algorithm  (default: sha256)\n");
   printf("               Supports: sha224, sha256, sha384, sha512\n");
   printf("  --kv number          :: Unique key version (default: 1)\n");
