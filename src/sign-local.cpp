@@ -26,10 +26,12 @@
    ED25519: Adopted by NIST in 2019 as part of FIPS 186-5.
      OpenSSL doesn't (yet) support it with EVP_PKEY_sign_init
      https://github.com/openssl/openssl/issues/5873#issuecomment-378917092
-     ed25519 cannot be used with a separate digest.
+     ed25519 cannot be used with a separate digest. It's a two-pass algorithm.
+     ed25519 cannot be used on huge files (requires loading all data in RAM)
      Solution: https://github.com/openssl/openssl/pull/23240/files
      Openssl 3.3.2 does not work.
      Openssl 3.3.4 MAY not work. (waiting for official release)
+     Current status? Do not support ED25519.
  ************************************************/
 // C headers
 #include <stdlib.h>
@@ -361,6 +363,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
   bool UseDeprecated = SealSearch(Args,"deprecated") ? true : false;
   if (type == EVP_PKEY_RSA)
     {
+    // Ignore any ka command-line parameter; this is RSA.
     Args = SealSetText(Args,"ka","rsa");
     if (bits % 8)
 	{
@@ -375,6 +378,7 @@ EVP_PKEY *	SealLoadPrivateKey	(sealfield *Args)
     } 
   else if (type == EVP_PKEY_EC)
     {
+    // Ignore any ka command-line parameter; this is EC.
     Args = SealSetText(Args,"ka","ec");
     if (bits < MIN_BITS_EC)
 	{

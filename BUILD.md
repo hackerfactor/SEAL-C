@@ -126,6 +126,8 @@ This code defaults to EC (P-256), but supports a wide range of ciphers (use `sea
 > [!WARNING]
 > Do not intentionally use weak ciphers for production use.
 
+When generating keys, the key algorithm is essential (e.g., `-K ec`). However, the command-line key algorithm parameter is ignored when signing or verifying. This is because the public and private key files encode the type of algorithm (ec or rsa).
+
 ## Current Status
 This release:
 - Supports a wide range of image, audio, video, and document files -- with more being added. All common web formats are supported, including JPEG, PNG, WebP, PDF, and MP4.

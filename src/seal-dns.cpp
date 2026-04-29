@@ -294,6 +294,17 @@ void	SealDNSLoadFile	(const char *Fname)
 	SealBase64Decode(SealSearch(dnew->Rec,"@pkd-bin"));
 	}
 
+  // Make sure the key algorithm matches the key
+  sealfield *dns_pbin;
+  dns_pbin = SealSearch(dnew->Rec,"@p-bin");
+  if (dns_pbin && !SealCheckKeyKeyAlg(SealGetText(dnew->Rec,"ka"),dns_pbin))
+    {
+    MmapFree(Mmap);
+    SealFree(vBuf);
+    fprintf(stderr," ERROR: DNS file contains mismatched key algorithm. Aborting.\n");
+    exit(0x80);
+    }
+
   // Insert record
   dnew->Next = DNSCache;
   DNSCache = dnew;
