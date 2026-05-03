@@ -241,12 +241,28 @@ sealfield *	_SealValidateRevoke	(sealfield *Rec, sealfield *dnstxt)
   else if (!SigDate) { IsRevoke=true; } // No date? Revoke!
   else // See if sigdate predates revocation
     {
-    int minlen,minlen1,minlen2;
+    int m1,m2,minlen,minlen1,minlen2;
+    char *M1,*M2;
+
+    // Normalize formats (only keep numbers)
     minlen1 = strlen(SigDate);
     minlen2 = strlen(Revoke);
+    M1 = (char*)calloc(1,minlen1+4);
+    M2 = (char*)calloc(1,minlen2+4);
+    for(m1=m2=0; m1 < minlen1; m1++)
+      {
+      if (isdigit(SigDate[m1])) { M1[m2]=SigDate[m1]; m2++; }
+      }
+    minlen1 = m2;
+    for(m1=m2=0; m1 < minlen2; m1++)
+      {
+      if (isdigit(Revoke[m1])) { M2[m2]=Revoke[m1]; m2++; }
+      }
+    minlen2 = m2;
     minlen = (minlen1 < minlen2) ? minlen1 : minlen2;
-    if (strncmp(SigDate,Revoke,minlen) >= 0) { IsRevoke=true; } // if it's revoked
+    if (strncmp(M1,M2,minlen) >= 0) { IsRevoke=true; } // if it's revoked
     // else: Not revoked!
+    free(M1); free(M2);
     }
 
   if (IsRevoke) // if it's revoked, tag it
