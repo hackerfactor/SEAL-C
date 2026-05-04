@@ -15,6 +15,8 @@
 #include "seal.hpp"
 #include "files.hpp"
 
+void	TaintPrint	(const char *Str);
+
 // In the future, as cipher become outdates, change these.
 // Minimum and recommended bit sizes, as of 2026
 #define MIN_BITS_RSA	2048 /* for RSA, >= 2048 is considered strong */

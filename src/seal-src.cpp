@@ -85,10 +85,14 @@ char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFo
 
     FILE *fp = fopen(srcf, "rb");
     if (!fp) {
-        printf("  Source unavailable: %s\n", srcf);
+        printf("  Source Unavailable: ");
+	TaintPrint(srcf);
+	printf("\n");
         if(Verbose)
           {
-          printf("  ERROR: could not open src file (%s)\n", srcf);
+          printf("  ERROR: could not open src file (");
+	  TaintPrint(srcf);
+	  printf(")\n");
           }
         return NULL;
     }
@@ -102,10 +106,14 @@ char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFo
 
     if (ferror(fp))
       {
-      printf("  Source unavailable: %s\n", srcf);
+      printf("  Source Unavailable: ");
+      TaintPrint(srcf);
+      printf("\n");
       if(Verbose)
         {
-        printf("  ERROR: failed while reading src file (%s)\n", srcf);
+        printf("  ERROR: failed while reading src file (");
+	TaintPrint(srcf);
+	printf(")\n");
         }
       fclose(fp);
       return NULL;
@@ -134,7 +142,9 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   crc = curl_global_init(CURL_GLOBAL_DEFAULT);
   if (crc != CURLE_OK)
     {
-    printf("  Source unavailable: %s\n", src);
+    printf("  Source Unavailable: ");
+    TaintPrint(src);
+    printf("\n");
     if(Verbose)
       {
       printf("  Failed to initialize curl. Aborting.\n");
@@ -145,7 +155,9 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   ch = curl_easy_init();
   if (!ch)
     {
-      printf("  Source unavailable: %s\n", src);
+      printf("  Source Unavailable: ");
+      TaintPrint(src);
+      printf("\n");
       if(Verbose)
       {
       printf("  Failed to initialize curl handle. Aborting.\n");
@@ -180,7 +192,9 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   curl_global_cleanup();
   if (crc != CURLE_OK)
     {
-    printf("  Source unavailable: %s\n", SealGetText(Args,"src"));
+    printf("  Source Unavailable: ");
+    TaintPrint(SealGetText(Args,"src"));
+    printf("\n");
     if(Verbose)
       {
       printf("  curl[%d]: %s\n", crc,errbuf[0] ? errbuf : "unknown");
@@ -230,16 +244,24 @@ sealfield * SealCheckOrSetSrcd(sealfield *Args, char *srcd, char *srcdCalc, char
     {
     if (strcmp(srcd, srcdCalc) != 0)
       {
-      printf("  Source mismatched: %s\n", srcRef);
+      printf("  Source Mismatched: ");
+      TaintPrint(srcRef);
+      printf("\n");
       }
     else
       {
-      printf("  Source matched: %s \n", srcRef);
+      printf("  Source Matched: ");
+      TaintPrint(srcRef);
+      printf("\n");
       }
     if(Verbose)
       {
-      printf("  srcd provided:   %s\n", srcd);
-      printf("  srcd calculated: %s\n", srcdCalc);
+      printf("  srcd provided:   ");
+      TaintPrint(srcd);
+      printf("\n");
+      printf("  srcd calculated: ");
+      TaintPrint(srcdCalc);
+      printf("\n");
       }
     }
   else if (srcdCalc && !srcd)
@@ -252,7 +274,9 @@ sealfield * SealCheckOrSetSrcd(sealfield *Args, char *srcd, char *srcdCalc, char
     }
   else
     {
-    printf("  Error: Digest could not be generated for %s\n", srcRef);
+    printf("  Error: Digest could not be generated for ");
+    TaintPrint(srcRef);
+    printf("\n");
     exit(0x80);
     }
   return Args;
@@ -309,7 +333,9 @@ sealfield *	SealSrcGet	(sealfield *Args)
     }
   else
     {
-    printf(" ERROR: unknown src format (%s)\n", src);
+    printf(" ERROR: unknown src format (");
+    TaintPrint(src);
+    printf(")\n");
     exit(0x80);
     }
   return(Args);
@@ -337,14 +363,18 @@ void	SealSrcVerify	(sealfield *Args)
   if (src && strncasecmp(src,"http://",7) && strncasecmp(src,"https://",8))
     {
     // Not http or https
-    printf("  Unsupported source: %s\n",src);
+    printf("  Unsupported Source: ");
+    TaintPrint(src);
+    printf("\n");
     src=NULL;
     }
 
   // src without srcd cannot be validated
   if (src && !srcd)
     {
-    printf("  Unverfied source: %s\n",src);
+    printf("  Unverfied Source: ");
+    TaintPrint(src);
+    printf("\n");
     return;
     }
 
@@ -388,11 +418,13 @@ void	SealSrcVerify	(sealfield *Args)
     // Local files are not stored in the record.
     if (Verbose)
       {
-      printf(" Source digest: unavailable (%s)\n", src);
+      printf(" Source Digest: unavailable (");
+      TaintPrint(src);
+      printf(")\n");
       }
     else
       {
-      printf(" Source digest: unavailable\n");
+      printf(" Source Digest: unavailable\n");
       }
     EVP_MD_CTX_free(ctx64);
     return;
@@ -403,7 +435,9 @@ void	SealSrcVerify	(sealfield *Args)
     {
     if (strcmp(srcd, srcdCalc) != 0)
       {
-      printf("  Source mismatch: %s\n",src);
+      printf("  Source Mismatch: ");
+      TaintPrint(src);
+      printf("\n");
       if (Verbose)
 	{
 	printf("  srcd provided:   %s\n", srcd);
@@ -412,7 +446,9 @@ void	SealSrcVerify	(sealfield *Args)
       }
     else 
       {
-      printf("  Source matched: %s\n", src);
+      printf("  Source Matched: ");
+      TaintPrint(src);
+      printf("\n");
       if (Verbose)
 	{
 	printf("  Source Digest: %s\n", srcd);

@@ -30,6 +30,50 @@
 #include "sign.hpp"
 #include "files.hpp"
 
+/********************************************************
+ TaintPrint(): Safely print a string.
+ String must be null-terminated.
+ ********************************************************/
+void	TaintPrint	(const char *Str)
+{
+  int c;
+  const unsigned char *S;
+
+  S = (const unsigned char *)Str; // Avoid int issues (not really a concern, but for completeness)
+
+  // Permit UTF-8
+  for(c=0; S[c]; c++)
+    {
+    if ((S[c] >= 32) && (S[c] < 127)) { fputc(S[c],stdout); }
+    // 127 is delete character; skip it
+    else if (isspace(S[c])) { fputc(' ',stdout); } // any whitespace is space
+    else if (((S[c] & 0xe0) == 0xc0) && ((S[c+1] & 0xc0) == 0x80)) // 2 byte
+      {
+      fputc(S[c],stdout); c++;
+      fputc(S[c],stdout);
+      }
+    else if (((S[c] & 0xf0) == 0xe0) && // 3 byte
+	     ((S[c+1] & 0xc0) == 0x80) && 
+	     ((S[c+2] & 0xc0) == 0x80) )
+      {
+      fputc(S[c],stdout); c++;
+      fputc(S[c],stdout); c++;
+      fputc(S[c],stdout);
+      }
+    else if (((S[c] & 0xf8) == 0xf0) && // 4 byte
+	     ((S[c+1] & 0xc0) == 0x80) && 
+	     ((S[c+2] & 0xc0) == 0x80) && 
+	     ((S[c+3] & 0xc0) == 0x80) )
+      {
+      fputc(S[c],stdout); c++;
+      fputc(S[c],stdout); c++;
+      fputc(S[c],stdout); c++;
+      fputc(S[c],stdout);
+      }
+    else { fputc(' ',stdout); } // unknown; print a space
+    }
+} /* TaintPrint() */
+
 #pragma GCC visibility push(hidden)
 /********************************************************
  _SealVerifyShow(): Display results
@@ -186,31 +230,34 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 	  }
 
 	Txt = SealGetText(Rec,"d");
-	if (rc & 0x07) { printf("  Unverified Signed By:"); }
-	else { printf("  Signed By:"); }
-	printf(" %s",Txt);
+	if (rc & 0x07) { printf("  Unverified Signed By: "); }
+	else { printf("  Signed By: "); }
+	TaintPrint(Txt);
 
 	Txt = SealGetText(Rec,"id");
 	if (Txt && Txt[0])
 	  {
-	  printf(" for user %s",Txt);
+	  printf(" for user ");
+	  TaintPrint(Txt);
 	  }
 	printf("\n");
 
 	Txt = SealGetText(Rec,"copyright");
 	if (Txt && Txt[0])
 	  {
-	  if (rc & 0x07) { printf("  Unverified Copyright:"); }
-	  else { printf("  Copyright:"); }
-	  printf(" %s\n",Txt);
+	  if (rc & 0x07) { printf("  Unverified Copyright: "); }
+	  else { printf("  Copyright: "); }
+	  TaintPrint(Txt);
+	  printf("\n");
 	  }
 
 	Txt = SealGetText(Rec,"info");
 	if (Txt && Txt[0])
 	  {
-	  if (rc & 0x07) { printf("  Unverified Comment:"); }
-	  else { printf("  Comment:"); }
-	  printf(" %s\n",Txt);
+	  if (rc & 0x07) { printf("  Unverified Comment: "); }
+	  else { printf("  Comment: "); }
+	  TaintPrint(Txt);
+	  printf("\n");
 	  }
 	}
 } /* _SealVerifyShow() */
