@@ -112,6 +112,7 @@ sealfield *	SealSignURL	(sealfield *Args)
   curl_easy_setopt(ch, CURLOPT_ERRORBUFFER, errbuf);
   curl_easy_setopt(ch, CURLOPT_CONNECTTIMEOUT, 20); // 20 seconds to connect
   curl_easy_setopt(ch, CURLOPT_TIMEOUT, 10); // 10 seconds to transfer data
+  curl_easy_setopt(ch, CURLOPT_REDIR_PROTOCOLS_STR, "https,http"); // Prevent redirects to other protocols
 
   // Build the post data
   Args = SealSetText(Args,"@post","seal=1"); // seal version is always 1

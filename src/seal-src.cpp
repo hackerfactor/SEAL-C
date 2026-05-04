@@ -170,6 +170,7 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
   curl_easy_setopt(ch, CURLOPT_ERRORBUFFER, errbuf);
   curl_easy_setopt(ch, CURLOPT_CONNECTTIMEOUT, 20); // 20 seconds to connect
   curl_easy_setopt(ch, CURLOPT_TIMEOUT, 60); // 60 seconds to transfer data
+  curl_easy_setopt(ch, CURLOPT_REDIR_PROTOCOLS_STR, "https,http"); // Prevent redirects to other protocols
 
   // Do the request!
   crc = curl_easy_perform(ch);
