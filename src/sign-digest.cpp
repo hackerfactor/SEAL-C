@@ -120,8 +120,8 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
     "+-,", // finished reading offset (+- are for continuation)
     "pPsSfF0123456789", // after +/-
     };
-  int i,acc;
-  uint64_t sum[2]; // total and accumulator
+  int i;
+  uint64_t acc,sum[2]; // total and accumulator
   int Addsym=1; // for addition (-1 for subtraction)
   state=acc=sum[0]=sum[1]=0;
   seg[0]=seg[1]=0;
@@ -267,6 +267,11 @@ sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
       acc += b[i]-'0';
       if (state < 3) { state=0; }
       else { state=3; }
+      if (acc > Mmap->memsize) // offset too large; abort!
+	{
+	Rec = SealSetText(Rec,"@error","Invalid offset (overflow)'");
+	goto Abort;
+	}
       }
     else if (b[i]=='~') // switch from start of range to end of range
       {

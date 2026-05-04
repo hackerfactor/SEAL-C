@@ -108,14 +108,15 @@ int	_SealDNSnet	(char *Domain)
   dnscache *dnew;
   sealfield *vBuf=NULL;
   int InsertCount=0;
-  unsigned char Buffer[16384]; // permit 16K buffer for DNS reply (should be overkill)
+  unsigned char *Buffer; // permit buffer for DNS reply (should be overkill)
   const char *s;
-  int Txti; // DNS unparsed (input) TXT as offset into Buffer
+  int Txti, rdlen; // DNS unparsed (input) TXT as offset into Buffer
   int size;
   ns_msg nsMsg;
   ns_rr rr; // dns response record
   struct __res_state dnsstate;
   int MsgMax, count, c;
+  HEADER *hp; // DNS raw header
 
   // Idiot checking
   if (!Domain || !Domain[0]) { return(0); }
@@ -147,127 +148,142 @@ int	_SealDNSnet	(char *Domain)
     exit(0x80);
     }
   dnsstate.options |= RES_USE_DNSSEC; // Explicitly ask for DNSSEC
-
-  // Prepare structures
-  memset(&dnsstate, 0, sizeof(dnsstate));
-  if (res_ninit(&dnsstate) < 0)
-    {
-    // Should never happen
-    fprintf(stderr," ERROR: Unable to initialize DNS lookup. Aborting.\n");
-    exit(0x80);
-    }
+  dnsstate.options |= RES_USE_EDNS0; // I can handle UDP up to 4096 bytes
 
   // Retrieve DNS request
-  memset(&Buffer, 0, 16384);
-  MsgMax = res_nquery(&dnsstate, Domain, C_IN, T_TXT, Buffer, 16384-1);
+#define DNSPKTSIZE 65536
+  Buffer = (unsigned char*)calloc(1,DNSPKTSIZE+4); // way overkill for most requests
+  memset(Buffer, 0, DNSPKTSIZE);
+  MsgMax = res_nquery(&dnsstate, Domain, C_IN, T_TXT, Buffer, DNSPKTSIZE);
+  if (MsgMax <= 0) { goto Done; } // if UDP failed
+  if (ns_initparse(Buffer, MsgMax, &nsMsg)) { MsgMax=0; goto Done; } // parsing failed?
+  hp = (HEADER *)Buffer;
+  if (hp->rcode != NOERROR) { MsgMax=0; goto Done; } // Invalid DNSSEC! Ignore the reply!
 
-  // Found something!
-  if (MsgMax > 0) // found something!
+  // Check for fragmented UDP; if it exists, switch to TCP
+  if (ns_msg_getflag(nsMsg, ns_f_tc))
     {
-    /*****
-     Parse the record
-     *****/
-    HEADER *hp = (HEADER *)Buffer;
+    // UDP is incomplete; reparse with TCP
+    dnsstate.options |= RES_USEVC; // for TCP
+    // Set a strict timeout so you don't hang forever if TCP is blocked
+    dnsstate.retrans = 2; // 2 seconds
+    dnsstate.retry = 1;   // Only try once
+    memset(Buffer, 0, DNSPKTSIZE);
+    MsgMax = res_nquery(&dnsstate, Domain, C_IN, T_TXT, Buffer, DNSPKTSIZE);
+    if (MsgMax <= 0) { goto Done; } // if TCP failed
+    if (ns_initparse(Buffer, MsgMax, &nsMsg)) { MsgMax=0; goto Done; } // parsing failed?
+    hp = (HEADER *)Buffer;
     if (hp->rcode != NOERROR) { MsgMax=0; goto Done; } // Invalid DNSSEC! Ignore the reply!
+    }
+
+  /*****
+   Parse the DNS record
+
+   DNS uses pascal strings: 1 byte length + data
+
+   Okay, so I asked for TXT records (res_nquery T_TXT).
+   But the DNS server can return ANYTHING (not just TXT).
+
+   There are four sections in the reply message:
+     QUERY, ANSWER, AUTHORITY, and ADDITIONAL.
+   Each says how many records they can return.
+   I only care about the ANSWER section (ns_s_an).
+   1. Find out how many answers (ns_msg_count with ns_s_an).
+   2. For each answer, make sure the format is valid and it's a TXT.
+      Skip anything else.
+
+   3a. DNS replies use a simple "reuse" approach to reduce the reply size.
+      (They call it "compressed" but it's not compressed in the traditional sense.)
+      The values are stored in a pascal string:
+	1 byte length + data
+      A long value may be: 1 data 1 data 1 data 0
+      But let's say that two records return similar strings, like
+      "host1.hackerfactor.com" and "host2.hackerfactor.com".
+      Then it can store a pointer to previous content.
+      E.g.:
+	5 "host1" 17 ".hackerfactor.com" 0
+	5 "host2" 0xc0 jump to previous 17 ".hackerfactor.com" 0
+	HOWEVER: This is only for DNS names, name for TXT records.
+
+   3b. DNS TXT replies are limited to:
+	- 255 bytes per segment
+	- A max of 4096 bytes total
+	- With basic UDP, the practical size is 512 bytes.
+	  But modern DNS implementations use EDNS0, allowing up to 4096 bytes.
+	  And if it's too large, DNS will fallback to TCP, allowing up to 64KB.
+	What if you need long, such as for post-quantum keys?
+	Use inline keys.
+
+   You can either try parsing this manually, or use the undocumented
+   ns_name_uncompress() function. (undocumented because there's no
+   man-page for it; never has been since the internet was a baby, and
+   it may not exist on every platform).
+
+   Forget undocumented: I part it manually.
+   *****/
+
+  // How many ANSWER replies?
+  count = ns_msg_count(nsMsg, ns_s_an);
+  for(c=0; c < count; c++)
+    {
+    if (ns_parserr(&nsMsg,ns_s_an,c,&rr)) { continue; } // if failed to parse
+    if (ns_rr_type(rr) != ns_t_txt) { continue; } // must be TXT
+
+    // Prepare variable length buffer
+    if (vBuf) { SealFree(vBuf); vBuf=NULL; }
+
+    // ns_rr_rdata returns length + string
+    // Find text position as offset into Buffer
+    s = (const char *)ns_rr_rdata(rr);
+    if (!s) { continue; } // bad data
+    rdlen = ns_rr_rdlen(rr);
+
+    vBuf = SealSetText(vBuf,"r","<seal ");
+    Txti = (unsigned char*)s - Buffer; // s is located somewhere in Buffer; Txti is the offset
+    while((Txti < MsgMax) && (SealGetSize(vBuf,"r") < 4096))
+	{
+	size = Buffer[Txti]; Txti++;
+	if (size <= 0) { break; } // no more data
+	else if (Txti+size > MsgMax) { break; } // read overflow
+	else if ((int)(vBuf->ValueLen) > rdlen) { break; } // read overflow
+	// Hostnames use jumps (size=0xc0 followed by offset) but TXT does not.
+	vBuf = SealAddTextLen(vBuf,"r",size,(const char*)Buffer+Txti);
+	Txti += size;
+	if (size < 0xff) { break; }
+	}
+    vBuf = SealAddText(vBuf,"r"," />");
+    //DEBUGPRINT("vBuf[%d]=[%s]",(int)(vBuf->ValueLen),vBuf->Value);
+
+    // Now I have something in vBuf['r'] that looks like "<seal DNSstuff />"
+    // Check for SEAL record: must contain "seal=" and a version number
+    s = SealGetText(vBuf,"r");
+    if (strncmp(s+6,"seal=",5) || !isdigit(s[11])) { SealFree(vBuf); vBuf=NULL; continue; }
+
+    // Store the record in the cache!
+    dnew = (dnscache*)calloc(sizeof(dnscache),1);
+
+    dnew->Domain = (char*)calloc(strlen(Domain)+2,1); // why +2? I want to ensure a '\0' at end of string.
+    strcpy(dnew->Domain,Domain);
+
+    dnew->TXT = (char*)calloc(SealGetSize(vBuf,"r")+1,1); // why +1? I want to ensure a '\0' at end of string.
+    strcpy(dnew->TXT,s);
+
+    dnew->Rec = SealParse(SealGetSize(vBuf,"r"),(byte*)SealGetText(vBuf,"r"),0,NULL);
 
     /*****
-     DNS uses pascal strings: 1 byte length + data
-
-     Okay, so I asked for TXT records (res_nquery T_TXT).
-     But the DNS server can return ANYTHING.
-
-     There are four sections in the reply message:
-       QUERY, ANSWER, AUTHORITY, and ADDITIONAL.
-     Each says how many records they can return.
-     I only care about the ANSWER section (ns_s_an).
-     1. Find out how many answers (ns_msg_count with ns_s_an).
-     2. For each answer, make sure the format is valid and it's a TXT.
-        Skip anything else.
-     3. DNS replies use a simple "reuse" approach to reduce the reply size.
-        (They call it "compressed" but it's not compressed in the traditional sense.)
-        The values are stored in a pascal string:
-          1 byte length + data
-        A long value may be: 1 data 1 data 1 data 0
-        But let's say that two records return similar strings, like
-        "host1.hackerfactor.com" and "host2.hackerfactor.com".
-        Then it can store a pointer to previous content.
-        E.g.:
-          5 "host1" 17 ".hackerfactor.com" 0
-          5 "host2" 0xc0 jump to previous 17 ".hackerfactor.com" 0
-
-     You can either try parsing this manually, or use the undocumented
-     ns_name_uncompress() function. (undocumented because there's no
-     man-page for it; never has been since the internet was a baby, and
-     it may not exist on every platform).
-
-     I use a sealfield and just append text to it.
-     To stop infinite loops, I stop at 4K (+/- 256).
+     Store dns and dnssec flags
+     There is no reasonable distinction between
+     "Plain DNS" and "DNSSEC without verification".
+     Treat both as "DNS".
      *****/
-    if (ns_initparse(Buffer, MsgMax, &nsMsg)) { MsgMax=0; goto Done; } // failed?
+    dnew->Rec = SealDel(dnew->Rec,"@dnssrc");
+    if (hp->ad) { dnew->Rec = SealSetText(dnew->Rec, "@dnssrc", "DNSSEC"); }
+    else { dnew->Rec = SealSetText(dnew->Rec, "@dnssrc", "DNS"); }
 
-    // How many ANSWER replies?
-    count = ns_msg_count(nsMsg, ns_s_an);
-    for(c=0; c < count; c++)
-      {
-      if (ns_parserr(&nsMsg,ns_s_an,c,&rr)) { continue; } // if failed to parse
-      if (ns_rr_type(rr) != ns_t_txt) { continue; } // must be TXT
-
-      if (vBuf) { SealFree(vBuf); vBuf=NULL; }
-
-      // ns_rr_rdata returns length + string
-      // Find text position as offset into Buffer
-      s = (const char *)ns_rr_rdata(rr);
-      if (!s) { continue; } // bad data
-
-      vBuf = SealSetText(vBuf,"r","<seal ");
-      Txti = (unsigned char*)s - Buffer; // s is located somewhere in Buffer; Txti is the offset
-      while((Txti < MsgMax) && (SealGetSize(vBuf,"r") < 4096))
-        {
-        size = Buffer[Txti]; Txti++;
-        if (size <= 0) { break; } // no more data
-        else if ((size & 0xf0) == 0xc0) // it's a jump!
-          {
-          if (Txti+1 >= MsgMax) { break; } // overflow
-          Txti = ((size & 0x3f) << 8) | Buffer[Txti]; // find the offset
-          continue;
-          }
-        else if (Txti+size > MsgMax) { break; } // read overflow
-        vBuf = SealAddTextLen(vBuf,"r",size,(const char*)Buffer+Txti);
-        Txti += size;
-        if (size < 0xff) { break; }
-        }
-      vBuf = SealAddText(vBuf,"r"," />");
-
-      // Now I have something in vBuf['r']that looks like "<seal DNSstuff />"
-      // Check for SEAL record: must contain "seal=" and a version number
-      s = SealGetText(vBuf,"r");
-      if (strncmp(s+6,"seal=",5) || !isdigit(s[11])) { SealFree(vBuf); vBuf=NULL; continue; }
-
-      // Store the record in the cache!
-      dnew = (dnscache*)calloc(sizeof(dnscache),1);
-
-      dnew->Domain = (char*)calloc(strlen(Domain)+2,1); // why +2? I want to ensure a '\0' at end of string.
-      strcpy(dnew->Domain,Domain);
-
-      dnew->TXT = (char*)calloc(SealGetSize(vBuf,"r")+1,1); // why +1? I want to ensure a '\0' at end of string.
-      strcpy(dnew->TXT,s);
-
-      dnew->Rec = SealParse(SealGetSize(vBuf,"r"),(byte*)SealGetText(vBuf,"r"),0,NULL);
-
-      /*****
-       Store dns and dnssec flags
-       There is no reasonable distinction between
-       "Plain DNS" and "DNSSEC without verification".
-       Treat both as "DNS".
-       *****/
-      dnew->Rec = SealDel(dnew->Rec,"@dnssrc");
-      if (hp->ad) { dnew->Rec = SealSetText(dnew->Rec, "@dnssrc", "DNSSEC"); }
-      else { dnew->Rec = SealSetText(dnew->Rec, "@dnssrc", "DNS"); }
-
-      // If the ka is defined but unknown, then ignore this TXT record.
-      s = SealGetText(dnew->Rec,"ka");
-      if (s && (CheckKeyAlgorithm(s) == 0))
-        {
+    // If the ka is defined but unknown, then ignore this TXT record.
+    s = SealGetText(dnew->Rec,"ka");
+    if (s && (CheckKeyAlgorithm(s) == 0))
+	{
 	// Unknown! Don't cache it.
 	free(dnew->Domain);
 	free(dnew->TXT);
@@ -276,26 +292,25 @@ int	_SealDNSnet	(char *Domain)
 	continue;
 	}
 
-      // Decode any known-binary fields
-      if (SealSearch(dnew->Rec,"p"))
-        {
+    // Decode any known-binary fields
+    if (SealSearch(dnew->Rec,"p"))
+	{
 	dnew->Rec = SealCopy(dnew->Rec,"@p-bin","p");
 	SealBase64Decode(SealSearch(dnew->Rec,"@p-bin"));
 	}
-      if (SealSearch(dnew->Rec,"pkd"))
-        {
+    if (SealSearch(dnew->Rec,"pkd"))
+	{
 	dnew->Rec = SealCopy(dnew->Rec,"@pkd-bin","pkd");
 	SealBase64Decode(SealSearch(dnew->Rec,"@pkd-bin"));
 	}
 
-      // Insert record
-      dnew->Next = DNSCache;
-      DNSCache = dnew;
-      InsertCount++;
+    // Insert record
+    dnew->Next = DNSCache;
+    DNSCache = dnew;
+    InsertCount++;
 
-      SealFree(vBuf); vBuf=NULL;
-      } // foreach dns record
-    } // if dns reply
+    SealFree(vBuf); vBuf=NULL;
+    } // foreach dns record
 
 Done:
   if (MsgMax <= 0) // found nothing!
@@ -311,6 +326,7 @@ Done:
     }
 
   if (vBuf) { SealFree(vBuf); vBuf=NULL; }
+  free(Buffer);
   return(InsertCount);
 } /* _SealDNSnet() */
 
@@ -436,10 +452,10 @@ sealfield *	SealDNSGet	(sealfield *Args, int DNSRecordNumber)
       {
       if (!d->Domain) { continue; } // should never happen
       if (!strcasecmp(Domain,d->Domain)) // Found it!
-        {
-        if (!d->Rec) { return(NULL); } // Denotes a lookup that failed to find records.
-        break;
-        }
+	{
+	if (!d->Rec) { return(NULL); } // Denotes a lookup that failed to find records.
+	break;
+	}
       }
     }
   else if (!d && DefaultDomain) { d = DefaultDomain; } // default exists? Use it!
