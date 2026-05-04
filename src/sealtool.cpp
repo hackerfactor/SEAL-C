@@ -418,13 +418,6 @@ void	Usage	(const char *progname)
   printf("  -i, --id id          :: User-specific identifier (default: no identifier)\n");
   printf("  --cacert file.crl    :: Use file.crl for trusted root certificates.");
   printf(" (default: ./cacert.crl)");
-  printf("\n");
-  printf("\n");
-#ifdef __CYGWIN__
-#else
-  printf(" (default: unset; uses operating system defaults)");
-#endif
-  printf("\n");
   printf("  --cert-insecure      :: Do not validate server's TLS certificate.\n");
   printf("\n");
   printf("  Manual signing: (mostly for debugging; probably not what you want)\n");
@@ -448,7 +441,7 @@ void	Usage	(const char *progname)
   printf("        seAl,SEAL,teXt,tEXt,...  :: PNG: chunk name to use.\n");
   // -K / --keyalg is ignored when signing or verifying; it is only used for key generation
   printf("  -A, --digestalg alg  :: Digest (hash) algorithm  (default: sha256)\n");
-  printf("               Supports: sha224, sha256, sha384, sha512\n");
+  printf("    Use '-A list' to see all supported algorithms.\n");
   printf("  --kv number          :: Unique key version (default: 1)\n");
   printf("  -p, --inline         :: Include the public key in the SEAL record.\n");
   printf("               -p permits public keys that are too long for DNS.\n");
@@ -609,7 +602,10 @@ int main (int argc, char *argv[])
 	Args = SealSetText(Args,"config",optarg);
 	Args = ReadCfg(Args);
 	break;
-      case 'A': Args = SealSetText(Args,"digestalg",optarg); break;
+      case 'A':
+	Args = SealSetText(Args,"digestalg",optarg);
+	if (!strcmp(optarg,"list")) { ListHashAlgorithms(Args); exit(0); }
+	break;
       case 'a': Args = SealSetText(Args,"apikey",optarg); break;
       case 'C': Args = SealSetText(Args,"copyright",optarg); break;
       case 'c': Args = SealSetText(Args,"info",optarg); break;

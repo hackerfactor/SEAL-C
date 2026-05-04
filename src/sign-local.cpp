@@ -64,6 +64,34 @@
 EVP_PKEY *PrivateKey=NULL;
 
 /********************************************************
+ CheckHashAlgorithm(): Is this a known and supported hash algorithm?
+ Returns: 0=no, bits
+ ********************************************************/
+int	CheckHashAlgorithm	(const char *hashalg)
+{
+  if (!strcasecmp(hashalg,"sha256")) { return(256); }
+  if (!strcasecmp(hashalg,"sha512")) { return(512); }
+  if (!strcasecmp(hashalg,"sha384")) { return(384); }
+  if (!strcasecmp(hashalg,"sha224")) { return(224); }
+  return(0);
+} /* CheckHashAlgorithm() */
+
+/********************************************************
+ ListHashlgorithms(): List all supported -A/da values
+ ********************************************************/
+void	ListHashAlgorithms	(sealfield *Args)
+{
+  // Future: Args can be used to check for deprecated
+  (void)Args; // mark as intentionally unused to avoid compiler warnings.
+
+  printf("The following values are supported for -A/--digestalg:\n");
+  printf("  sha512\n");
+  printf("  sha384\n");
+  printf("  sha256 (default)\n");
+  printf("  sha224\n");
+} /* ListHashAlgorithms() */
+
+/********************************************************
  CheckKeyAlgorithm(): Is this a known and supported key algorithm?
  Returns: 0=no, 1=rsa, 2=ec, 3=ed25529
  ********************************************************/

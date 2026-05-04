@@ -52,11 +52,15 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
  **************************************/
 const EVP_MD* (*SealGetMdfFromString(const char *da))(void)
 {
-  if (!da || !strcmp(da,"sha256")) { return EVP_sha256; } // default
-  if (!strcmp(da,"sha224")) { return EVP_sha224; }
-  if (!strcmp(da,"sha384")) { return EVP_sha384; }
-  if (!strcmp(da,"sha512")) { return EVP_sha512; }
-  return NULL;
+  if (!da) { return EVP_sha256; } // default
+  switch(CheckHashAlgorithm(da))
+    {
+    case 224: return(EVP_sha224);
+    case 256: return(EVP_sha256);
+    case 384: return(EVP_sha384);
+    case 512: return(EVP_sha512);
+    }
+  return(NULL);
 } /* SealGetMdfFromString() */
 
 /**************************************

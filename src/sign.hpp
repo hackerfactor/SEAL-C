@@ -24,6 +24,8 @@
 #define REC_BITS_EC	256 /* For EC, recomment 256 */
 
 // For key generation
+int	CheckHashAlgorithm	(const char *hashalg); // 1=known, 0=unknown
+void	ListHashAlgorithms	(sealfield *Args); // list all supported key algorithms
 int	CheckKeyAlgorithm	(const char *keyalg); // 1=rsa, 2=ec, 0=unknown
 void	ListKeyAlgorithms	(sealfield *Args); // list all supported key algorithms
 void	SealGenerateKeys	(sealfield *Args);
