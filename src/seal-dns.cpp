@@ -14,6 +14,13 @@
  Why? Because revocation is date sensitive and
  parameter requirements vary by caller.
  The caller must check for these requirements.
+
+ What about DNS TTL?
+ This is a short-lived program.
+ It usually completes in under a second.
+ Even with thousands of files, it usually completes in seconds.
+ It's not worth the effort to track a DNS result that expired midway through
+ a 10 second run.
  ************************************************/
 #include <stdlib.h>
 #include <stdio.h>
@@ -36,6 +43,30 @@ struct dnscache
   };
 typedef struct dnscache dnscache;
 dnscache *DNSCache=NULL;
+
+#if defined(__linux__) && !defined(__GLIBC__)
+static inline int res_ninit(res_state statp)
+{
+	int rc = res_init();
+	if (statp != &_res) { memcpy(statp, &_res, sizeof(*statp)); }
+	return rc;
+}
+
+static inline int res_nclose(res_state statp)
+{
+	if (!statp) { return -1; }
+	if (statp != &_res) { memset(statp, 0, sizeof(*statp)); }
+	return 0;
+}
+
+static inline int res_nquery(res_state statp,
+	          const char *dname, int nclass, int type,
+	          unsigned char *answer, int anslen)
+{
+	if (!statp) { return -1; }
+	return(res_query(dname, nclass, type, answer, anslen));
+}
+#endif
 
 /************************************************
  SealDNSFlushCache(): Free any cached DNS records.
@@ -89,6 +120,34 @@ int	_SealDNSnet	(char *Domain)
   // Idiot checking
   if (!Domain || !Domain[0]) { return(0); }
 
+  /*****
+   Here's a security problem:
+   An intermediate network atacker can send back an arbitrary response.
+   (E.g., hostile revocation.)
+   The attack scope is to the local network route, not global.
+
+   DNSSEC solves this problem.
+   However, I don't know if the local system uses DNS or DNSSEC.
+
+   The solution:
+   Request DNSSEC.
+   Check the DNS header response for the AD (Authenticated Data) bit.
+     - AD set? It's a trusted DNSSEC result!
+     - No AD? It's an untrusted result.
+     - Error? Ah, invalid DNSSEC! Under attack or configuration error!
+       Ignore the result.
+   *****/
+
+  // Prepare structures
+  memset(&dnsstate, 0, sizeof(dnsstate));
+  if (res_ninit(&dnsstate) < 0)
+    {
+    // Should never happen
+    fprintf(stderr," ERROR: Unable to initialize DNS lookup. Aborting.\n");
+    exit(0x80);
+    }
+  dnsstate.options |= RES_USE_DNSSEC; // Explicitly ask for DNSSEC
+
   // Prepare structures
   memset(&dnsstate, 0, sizeof(dnsstate));
   if (res_ninit(&dnsstate) < 0)
@@ -107,6 +166,11 @@ int	_SealDNSnet	(char *Domain)
     {
     /*****
      Parse the record
+     *****/
+    HEADER *hp = (HEADER *)Buffer;
+    if (hp->rcode != NOERROR) { MsgMax=0; goto Done; } // Invalid DNSSEC! Ignore the reply!
+
+    /*****
      DNS uses pascal strings: 1 byte length + data
 
      Okay, so I asked for TXT records (res_nquery T_TXT).
@@ -190,6 +254,16 @@ int	_SealDNSnet	(char *Domain)
 
       dnew->Rec = SealParse(SealGetSize(vBuf,"r"),(byte*)SealGetText(vBuf,"r"),0,NULL);
 
+      /*****
+       Store dns and dnssec flags
+       There is no reasonable distinction between
+       "Plain DNS" and "DNSSEC without verification".
+       Treat both as "DNS".
+       *****/
+      dnew->Rec = SealDel(dnew->Rec,"@dnssrc");
+      if (hp->ad) { dnew->Rec = SealSetText(dnew->Rec, "@dnssrc", "DNSSEC"); }
+      else { dnew->Rec = SealSetText(dnew->Rec, "@dnssrc", "DNS"); }
+
       // If the ka is defined but unknown, then ignore this TXT record.
       s = SealGetText(dnew->Rec,"ka");
       if (s && (CheckKeyAlgorithm(s) == 0))
@@ -243,20 +317,21 @@ Done:
 /************************************************
  SealDNSLoadFile(): Load a DNS record from a file.
  NOTE: No associated domain name! Use as a default record.
+ Returns: true if file loaded, false if not.
  ************************************************/
-void	SealDNSLoadFile	(const char *Fname)
+bool	SealDNSLoadFile	(const char *Fname)
 {
   mmapfile *Mmap;
   dnscache *dnew;
   sealfield *vBuf=NULL;
 
-  if (!Fname || !Fname[0]) { return; }
+  if (!Fname || !Fname[0]) { return(false); }
   Mmap = MmapFile(Fname,PROT_READ);
   if (!Mmap || // bad/missing file
       (Mmap->memsize < 10) || (Mmap->memsize > 4096)) // file too big or too small
     {
     MmapFree(Mmap);
-    return;
+    return(false);
     }
 
   vBuf = SealSetText(vBuf,"r","<seal ");
@@ -273,11 +348,12 @@ void	SealDNSLoadFile	(const char *Fname)
 	free(dnew);
 	MmapFree(Mmap);
 	SealFree(vBuf);
-	return;
+	return(false);
 	}
 
   dnew->Domain = (char*)calloc(10,1); // I want to ensure a '\0' at end of string.
   strcpy(dnew->Domain,"@default");
+  dnew->Rec = SealSetText(dnew->Rec,"@dnssrc","File");
 
   dnew->TXT = (char*)calloc(SealGetSize(vBuf,"r")+1,1); // why +1? I want to ensure a '\0' at end of string.
   strcpy(dnew->TXT,SealGetText(vBuf,"r"));
@@ -311,6 +387,7 @@ void	SealDNSLoadFile	(const char *Fname)
 
   MmapFree(Mmap);
   SealFree(vBuf);
+  return(true);
 } /* SealDNSLoadFile() */
 
 /************************************************
@@ -348,7 +425,7 @@ sealfield *	SealDNSGet	(sealfield *Args, int DNSRecordNumber)
   // Not exist in cache!
 
   // Abort if there is no network.
-  if (SealSearch(Args,"no-net")) { return(NULL); }
+  if (!DefaultDomain && SealSearch(Args,"no-net")) { return(NULL); }
 
   // Go get it!
   if (!d && !DefaultDomain)

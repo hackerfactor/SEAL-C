@@ -49,7 +49,7 @@ for ka in rsa ec ; do
     #echo "../bin/sealtool --ka '$ka' --dnsfile '$TESTDIR/sign-$ka.dns' $TESTDIR/test-*local-inline-$da-$ka-$sfname*"
     ../bin/sealtool --ka "$ka" --dnsfile "$TESTDIR/sign-$ka.dns" $TESTDIR/test-*local-inline-$da-$ka-$sfname*
     rc="$?"
-    if [ "$rc" != "0" ] ; then echo "Failed to verify local signing. (rc=$rc)"; exit 1; fi
+    if [ "$rc" != "8" ] ; then echo "Failed to verify local signing. (rc=$rc)"; exit 1; fi
 
     # Verify with --no-net (should fail to authenticate)
     echo ""

@@ -390,7 +390,7 @@ void	Usage	(const char *progname)
   printf("\n");
   printf("  Verifying:\n");
   printf("  Verify any SEAL signature in the file(s)\n");
-  printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (default: unset; use DNS)\n");
+  printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (implies --no-net; default: unset; use DNS)\n");
   printf("  -I, --src name       :: Optional: For validating srcd, use this URL as the source.\n");
   printf("\n");
   printf("  Generate signature:\n");
@@ -691,7 +691,11 @@ int main (int argc, char *argv[])
   // If signing or verifying, load any default dnsfile
   if (SealGetText(Args,"dnsfile"))
     {
-    SealDNSLoadFile(SealGetText(Args,"dnsfile"));
+    if (SealDNSLoadFile(SealGetText(Args,"dnsfile")))
+      {
+      // Use user-provided file; Implies no-net
+      Args = SealSetText(Args,"no-net","true");
+      }
     }
 
   // If signing, get dynamic signing parameters
