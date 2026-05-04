@@ -13,7 +13,7 @@
 
 #include "seal.hpp"
 
-void	SealDNSLoadFile	(const char *Fname);
+bool	SealDNSLoadFile	(const char *Fname);
 sealfield *	SealDNSGet	(sealfield *Args, int DNSRecordNumber);
 int	SealDNSCount	(sealfield *Args);
 void	SealDNSWalk	(); // debugging

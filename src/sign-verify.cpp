@@ -30,30 +30,6 @@
 #include "sign.hpp"
 #include "files.hpp"
 
-#if defined(__linux__) && !defined(__GLIBC__)
-static inline int res_ninit(res_state statp)
-{
-	int rc = res_init();
-	if (statp != &_res) { memcpy(statp, &_res, sizeof(*statp)); }
-	return rc;
-}
-
-static inline int res_nclose(res_state statp)
-{
-	if (!statp) { return -1; }
-	if (statp != &_res) { memset(statp, 0, sizeof(*statp)); }
-	return 0;
-}
-
-static inline int res_nquery(res_state statp,
-	          const char *dname, int nclass, int type,
-	          unsigned char *answer, int anslen)
-{
-	if (!statp) { return -1; }
-	return(res_query(dname, nclass, type, answer, anslen));
-}
-#endif
-
 #pragma GCC visibility push(hidden)
 /********************************************************
  _SealVerifyShow(): Display results
@@ -72,9 +48,10 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
   else if (rc & 0x01) { printf("invalid"); CheckWeak=false; }
   else if (rc & 0x02) { printf("unsigned"); CheckWeak=false; }
   else if (rc & 0x04) { printf("not validated"); }
-  else if (rc & 0x08) { printf("not autenticated"); }
+  else if (rc & 0x08) { printf("unauthenticated"); }
   else { printf("valid"); }
   if (Msg) { printf(": %s",Msg); }
+  //printf("  [rc=%02x]",rc);
   printf("\n");
 
   // Check for weak signatures
@@ -169,6 +146,32 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 	printf("\n");
 	}
 
+  if (Verbose)
+	{
+	// If show DNS
+	bool IsInline;
+	char *DNSsrc; // File, DNSSEC, or DNS
+	if (SealGetText(Rec, "pk")) { IsInline=true; } else { IsInline=false; }
+	DNSsrc = SealGetText(Rec, "@dnssrc");
+	printf("  Public Key Source: ");
+	if (IsInline)
+	  {
+	  printf("Inline");
+	  if (DNSsrc) { printf(" (confirmed by %s)",DNSsrc); }
+	  else { printf(" (DNS unavailable)"); }
+	  }
+	else if (DNSsrc)
+	  {
+	  printf("%s",DNSsrc);
+	  // File/DNSSEC/DNS implies 'confirmed' (the record exists in the source DNS)
+	  }
+	else // Not inline, and no DNS
+	  {
+	  printf("Unavailable");
+	  }
+	printf("\n");
+	}
+
   // If show details
 	{
 	Txt = SealGetText(Rec,"@sigdate");
@@ -241,12 +244,29 @@ sealfield *	_SealValidateRevoke	(sealfield *Rec, sealfield *dnstxt)
   else if (!SigDate) { IsRevoke=true; } // No date? Revoke!
   else // See if sigdate predates revocation
     {
-    int minlen,minlen1,minlen2;
+    int m1,m2,minlen,minlen1,minlen2;
+    char *M1,*M2;
+
+    // Normalize formats (only keep numbers)
     minlen1 = strlen(SigDate);
     minlen2 = strlen(Revoke);
+    M1 = (char*)calloc(1,minlen1+4);
+    M2 = (char*)calloc(1,minlen2+4);
+    for(m1=m2=0; m1 < minlen1; m1++)
+      {
+      if (isdigit(SigDate[m1])) { M1[m2]=SigDate[m1]; m2++; }
+      }
+    minlen1 = m2;
+    for(m1=m2=0; m1 < minlen2; m1++)
+      {
+      if (isdigit(Revoke[m1])) { M2[m2]=Revoke[m1]; m2++; }
+      }
+    minlen2 = m2;
     minlen = (minlen1 < minlen2) ? minlen1 : minlen2;
-    if (strncmp(SigDate,Revoke,minlen) >= 0) { IsRevoke=true; } // if it's revoked
+    // strcmp==0 means it's on the revocation date, so revoke.
+    if (strncmp(M1,M2,minlen) >= 0) { IsRevoke=true; } // if it's revoked
     // else: Not revoked!
+    free(M1); free(M2);
     }
 
   if (IsRevoke) // if it's revoked, tag it
@@ -419,7 +439,8 @@ sealfield *	_SealValidateSig	(sealfield *Rec, sealfield *dnstxt)
    *****/
 
   // Prepare the public key
-  pubkey = SealSearch(dnstxt,"@p-bin");
+  pubkey = SealSearch(Rec,"@pk-bin"); // if using inline
+  if (!pubkey) { pubkey = SealSearch(dnstxt,"@p-bin"); }
   if (!pubkey) // should never happen
     {
     Rec = SealSetText(Rec,"@error","no public key found");
@@ -551,13 +572,13 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
     if (SealSearch(Rec, "@sigbin")->ValueLen < 1) 
       {
       if (sigFormat == BASE64) 
-        {
-        Rec = SealSetText(Rec, "@error", "base64 signature failed to decode");
-        } 
+	{
+	Rec = SealSetText(Rec, "@error", "base64 signature failed to decode");
+	} 
       else if (sigFormat == HEX_LOWER || sigFormat == HEX_UPPER) 
-        {
-        Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
-        }
+	{
+	Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
+	}
     }
 
     // To help with debugging
@@ -725,29 +746,12 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
       // Confirm DNS validation
       dns_p = SealGetText(dnstxt,"p");
       dns_pbin = SealSearch(dnstxt,"@p-bin");
-      if (dns_p && !dns_pbin)
-        {
+
+      if (!IsInline && dns_p && !dns_pbin) // Not inline? Better have public key!
+	{
 	// Public key failed to decode
 	continue;
 	}
-
-      /*****
-       If Rec contains inline-pubkey, then either:
-       (A) match full p=, or
-       (B) match digest using pka= and pkd=
-       If neither matches, then it doesn't apply (continue).
-       *****/
-      if (IsInline)
-        {
-        // The public key was already validated, and it being here means it was authenticated, if not revoked
-        if (dns_p && rec_pk && !strcmp(dns_p,rec_pk))
-          {
-          Rec = _SealValidateRevoke(Rec,dnstxt);
-          break; // regardless of whether it is revoked, the record was found
-          }
-        Rec = SealInlineAuthenticate(Rec);
-        if (!SealGetText(Rec,"@error")) { break; } // It worked!
-        }
 
       /*********************************
        All mandatory fields matches!
@@ -756,13 +760,13 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
       dns_str = SealGetText(dnstxt,"p");
       if (!dns_str) { dns_str = SealGetText(dnstxt,"pkd"); }
       if (!dns_str || !dns_str[0] || !strcmp(dns_str,"revoke"))
-        {
+	{
 	Rec = SealSetText(Rec,"@revoke-global","domain default revoke");
 	continue;
 	}
 
       // Make sure the key matches the key algorithm
-      if (dns_str && !SealCheckKeyKeyAlg(rec_ka,dns_pbin)) { continue; }
+      if (!IsInline && dns_str && !SealCheckKeyKeyAlg(rec_ka,dns_pbin)) { continue; }
 
       // There's a public key! See if it matched
       /* Check if the decoded digest matches the known digest. */
@@ -770,8 +774,19 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
       if (SealGetText(Rec,"@revoke")) { break; } // It is revoked!
 
       // Everything matched
-      if (!SealGetText(Rec,"@error")) { break; } // It worked!
+      if (!SealGetText(Rec,"@error")) // It worked!
+	{
+	if (IsInline) // Check for inline authentication
+	  {
+	  Rec = SealInlineAuthenticate(Rec,dnstxt);
+	  if (!SealGetText(Rec,"@inlineauth")) { continue; } // Rec.pk did not authenticate
+	  if (SealGetText(Rec,"@error")) { continue; } // Some kind of problem
+	  Rec = _SealValidateRevoke(Rec,dnstxt);
+	  }
+	break;
+	}
       } // foreach DNS record
+    Rec = SealCopy2(Rec,"@dnssrc",dnstxt,"@dnssrc");
     } // if checking DNS
 
   // Report any errors or findings
@@ -805,7 +820,7 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
     else if (IsInline && IsValid) // was this a public key authentication?
 	  {
 	  ReturnCode |= 0x08; // at least one file could not be attributed
-	  _SealVerifyShow(Rec,0x08,signum,"validated, but could not authenticate");
+	  _SealVerifyShow(Rec,0x08,signum,"validated, but unauthenticated");
 	  }
 	else
 	  {
