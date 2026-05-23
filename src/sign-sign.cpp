@@ -80,7 +80,7 @@ mmapfile *	SealInsert	(sealfield *Rec, mmapfile *MmapIn, size_t InsertOffset)
   SealFileClose(Fout);
 
   // Prepare mmap
-  MmapOut = MmapFile(fname,PROT_WRITE);
+  MmapOut = MmapFile(fname,PROT_WRITE|PROT_ABORT);
   return(MmapOut);
 } /* SealInsert() */
 

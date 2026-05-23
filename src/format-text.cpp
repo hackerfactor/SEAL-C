@@ -339,7 +339,7 @@ sealfield *	Seal_Text	(sealfield *Args, mmapfile *Mmap, mmapfile *MmapPre)
   if (!MmapPre && !_isUTF8(Mmap)) { return(Args); }
 
   // Scan text for any/all SEAL records
-  Args = SealVerifyBlock(Args, 0, Mmap->memsize, Mmap, MmapPre);
+  Args = SealVerifyBlock(Args, 0, Mmap ? Mmap->memsize : 0, Mmap, MmapPre);
 
   /*****
    Sign as needed

@@ -309,6 +309,9 @@ sealfield *	Seal_PNG	(sealfield *Args, mmapfile *Mmap)
   // Make sure it's a PNG.
   if (!Seal_isPNG(Mmap)) { return(Args); }
 
+  // Permit PNG to skip 4 bytes
+  Args = SealSetU32index(Args,"@MaxExclude",0,4);
+
   /*****
    Walk through each PNG chunk.
    If it's a seal, text, or itxt, check for signature.

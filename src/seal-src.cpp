@@ -83,43 +83,31 @@ char*	SealGetDigestFromFile	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFo
     char *srcf = SealGetText(Args, "srcf");
     if (!srcf) return NULL;
 
-    FILE *fp = fopen(srcf, "rb");
-    if (!fp) {
-        printf("  Source Unavailable: ");
-	TaintPrint(srcf);
-	printf("\n");
-        if(Verbose)
+    // Ensure the file exists before using it.
+    // And no parent traversal!
+    if (!SealIsReadable(srcf,true))
+	{
+	printf("  Source Unavailable: ");
+        TaintPrint(srcf);
+        printf("\n");
+        if (Verbose)
           {
           printf("  ERROR: could not open src file (");
-	  TaintPrint(srcf);
-	  printf(")\n");
+          TaintPrint(srcf);
+          printf(")\n");
           }
         return NULL;
-    }
+	}
 
-    byte buffer[4096];
-    size_t bytesRead;
+    // For speed: use a memory map rather than fopen()/fread()/fclose().
+    mmapfile *Mmap;
+    Mmap = MmapFile(srcf,0); // only returns on success
+    if (Mmap)
+	{
+	EVP_DigestUpdate(ctx64, Mmap->mem, (size_t)Mmap->memsize);
+	MmapFree(Mmap);
+	}
 
-    while ((bytesRead = fread(buffer, 1, sizeof(buffer), fp)) > 0) {
-        EVP_DigestUpdate(ctx64, buffer, bytesRead);
-    }
-
-    if (ferror(fp))
-      {
-      printf("  Source Unavailable: ");
-      TaintPrint(srcf);
-      printf("\n");
-      if(Verbose)
-        {
-        printf("  ERROR: failed while reading src file (");
-	TaintPrint(srcf);
-	printf(")\n");
-        }
-      fclose(fp);
-      return NULL;
-      }
-
-    fclose(fp);
     return SealFinalizeDigest(Args, ctx64, srcaSf, mdf);
 } /* SealGetDigestFromFile() */
 
@@ -205,35 +193,6 @@ char*	SealGetDigestFromURL	(sealfield *Args, EVP_MD_CTX* ctx64, SealSignatureFor
 } /* SealGetDigestFromURL() */
 
 /**************************************
- SealProcessSrca(): Split up srca into the
- algorithim and signature format to use
- **************************************/
-bool	SealProcessSrca	(char* srca, const EVP_MD* (**mdf)(void), SealSignatureFormat* Sf)
-{
-  // Process srca
-  char* srcaCopy = strdup(srca);
-  char* srcaDa = strtok(srcaCopy, ":");
-  char* srcaSf = strtok(NULL, ":");
-  *mdf = SealGetMdfFromString(srcaDa);
-  if (!*mdf)
-    {
-    free(srcaCopy);
-    printf("ERROR: unknown srca algorithm (%s) in %s\n", srcaDa, srca);
-    return false;
-    }
-
-  *Sf = SealGetSF(srcaSf);
-  if (*Sf == INVALID) // SealGetSF returns INVALID for unsupported formats
-    {
-    printf("ERROR: unknown signature format for srca (%s) in %s\n", srcaSf, srca);
-    free(srcaCopy);
-    return false;
-    }
-  free(srcaCopy);
-  return true;
-} /* SealProcessSrca() */
-
-/**************************************
  SealCheckOrSetSrcd(): Checks the digest,
  outputs if it is valid or not, and sets
  the digest if it is not set.
@@ -293,7 +252,6 @@ sealfield *	SealSrcGet	(sealfield *Args)
   const EVP_MD* (*mdf)(void);
   char *src,*srcd,*srca, *srcf;
   SealSignatureFormat sf;
-  bool canProceed;
 
   // Get the three main values for this part
   srca = SealGetText(Args,"srca"); 
@@ -310,16 +268,23 @@ sealfield *	SealSrcGet	(sealfield *Args)
     return(Args); 
     } // nothing to do
 
-  // Split up srca so it can be used where needed
-  canProceed = SealProcessSrca(srca, &mdf, &sf);
-  if(!canProceed) // Can not sign with invalid srca
+  // Parse srca
+  mdf = SealGetMdfFromString(srca);
+  sf = SealGetSF(srca);
+  if (!mdf || (sf==INVALID)) // Can not sign with invalid srca
     {
+    printf("ERROR: unknown srca algorithm (%s)\n", srca);
     exit(0x80);
     }
 
   EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
-  EVP_DigestInit(ctx64, mdf());
+  if (!EVP_DigestInit(ctx64, mdf()))
+    {
+    return(Args);
+    }
+
   char* srcdCalc;
+
   // Compute the srcd
   if(srcf)
     { 
@@ -382,8 +347,14 @@ void	SealSrcVerify	(sealfield *Args)
   if (!srcd || !srca) { return; } // needs srcd and srca
   if (!src && !srcf) { return; } // either src or srcf
 
-  // Process srca to get the algorithm and format
-  SealProcessSrca(srca, &mdf, &sf);
+  // Parse srca
+  mdf = SealGetMdfFromString(srca);
+  sf = SealGetSF(srca);
+  if (!mdf || (sf==INVALID)) // Can not sign with invalid srca
+    {
+    printf("ERROR: unknown srca algorithm (%s)\n", srca);
+    exit(0x80);
+    }
 
   EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
   EVP_DigestInit(ctx64, mdf());

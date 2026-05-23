@@ -69,10 +69,10 @@ EVP_PKEY *PrivateKey=NULL;
  ********************************************************/
 int	CheckHashAlgorithm	(const char *hashalg)
 {
-  if (!strcasecmp(hashalg,"sha256")) { return(256); }
-  if (!strcasecmp(hashalg,"sha512")) { return(512); }
-  if (!strcasecmp(hashalg,"sha384")) { return(384); }
-  if (!strcasecmp(hashalg,"sha224")) { return(224); }
+  if (strcasestr(hashalg,"sha256")) { return(256); }
+  if (strcasestr(hashalg,"sha512")) { return(512); }
+  if (strcasestr(hashalg,"sha384")) { return(384); }
+  if (strcasestr(hashalg,"sha224")) { return(224); }
   return(0);
 } /* CheckHashAlgorithm() */
 
@@ -569,7 +569,7 @@ sealfield *	SealSignLocal	(sealfield *Args)
       case BIN:
         enclen = siglen; // bad choice
         break;
-      case INVALID:
+      default:
         fprintf(stderr," ERROR: Unknown signature format (%s).\n",sf);
         exit(0x80);
   }

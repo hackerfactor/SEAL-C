@@ -271,6 +271,9 @@ sealfield *	Seal_RIFF	(sealfield *Args, mmapfile *Mmap)
   // Make sure it's a RIFF.
   if (!Seal_isRIFF(Mmap)) { return(Args); }
 
+  // Permit RIFF to skip 4 bytes
+  Args = SealSetU32index(Args,"@MaxExclude",0,4);
+
   Args = _RIFFwalk(Args, 0, Mmap->memsize, 0, Mmap);
 
   /*****

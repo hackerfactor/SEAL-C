@@ -163,7 +163,7 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 	    }
 	  printf("\n");
 	  }
-	}
+	} // if Verbose
 
   // Show range
   Txt = SealGetText(Rec,"@sflags0");
@@ -214,7 +214,7 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 	  printf("Unavailable");
 	  }
 	printf("\n");
-	}
+	} // if Verbose
 
   // If show details
 	{
@@ -259,7 +259,7 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 	  TaintPrint(Txt);
 	  printf("\n");
 	  }
-	}
+	} // If show details
 } /* _SealVerifyShow() */
 
 /********************************************************
@@ -622,7 +622,7 @@ sealfield *	SealValidateDecodeParts	(sealfield *Rec)
 	{
 	Rec = SealSetText(Rec, "@error", "base64 signature failed to decode");
 	} 
-      else if (sigFormat == HEX_LOWER || sigFormat == HEX_UPPER) 
+      else if ((sigFormat == HEX_LOWER) || (sigFormat == HEX_UPPER)) 
 	{
 	Rec = SealSetText(Rec, "@error", "hex signature failed to decode");
 	}
@@ -882,6 +882,9 @@ sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre)
     {
     SealSrcVerify(Rec);
     }
+
+  /* Verify external file references */
+  if (SealExtVerify(Rec,IsValid)) { ReturnCode |= 0x20; } // at least one bad external file
 
   return(Rec);
 } /* SealVerify() */

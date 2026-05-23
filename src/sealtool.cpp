@@ -12,6 +12,7 @@
    0x04 At least one file could not be validated.
    0x08 At least one file could not be authenticated.
    0x10 At least one file is revoked.
+   0x20 At least one external file could not be validated.
    0x80 Error
  ************************************************/
 // C headers
@@ -392,6 +393,7 @@ void	Usage	(const char *progname)
   printf("  Verify any SEAL signature in the file(s)\n");
   printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (implies --no-net; default: unset; use DNS)\n");
   printf("  -I, --src name       :: Optional: For validating srcd, use this URL as the source.\n");
+  printf("  --ext.label=file     :: Optional: Specify an alternate external file for the label.\n");
   printf("\n");
   printf("  Generate signature:\n");
   printf("  -g, --generate       :: Required: generate a signature\n");
@@ -443,6 +445,10 @@ void	Usage	(const char *progname)
   printf("  -A, --digestalg alg  :: Digest (hash) algorithm  (default: sha256)\n");
   printf("    Use '-A list' to see all supported algorithms.\n");
   printf("  --kv number          :: Unique key version (default: 1)\n");
+  printf("  --exta text          :: Optional: Specify the external file digest encoding. (default: sha256:base64)\n");
+  printf("  --ext dir            :: Optional: Specify a directory to include all files signing.\n");
+  printf("  --ext.label=file     :: Optional: Specify external file for signing.\n");
+  printf("  --extd.label=data    :: Optional: Specify a digest without a file.\n");
   printf("  -p, --inline         :: Include the public key in the SEAL record.\n");
   printf("               -p permits public keys that are too long for DNS.\n");
   printf("               -p also permits cryptographic validation, even if\n");
@@ -469,6 +475,7 @@ void	Usage	(const char *progname)
   printf("    0x04 At least one file could not be validated.\n");
   printf("    0x08 At least one file could not be authenticated.\n");
   printf("    0x10 At least one file is revoked.\n");
+  printf("    0x20 At least one external file could not be validated.\n");
   printf("    0x80 Error\n");
 } /* Usage() */
 
@@ -485,6 +492,7 @@ int main (int argc, char *argv[])
   bool IsURL=false; // for signing, use URL?
   bool IsLocal=false; // for signing, use local?
   bool IsSidecar=false; // for signing, generate sidecar?
+  bool IsExt=false; // Is there an external source?
 
   // Set default values
   Args = SealSetText(Args,"seal","1"); // SEAL version; currently always '1'
@@ -506,6 +514,7 @@ int main (int argc, char *argv[])
   Args = SealSetText(Args,"apiurl","");
   Args = SealSetText(Args,"apikey","");
   Args = SealSetText(Args,"srca","sha256:base64");
+  Args = SealSetText(Args,"exta","sha256:base64");
 #ifdef __CYGWIN__
   Args = SealSetText(Args,"cacert","./cacert.crt");
 #endif
@@ -529,7 +538,7 @@ int main (int argc, char *argv[])
 
   // p and s are used with b to generate the hash.
   Args = SealSetIindex(Args,"@s",2,0); // sig offset in file [0]=start, [1]=end, [2]=number of signatures; default:zeros
-  Args = SealSetIindex(Args,"@p",1,0); // previous sig offset in file [0]=start, [1]=end; default:[0,0]
+  Args = SealSetIindex(Args,"@p",2,0); // previous sig offset in file [0]=start, [1]=end; default:[0,0]
   Args = SealSetText(Args,"@sflags"," "); // total range flags, set by SealDigest()
   Args = SealSetText(Args,"@sflags0"," "); // starting range flags, set by SealDigest()
   Args = SealSetText(Args,"@sflags1"," "); // ending range flags, set by SealDigest()
@@ -553,6 +562,8 @@ int main (int argc, char *argv[])
     {"cert-insecure", no_argument, NULL, 0}, // for ignoring TLS verification
     {"dnsfile",   required_argument, NULL, 'D'},
     {"domain",    required_argument, NULL, 'd'},
+    {"ext",       required_argument, NULL, 1}, // ext directory for glob insertion
+    {"exta",      required_argument, NULL, 1}, // ext algorithm
     {"id",        required_argument, NULL, 'i'},
     {"ka",        required_argument, NULL, 'K'},
     {"keyalg",    required_argument, NULL, 'K'},
@@ -588,6 +599,7 @@ int main (int argc, char *argv[])
     // modes
     {NULL,0,NULL,0}
     };
+  opterr = 0; // Turn off default error printing
   while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghI:i:K:k:M:m:o:O:pSsu:VvW?",long_options,&long_option_index)) != -1)
     {
     switch(c)
@@ -653,19 +665,51 @@ int main (int argc, char *argv[])
       case 'V': printf("%s\n",SEAL_VERSION); exit(0);
       case 'v': Verbose++; break;
       case 'W': WriteCfg(Args); break; // write the data as a config file
+      case '?': // unknown or help
+	// Process any dynamic parameters
+	if (!strncmp(argv[optind-1],"--ext.",6) ||
+	    !strncmp(argv[optind-1],"--extd.",7))
+	  {
+	  int len,eq;
+	  char *S;
+	  // split the field and valid at the "="
+	  len = strlen(argv[optind-1]);
+	  S = (char*)calloc(len+4,1);
+	  memcpy(S,argv[optind-1],len);
+	  for(eq=0; (eq < len) && (S[eq] != '='); eq++)
+	    {
+	    if (!isalnum(S[eq]) && !strchr("+-.",S[eq])) { break; } // illegal label
+	    }
+	  if (S[eq]=='=') // valid label!
+	    {
+	    // Store it as '@field' = 'value'
+	    // The '@' makes sure it won't be overwritten when the record is loaded.
+	    S[1]='@';
+	    S[eq]='\0';
+	    Args = SealSetText(Args,S+1,S+eq+1);
+	    free(S);
+	    break;
+	    }
+	  // invalid label!
+	  free(S);
+	  }
+	printf("Unknown option: %s\n",argv[optind-1]);
+	__attribute__ ((fallthrough));
       case 'h': // help
-      case '?': // help
         Usage(argv[0]); SealFree(Args); exit(0);
       default:
         Usage(argv[0]); SealFree(Args); exit(0x80);
       }
     } // while reading args
 
+  //SealWalk(Args,0); exit(1); // debug parameters
+
   // Idiot check values: No double-quotes!
   Args = SealParmCheck(Args,Mode);
   IsURL = SealIsURL(Args);
   IsLocal = SealIsLocal(Args);
   IsSidecar = SealGetText(Args,"sidecar") ? true : false;
+  IsExt = SealGetText(Args,"exta") ? true : false;
 
   // Debug parameters
   if (SealSearch(Args,"showconfig"))
@@ -765,8 +809,20 @@ int main (int argc, char *argv[])
     fflush(stdout);
 
     // Memory map the file; needed for finding the SEAL record's location.
-    Mmap = MmapFile(argv[optind],PROT_READ); // read-only
-    if (!Mmap)
+    if (SealIsFile(argv[optind],true))
+	{
+	Mmap = MmapFile(argv[optind],0);
+	if (!Mmap)
+	  {
+	  fprintf(stdout," ERROR: Unknown file '%s'. Skipping.\n",argv[optind]);
+	  continue;
+	  }
+	}
+    else if (SealIsDir(argv[optind],false) && IsSidecar && IsExt)
+	{
+	Mmap = NULL;
+	}
+    else
 	{
 	fprintf(stdout," ERROR: Unknown file '%s'. Skipping.\n",argv[optind]);
 	continue;
@@ -811,6 +867,7 @@ int main (int argc, char *argv[])
       }
 
     // Process based on file format
+    Args = SealSetU32index(Args,"@MaxExclude",0,0); // assume nothing should be excluded
     switch(FileFormat)
     	{
 	case 'A': Args = Seal_AAC(Args,Mmap); break; // AAC
@@ -849,7 +906,7 @@ int main (int argc, char *argv[])
 
     if (Verbose > 1) { DEBUGWALK("Post-File Parameters",Args); } // DEBUGGING
     
-    MmapFree(Mmap);
+    if (Mmap) { MmapFree(Mmap); }
     if (Args) { SealFree(Args); Args=NULL; }
     } // foreach command-line file
 

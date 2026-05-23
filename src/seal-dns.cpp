@@ -342,7 +342,7 @@ bool	SealDNSLoadFile	(const char *Fname)
   sealfield *vBuf=NULL;
 
   if (!Fname || !Fname[0]) { return(false); }
-  Mmap = MmapFile(Fname,PROT_READ);
+  Mmap = MmapFile(Fname,PROT_ABORT);
   if (!Mmap || // bad/missing file
       (Mmap->memsize < 10) || (Mmap->memsize > 4096)) // file too big or too small
     {
