@@ -16,6 +16,7 @@
 
 #include "seal.hpp"
 #include "seal-parse.hpp"
+#include "sign.hpp"
 
 /********************************************************
  SealRecord(): Generate the record!
@@ -77,6 +78,23 @@ sealfield *	SealRecord	(sealfield *Args)
     Args = SealAddText(Args,"@record","=\"");
     Args = SealAddText(Args,"@record",(char*)vf->Value);
     Args = SealAddText(Args,"@record","\"");
+    } // foreach known Fields[f]
+
+  // Check for any ext/extd/exta
+  Args = SealExtGet(Args);
+  for(vf=Args; vf; vf=vf->Next)
+    {
+    if (!strcmp((char*)(vf->Field),"exta") ||
+        !strncmp((char*)(vf->Field),"ext.",4) ||
+        !strncmp((char*)(vf->Field),"extd.",5))
+	{
+	SealStrEncode(vf);
+	Args = SealAddText(Args,"@record"," ");
+	Args = SealAddText(Args,"@record",(char*)vf->Field);
+	Args = SealAddText(Args,"@record","=\"");
+	Args = SealAddText(Args,"@record",(char*)vf->Value);
+	Args = SealAddText(Args,"@record","\"");
+	}
     }
 
   // Add the domain

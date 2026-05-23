@@ -16,6 +16,7 @@
 #include "seal.hpp"
 #include "files.hpp"
 #include "sign.hpp"
+#include "seal-parse.hpp"
 
 // For openssl 3.x
 #include <openssl/decoder.h>
@@ -35,11 +36,11 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
 	Rec = SealSetText(Rec,"@error","Invalid range; start of range is beyond end of file");
 	}
   if (sum[1] > Mmap->memsize)
-        {
+	{
 	Rec = SealSetText(Rec,"@error","Invalid range; end of range is beyond end of file");
 	}
   if (sum[0] >= sum[1])
-        {
+	{
 	Rec = SealSetText(Rec,"@error","Invalid range; start of range is after end of range");
 	}
   return(Rec);
@@ -49,8 +50,9 @@ sealfield *	RangeErrorCheck	(sealfield *Rec, uint64_t sum[2], mmapfile *Mmap)
  SealGetMdfFromString(): Given a digest algorithm name, get the EVP_MD function.
  Defaults to sha256 when not specified
  Returns NULL on unsupported algorithm.
+ NOTE: This returns a function handle!
  **************************************/
-const EVP_MD* (*SealGetMdfFromString(const char *da))(void)
+const EVP_MD*	(*SealGetMdfFromString(const char *da))(void)
 {
   if (!da) { return EVP_sha256; } // default
   switch(CheckHashAlgorithm(da))
@@ -62,6 +64,98 @@ const EVP_MD* (*SealGetMdfFromString(const char *da))(void)
     }
   return(NULL);
 } /* SealGetMdfFromString() */
+
+/**************************************
+ SealDigestFile(): Given a file, compute the digest.
+ Parameters identify the filename, digest format, and
+ where to store the document and any errors.
+ (Used by lots of functions, so make it common!)
+ If it works, then Rec[StoreDigest] is defined.
+ **************************************/
+sealfield *	SealDigestFile	(sealfield *Rec,
+				 const char *Filename, const char *DigestFormat,
+				 const char *StoreDigest, const char *StoreError)
+{
+  // Prepare results
+  if (StoreError) { Rec = SealDel(Rec,StoreError); }
+  if (StoreDigest) { Rec = SealDel(Rec,StoreDigest); }
+
+  if (!SealIsReadable(Filename,1))
+    {
+    if (StoreError)
+      {
+      Rec = SealSetText(Rec,StoreError,"Error: File is inaccessible (");
+      Rec = SealAddText(Rec,StoreError,Filename);
+      Rec = SealAddText(Rec,StoreError,")");
+      }
+    return(Rec);
+    }
+
+  // Check if the digest format is known
+  char *alg=NULL;
+  SealSignatureFormat sf=BASE64;
+  const EVP_MD* (*mdf)(void) = NULL;
+  alg = SealGetText(Rec,DigestFormat);
+  if (!alg) // default to sha256:base64
+    {
+    mdf = SealGetMdfFromString("sha256:base64");
+    sf = SealGetSF("sha256:base64");
+    }
+  else
+    {
+    mdf = SealGetMdfFromString(alg); // defaults to sha256
+    sf = SealGetSF(alg);
+    if (!sf) { sf = BASE64; } // default to base64 encoding
+    }
+
+  if (!mdf) // No algorith? Abort!
+    {
+    if (StoreError)
+	{
+	Rec = SealSetText(Rec,StoreError,"Error: Invalid digest encoding (");
+	Rec = SealAddText(Rec,StoreError,DigestFormat);
+	Rec = SealAddText(Rec,StoreError,"=");
+	Rec = SealAddText(Rec,StoreError,alg);
+	Rec = SealAddText(Rec,StoreError,")");
+	}
+    return(Rec);
+    }
+
+  // Prepare file for digesting
+  mmapfile *Mmap;
+  Mmap = MmapFile(Filename,1); // only returns on success
+  if (!Mmap)
+    {
+    if (StoreError)
+	{
+	Rec = SealSetText(Rec,StoreError,"Error: Unable to access file (");
+	Rec = SealAddText(Rec,StoreError,Filename);
+	Rec = SealAddText(Rec,StoreError,")");
+	}
+    return(Rec);
+    }
+
+  // Compute the digest!
+  unsigned int mdsize;
+  mdsize = EVP_MD_size(mdf()); // digest size
+
+  sealfield *digestbin;
+  Rec = SealAlloc(Rec,StoreDigest,mdsize,'b'); // binary digest
+  digestbin = SealSearch(Rec,StoreDigest);
+
+  EVP_MD_CTX* ctx64 = EVP_MD_CTX_new();
+  EVP_DigestInit(ctx64, mdf());
+  EVP_DigestUpdate(ctx64, Mmap->mem, Mmap->memsize);
+  EVP_DigestFinal(ctx64,digestbin->Value,&mdsize); // store the digest
+
+  EVP_MD_CTX_free(ctx64);
+  MmapFree(Mmap);
+
+  // Encode digest
+  SealEncode(digestbin,sf);
+
+  return(Rec);
+} /* SealDigestFile() */
 
 /**************************************
  SealDigest(): Given a file, compute the digest!
@@ -405,9 +499,9 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
    If there is an id or a date, then add those to the digest.
    This is the double-digest step.
    It will be one of these:
-        newdigest = hash(date:userid:newdigest)
-        newdigest = hash(date:newdigest)
-        newdigest = hash(userid:newdigest)
+	newdigest = hash(date:userid:newdigest)
+	newdigest = hash(date:newdigest)
+	newdigest = hash(userid:newdigest)
    *****/
 
   UserId = SealSearch(Rec,"id"); // could be empty
@@ -444,14 +538,14 @@ sealfield *	SealDoubleDigest	(sealfield *Rec)
   ctx64 = EVP_MD_CTX_new();
   EVP_DigestInit(ctx64, mdf());
   if (SigDate)
-        {
-        EVP_DigestUpdate(ctx64,SigDate->Value,SigDate->ValueLen);
-        EVP_DigestUpdate(ctx64,":",1);
-        }
+	{
+	EVP_DigestUpdate(ctx64,SigDate->Value,SigDate->ValueLen);
+	EVP_DigestUpdate(ctx64,":",1);
+	}
   if (UserId)
-        {
-        EVP_DigestUpdate(ctx64,UserId->Value,UserId->ValueLen);
-        EVP_DigestUpdate(ctx64,":",1);
+	{
+	EVP_DigestUpdate(ctx64,UserId->Value,UserId->ValueLen);
+	EVP_DigestUpdate(ctx64,":",1);
 	}
 
   EVP_DigestUpdate(ctx64,digestbin->Value,digestbin->ValueLen);

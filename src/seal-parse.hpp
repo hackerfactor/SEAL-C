@@ -15,11 +15,11 @@
 #include "seal.hpp"
 
 enum SealSignatureFormat{
+  INVALID,
   HEX_LOWER,
   HEX_UPPER,
   BASE64,
-  BIN,
-  INVALID
+  BIN
 };
 
 extern const char* SignatureFormats[];

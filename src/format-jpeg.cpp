@@ -525,7 +525,7 @@ sealfield *     Seal_JPEGsign    (sealfield *Rec, mmapfile *MmapIn, size_t FFDAo
 
   // Insert new signature
   mmapfile *MmapOut;
-  MmapOut = MmapFile(fname,PROT_WRITE);
+  MmapOut = MmapFile(fname,PROT_WRITE|PROT_ABORT);
   SealSign(Rec,MmapOut,NULL);
   MmapFree(MmapOut);
 

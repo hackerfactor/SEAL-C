@@ -89,3 +89,16 @@ Have a format you need that isn't supported? Let us know!
 
 ## Sidecars
 All media formats (both known and unknown), and all read-only media, can be supported through the use of a _sidecar_. A _sidecar_ stores the SEAL record in a separate file. This way, you can sign real-only media, such as a forensic drive image or legal evidence, without altering the source media.
+
+## Multi-File Formats
+Some file formats are self-contained, such as PNG and JPEG. Some are multi-file but bundled into a container, such as JAR and OOXML files (pptx, docx, etc.). In these cases, a ZIP file holds the manifest and the separate dependency files.
+
+However, some data formats are unbundled collections of files. These are common when the data files are too large to compress/decompress as needed or when the files are intended to be memory mapped. Examples include NASA's Planetary Data System (PDS, including PDS3 and PDS4) and Shapefile for storing geospatial vector data. In these instances, the directory contains a specific manifest file that identifies the various adjacent data files.
+
+Because individual data files often contain compact binary formats, they cannot be directly signed using SEAL. Fortunately, a sidecar can be placed in the directory that identifies and signs signatures that cover each of the external files in the directory. This permits signing unbundled multi-file formats.
+
+In some cases, the SEAL signature can be embedded directly in the manifest file. Unfortunately, many of these file formats use outdated implementations that do not fully support the standards. For example, the GDAL package is used for managing PDS4 files. However, GDAL uses a 1024-byte probe window to detect file formats; if the XML header preceding the first element tag exceeds 1024 bytes, GDAL will fail to recognize the file. For maximum compatibility, use a standalone SEAL sidecar.
+
+Other multi-file formats require every file in the directory to be tracked by the manifest. Examples, include the Digital Cinema Package (DCP) and Interoperable Master Format (IMF) for audio/video production, and BagIt for tracking digital evidence. Because these formats require every file within the package directory to be inventoried and checksummed, an untracked sidecar would invalidate the package. For these formats, the SEAL sidecar should be placed in the parent directory, above the directory that contains the format data, which keeps it outside the integrity boundary of the package. (Adding the sidecar to the manifest is not feasible because these manifests each includes a checksum for every listed file, creating a circular dependency.)
+
+To link a SEAL sidecar to its associated manifest or directory, the sidecar should use the same base name (preserving case). For example, if the PDS4 manifest is `Data1.xml`, the SEAL sidecar should be `Data1.seal`. Similarly, if the DCP directory is `concert27/`, the sidecar should be `concert27.seal`, using the directory name without the trailing path separator.

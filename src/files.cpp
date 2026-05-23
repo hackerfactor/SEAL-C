@@ -236,32 +236,80 @@ int64_t	SealIsFileNo	(int FileHandle)
 } /* SealIsFileNo() */
 
 /**************************************
- SealIsFile(): Return true if src is a regular file.
+ SealIsReadable(): Return true if src is a regular file and readable.
  **************************************/
-bool	SealIsFile	(const char *Filename)
+bool	SealIsReadable	(const char *Filename, bool AllowParent)
 {
   stat_t Stat;
+  if (!AllowParent)
+    {
+    // No parent directory traversal
+    if (!strncmp(Filename,"../",3) || strstr(Filename,"/../")) { return(false); }
+    }
+  if ((stat64(Filename,&Stat) == -1) || // cannot stat
+      !S_ISREG(Stat.st_mode) || // not a regular file
+      (access(Filename,R_OK) != 0)) // cannot read
+	{ return(false); }
+  return(true);
+} /* SealIsReadable() */
+
+/**************************************
+ SealIsFile(): Return true if src is a regular file.
+ **************************************/
+bool	SealIsFile	(const char *Filename, bool AllowParent)
+{
+  stat_t Stat;
+  if (!AllowParent)
+    {
+    // No parent directory traversal
+    if (!strncmp(Filename,"../",3) || strstr(Filename,"/../")) { return(false); }
+    }
   if ((stat64(Filename,&Stat) == -1) || !S_ISREG(Stat.st_mode)) { return(false); }
   return(true);
 } /* SealIsFile() */
+
+/**************************************
+ SealIsDir(): Return true if src is a director.
+ **************************************/
+bool	SealIsDir	(const char *Filename, bool AllowParent)
+{
+  stat_t Stat;
+  if (!AllowParent)
+    {
+    // No parent directory traversal
+    if (!strncmp(Filename,"../",3) || strstr(Filename,"/../")) { return(false); }
+    }
+  if ((stat64(Filename,&Stat) == -1) || !S_ISDIR(Stat.st_mode)) { return(false); }
+  return(true);
+} /* SealIsDir() */
 
 /**************************************
  MmapFile(): memory map the file for quick access.
  Used for rapidly computing checksums, scanning, and
  changing values.
  Returns: mmapfile* or NULL.
+
+ WARNING: If the file is zero-length, this will succeed!
+ Callers should always check the memsize before accessing mem.
  **************************************/
 mmapfile *	MmapFile	(const char *Filename, int Prot)
 {
   mmapfile *Mmap;
   int FileHandle;
+  bool WantAbort=false;
+
+  if (Prot & PROT_ABORT)
+    {
+    WantAbort=true; // permit this function to abort on failure.
+    Prot &= ~PROT_ABORT;
+    }
 
   // allocate structure
   Mmap = (mmapfile*)calloc(sizeof(mmapfile),1);
   if (!Mmap) // should never happen
     {
     fprintf(stderr," ERROR: Cannot allocate mmap structure\n");
-    exit(0x80);
+    if (WantAbort) { exit(0x80); } else { return(NULL); }
     }
 
   // Open file and check it
@@ -275,8 +323,9 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
     }
   if (!Mmap->fp)
     {
-    fprintf(stderr," ERROR: Cannot open file (%s)\n",Filename);
     free(Mmap);
+    if (!WantAbort) { return(NULL); }
+    fprintf(stderr," ERROR: Cannot open file (%s)\n",Filename);
     exit(0x80);
     }
 
@@ -284,9 +333,10 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
   FileHandle = fileno(Mmap->fp);
   if (FileHandle == -1) // should never happen since fopen worked
     {
-    fprintf(stderr," ERROR: File inaccessible (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
+    if (!WantAbort) { return(NULL); }
+    fprintf(stderr," ERROR: File inaccessible (%s)\n",Filename);
     exit(0x80);
     }
 
@@ -294,20 +344,26 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
   fsize = SealIsFileNo(FileHandle);
   if (fsize < 0)
     {
-    fprintf(stderr," ERROR: Not a regular file (%s)\n",Filename);
     fclose(Mmap->fp);
     free(Mmap);
+    if (!WantAbort) { return(NULL); }
+    fprintf(stderr," ERROR: Not a regular file (%s)\n",Filename);
     exit(0x80);
     }
   Mmap->memsize = fsize;
 
-  Mmap->mem = (byte *)mmap64(0,Mmap->memsize,Prot,MAP_SHARED,FileHandle,0);
-  if (!Mmap->mem || (Mmap->mem == MAP_FAILED)) // should never happen
+  if (fsize > 0)
     {
-    fprintf(stderr," ERROR: Memory map failed for file (%s)\n",Filename);
-    fclose(Mmap->fp);
-    free(Mmap);
-    exit(0x80);
+    // Always use PROT_READ so it is readable.
+    Mmap->mem = (byte *)mmap64(0,Mmap->memsize,Prot|PROT_READ,MAP_SHARED,FileHandle,0);
+    if (!Mmap->mem || (Mmap->mem == MAP_FAILED)) // should never happen
+      {
+      fclose(Mmap->fp);
+      free(Mmap);
+      if (!WantAbort) { return(NULL); }
+      fprintf(stderr," ERROR: Memory map failed for file (%s)\n",Filename);
+      exit(0x80);
+      }
     }
 
   return(Mmap);
@@ -319,7 +375,7 @@ mmapfile *	MmapFile	(const char *Filename, int Prot)
 void	MmapFree	(mmapfile *Mmap)
 {
   if (!Mmap) { return; }
-  munmap(Mmap->mem,Mmap->memsize);
+  if (Mmap->mem) { munmap(Mmap->mem,Mmap->memsize); }
   fclose(Mmap->fp);
   free(Mmap);
 } /* MmapFree() */

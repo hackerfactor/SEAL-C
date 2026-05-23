@@ -31,8 +31,6 @@
 #include "seal.hpp"
 #include "seal-parse.hpp"
 
-const char* SignatureFormats[] = {"HEX_LOWER", "HEX_UPPER", "BASE64", "BIN", "INVALID"};
-
 struct {
   int len;
   const char *code;
@@ -537,7 +535,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 
       if (!isalpha(Text[i])) { IsBad=true; } // bad start
       fs = i;
-      while((i < TextLen) && isalnum(Text[i])) { i++; }
+      while((i < TextLen) && (isalnum(Text[i]) || strchr("+-_.",Text[i])) ) { i++; }
       fe = i;
       if (Text[i]=='=') { State=2; } // found field!
       else { i--; State=0; } // bad attribute
@@ -685,6 +683,7 @@ void SealEncode(sealfield *data, SealSignatureFormat sf) {
         break;
       case BIN:
       case INVALID:
+      default:
         // Do nothing, already in binary or invalid format
         break;
     }
@@ -706,6 +705,7 @@ void SealDecode(sealfield *data, SealSignatureFormat sf) {
         break;
       case BIN:
       case INVALID:
+      default:
         // Do nothing, already in binary or invalid format
         break;
     }

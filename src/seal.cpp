@@ -314,7 +314,7 @@ sealfield *	SealCopy	(sealfield *vfhead, const char *NewField, const char *OldFi
 } /* SealCopy() */
 
 /**************************************
- SealCopy2(): Copy value from from Field1 to Field2
+ SealCopy2(): Copy value from Field1 to Field2
  Returns: head of new sealfield chain.
  **************************************/
 sealfield *	SealCopy2	(sealfield *vfhead2, const char *Field2, sealfield *vfhead1, const char *Field1)
@@ -356,21 +356,65 @@ sealfield *	SealClone	(sealfield *src)
 /**************************************
  SealMove(): Rename a field.
  Returns: head of sealfield chain.
+ NOTE: move renames, may delete, but never inserts.
  **************************************/
 sealfield *	SealMove	(sealfield *vfhead, const char *NewField, const char *OldField)
 {
   // Idiot checking
   if (!NewField || !OldField || !strcmp(NewField,OldField)) { return(vfhead); }
 
-  sealfield *vfp;
-  vfp = SealSearch(vfhead,NewField);
-  if (vfp) { return(SealDel(vfhead,NewField)); } // remove new location
+  sealfield *vfsrc, *vfdst;
+  char *OldString;
 
-  vfp = SealSearch(vfhead,OldField);
-  if (!vfp) { return(vfhead); } // nothing to move!
-  vfp->FieldLen = strlen(NewField);
-  vfp->Field = (char*)calloc(vfp->FieldLen+PAD,1); // extra space ensures null termination
-  memcpy(vfp->Field,NewField,vfp->FieldLen);
+  vfdst = SealSearch(vfhead,NewField);
+  vfsrc = SealSearch(vfhead,OldField);
+
+  if (!vfsrc) // nothing to move?
+    {
+    // If no old, then delete new and return
+    if (vfdst) { return(SealDel(vfhead,NewField)); }
+    return(vfhead); // nothing to move
+    }
+
+  /*****
+   new could be a substring in old.
+   Don't free until I'm completely done with the string.
+   *****/
+  // Rename old to new
+  vfsrc->FieldLen = strlen(NewField);
+  OldString = vfsrc->Field;
+  vfsrc->Field = (char*)calloc(vfsrc->FieldLen+PAD,1); // extra space ensures null termination
+  memcpy(vfsrc->Field,NewField,vfsrc->FieldLen);
+  free(OldString);
+
+  // vfsrc now contains what I want to keep.
+  // vfdst needs to be deleted -- if it exists.
+
+  // Delete new if it exists
+  if (vfdst)
+    {
+    // Unlink vfdst
+    if (vfdst == vfhead)
+      {
+      vfhead = vfdst->Next;
+      }
+    else // It's somewhere down the line...
+      {
+      for(vfsrc=vfhead; vfsrc; vfsrc=vfsrc->Next)
+        {
+        if (vfsrc->Next == vfdst)
+          {
+	  vfsrc->Next = vfdst->Next;
+	  break;
+	  }
+	}
+      }
+
+    // delete vfdst
+    if (vfdst->Field) { free(vfdst->Field); }
+    if (vfdst->Value) { free(vfdst->Value); }
+    free(vfdst);
+    }
 
   return(vfhead);
 } /* SealMove() */

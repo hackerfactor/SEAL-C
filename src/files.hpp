@@ -34,7 +34,9 @@ unsigned char *	GetPassword	();
 char *	MakeFilename	(char *Template, const char *Filename);
 bool	CopyFile	(const char *dst, const char *src);
 
-bool	SealIsFile	(const char *src);
+bool	SealIsFile	(const char *src, bool AllowParent); // is it a file?
+bool	SealIsReadable	(const char *src, bool AllowParent); // is it a readable file?
+bool	SealIsDir	(const char *src, bool AllowParent); // is it a directory?
 FILE *	SealFileOpen	(const char *fname, const char *mode);
 #define SealFileClose(x)	fclose(x)
 void	SealFileWrite	(FILE *Fout, size_t Len, byte *Data);
@@ -44,6 +46,7 @@ void	SealFileWrite	(FILE *Fout, size_t Len, byte *Data);
 #define PROT_READ       1
 #define PROT_WRITE      2
 #endif
+#define PROT_ABORT	0x80 /* not defined in /usr/include/asm-generic/mman-common.h */
 mmapfile *	MmapFile	(const char *Filename, int Prot);
 void	MmapFree	(mmapfile *Mmap);
 

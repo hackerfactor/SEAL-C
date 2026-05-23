@@ -51,6 +51,9 @@ bool	SealCheckKeyKeyAlg	(const char *ka, sealfield *pbin);
 sealfield *	SealRecord	(sealfield *Args);
 
 // Compute digest
+sealfield *	SealDigestFile	(sealfield *Rec,
+				 const char *Filename, const char *DigestFormat,
+				 const char *StoreDigest, const char *StoreError);
 sealfield *	SealDigest	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre);
 const EVP_MD* (*SealGetMdfFromString(const char *da))(void);
 sealfield *	SealDoubleDigest	(sealfield *Rec);
@@ -72,6 +75,10 @@ sealfield *	SealGetDNS	(sealfield *Rec);
 sealfield *	SealVerify	(sealfield *Rec, mmapfile *Mmap, mmapfile *MmapPre);
 bool	SealVerifyFinal	(sealfield *Rec);
 sealfield *	SealVerifyBlock	(sealfield *Args, size_t BlockStart, size_t BlockEnd, mmapfile *Mmap, mmapfile *MmapPre);
+
+// External References
+sealfield *	SealExtGet	(sealfield *Args);
+int	SealExtVerify	(sealfield *Args, bool IsValid);
 
 // Source References
 sealfield *     SealSrcGet      (sealfield *Args);
