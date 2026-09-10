@@ -206,10 +206,14 @@ void	_SealVerifyShowRange	(sealfield *Rec)
   // Show range warnings
   if (ExcludeSealRecord)
     {
-    printf("  Error: Part of the SEAL record is excluded from the signature.\n");
-    ReturnCode |= 0x01; // File is invalid
+    printf("  Error: Part of the SEAL record is excluded from the signature and cannot be authenticated.\n");
+    ReturnCode |= 0x88; // Error and File cannot be authenticated
     }
-  if (CountExclude) { printf("  Warning: Part of the file (%u bytes) is excluded from the signature.\n",(uint)CountExclude); }
+  if (CountExclude)
+    {
+    printf("  Warning: Part of the file (%u bytes) is excluded from the signature and cannot be authenticated.\n",(uint)CountExclude);
+    ReturnCode |= 0x08; // File cannot be authenticated
+    }
 } /* _SealVerifyShowRange() */
 
 /********************************************************
