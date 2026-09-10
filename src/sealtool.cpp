@@ -389,12 +389,14 @@ void	Usage	(const char *progname)
   printf("  -v                :: Verbose debugging (probably not what you want)\n");
   printf("  -V, --version     :: Show the code version and exit.\n");
   printf("\n");
+
   printf("  Verifying:\n");
   printf("  Verify any SEAL signature in the file(s)\n");
   printf("  -D, --dnsfile fname  :: Optional: text file with DNS TXT value. (implies --no-net; default: unset; use DNS)\n");
   printf("  -I, --src name       :: Optional: For validating srcd, use this URL as the source.\n");
   printf("  --ext.label=file     :: Optional: Specify an alternate external file for the label.\n");
   printf("\n");
+
   printf("  Generate signature:\n");
   printf("  -g, --generate       :: Required: generate a signature\n");
   printf("  -D, --dnsfile fname  :: File for storing the public key for DNS (default: ./seal-public.dns)\n");
@@ -407,12 +409,15 @@ void	Usage	(const char *progname)
   // EVP_KEYMGMT_do_all_provided(NULL, print_km, NULL);
   printf("  --kv number          :: Unique key version (default: 1)\n");
   printf("  --uid text           :: Unique key identifier (default: not set)\n");
+  printf("  -b range             :: DEBUGGING; force a signing range\n");
   printf("\n");
+
   printf("  Signing with a local private key:\n");
   printf("  -s, --sign           :: Required: Enable signing (requires lowercase 's')\n");
   printf("  -k, --keyfile fname  :: File for storing the private key in PEM format (default: ./seal-private.pem)\n");
   printf("  -I, --src URL         :: Optional: Specify a source URL for validation. This will retrieve the file and compute the checksum. The URL will be included in the SEAL record.\n");
   printf("\n");
+
   printf("  Signing with a remote signing service:\n");
   printf("  -S, --Sign           :: Required: Enable signing (requires uppercase 'S')\n");
   printf("  -u, --apiurl url     :: For remote signers (default: no url)\n");
@@ -422,11 +427,13 @@ void	Usage	(const char *progname)
   printf(" (default: ./cacert.crl)");
   printf("  --cert-insecure      :: Do not validate server's TLS certificate.\n");
   printf("\n");
+
   printf("  Manual signing: (mostly for debugging; probably not what you want)\n");
   printf("  -M, --Manual ''      :: Generate the SEAL record with a stubbed value.\n");
   printf("  -M, --Manual digest  :: Given a hex digest, sign it using a remote service.\n");
   printf("  -m, --manual digest  :: Given a hex digest, sign it using a local key.\n");
   printf("\n");
+
   printf("  Common signing options (for local and remote)\n");
   printf("  -d, --domain domain  :: DNS entry with the public key (default: localhost.localdomain)\n");
   printf("  --testdomain domain  :: For debugging and testing: use this domain in the SEAL record\n");
@@ -457,17 +464,20 @@ void	Usage	(const char *progname)
   printf("  --sf text            :: Signing format (default: HEX)\n");
   printf("  --sidecar filename   :: Optional: generate a sidecar signature\n");
   printf("\n");
+
   printf("  Informational fields:\n");
   printf("  -C, --copyright text :: Copyright text (default: no added text)\n");
   printf("  -c, --comment text   :: Generic comment text (default: no added text)\n");
   printf("  --info text          :: Informational comment text (default: no added text)\n");
   printf("\n");
+
   printf("  External source reference:\n");
   printf("  --src url            :: URL to remote source (default: no url)\n");
   printf("  --srca text          :: Optional: Specify the source digest encoding. (default: sha256:base64)\n");
   printf("  --srcd text          :: Optional: Specify the source digest value. Must match the srca encoding. When present, src/srcf will be validated against it, but that validation will NOT prevent signing.\n");
   printf("  --srcf file          :: Optional: Specify a source file for computing the checksum (for signing or validation). When signing, the filename will NOT be included in the SEAL record.\n");
   printf("\n");
+
   printf("  Return codes bits:\n");
   printf("    0x00 All files have valid signatures.\n");
   printf("    0x01 At least one signature is invalid.\n");
@@ -600,7 +610,7 @@ int main (int argc, char *argv[])
     {NULL,0,NULL,0}
     };
   opterr = 0; // Turn off default error printing
-  while ((c = getopt_long(argc,argv,"A:a:C:c:D:d:ghI:i:K:k:M:m:o:O:pSsu:VvW?",long_options,&long_option_index)) != -1)
+  while ((c = getopt_long(argc,argv,"A:a:b:C:c:D:d:ghI:i:K:k:M:m:o:O:pSsu:VvW?",long_options,&long_option_index)) != -1)
     {
     switch(c)
       {
@@ -619,6 +629,7 @@ int main (int argc, char *argv[])
 	if (!strcmp(optarg,"list")) { ListHashAlgorithms(Args); exit(0); }
 	break;
       case 'a': Args = SealSetText(Args,"apikey",optarg); break;
+      case 'b': Args = SealSetText(Args,"@ForceB",optarg); break;
       case 'C': Args = SealSetText(Args,"copyright",optarg); break;
       case 'c': Args = SealSetText(Args,"info",optarg); break;
       case 'D': Args = SealSetText(Args,"dnsfile",optarg); break;

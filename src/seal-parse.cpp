@@ -415,10 +415,11 @@ void	SealBase64Encode	(sealfield *Data)
 
 /**************************************
  SealParse(): Parse a SEAL record.
- This will scan the entire input space for any SEAL record,
+ This will scan the entire input (Text) space for any SEAL record,
  and it stops at the first one.
    - Sets ['@RecEnd'] to be the end of the data -- for iterative searches.
-   - Sets ['@s'] relative to Offset.
+   - Sets ['@s'] (signature range) relative to Offset.
+   - Sets ['@r'] (record range) relative to Offset.
    - If Args is provided, copies over verification parameters.
  Returns: sealfield* containing attributes, or NULL if no record found.
    This looks for the <seal ... /> wrapper.
@@ -438,9 +439,18 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
   size_t i; // index into data
   uint32_t fs=0,fe=0; // field start and end offsets
   uint32_t vs=0,ve=0; // value start and end offsets
+  uint32_t rs=0; // record start
   bool IsBad=false;
 
   if (!Text || (TextLen < 10)) { return(NULL); }
+
+  /*****
+   Processing states:
+   0 = looking for start
+   1 = have start, looking for field
+   2 = have field, looking for value
+   3 = have value, looking for end of value
+   *****/
 
   for(i=0; i < TextLen; i++)
     {
@@ -464,6 +474,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       if ((i+6 < TextLen) && !memcmp(Text+i,"<seal ",6))
         {
 	// found a start!
+	rs = i;
 	i+=5;
 	State=1;
 	IsXML=0;
@@ -474,6 +485,7 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
       if ((i+9 < TextLen) && !memcmp(Text+i,"&lt;seal ",9))
         {
 	// found a start!
+	rs = i;
 	i+=8;
 	State=1;
 	IsXML=1;
@@ -482,8 +494,9 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 
       // "<?seal "; XML is case-insensitive
       if ((i+7 < TextLen) && !strncasecmp((const char*)Text+i,"<?seal ",7))
-        {
+	{
 	// found a start!
+	rs = i;
 	i+=6;
 	State=1;
 	IsXML=2;
@@ -591,7 +604,6 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
 	  Rec = SealSetIindex(Rec,"@s",0,Offset+vs);
 	  Rec = SealSetIindex(Rec,"@s",1,Offset+ve);
 	  Rec = SealSetIindex(Rec,"@s",2,SealGetIindex(Args,"@s",2)+1); // increment record number
-
 	  if (Args)
 	    {
 	    Rec = SealCopy2(Rec,"@p",Args,"@s"); // previous '@s' is now '@p'
@@ -640,8 +652,11 @@ sealfield *	SealParse	(size_t TextLen, const byte *Text, size_t Offset, sealfiel
     } // Parse text length
 
 Done:
-  if (Rec)
+  if (IsBad) { SealFree(Rec); Rec=NULL; }
+  else if (Rec)
     {
+    Rec = SealSetIindex(Rec,"@r",0,Offset+rs);
+    Rec = SealSetIindex(Rec,"@r",1,Offset+i);
     Rec = SealSetIindex(Rec,"@RecEnd",0,i); // Mark end of the record
     Rec = SealDel(Rec,"srcf"); // Never allow srcf from a SEAL record
     }

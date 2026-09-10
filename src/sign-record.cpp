@@ -53,6 +53,12 @@ sealfield *	SealRecord	(sealfield *Args)
   int f;
   sealfield *vf;
 
+  // Check for command-line override for debugging
+  if (SealSearch(Args,"@ForceB"))
+    {
+    Args = SealCopy(Args,"b","@ForceB");
+    }
+
   // Start record
   Args = SealSetText(Args,"@record","<seal");
 

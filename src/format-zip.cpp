@@ -470,6 +470,7 @@ sealfield *	Seal_Zip	(sealfield *Args, mmapfile *Mmap)
 	  ArgsLoc = Seal_Zipsign(ArgsLoc,&z); // Add a signature as needed
 	  if (SealSearch(ArgsLoc,"@s")) { HasSig=true; }
 	  Args = SealCopy2(Args,"@s",ArgsLoc,"@s"); // track if it is signed
+	  Args = SealCopy2(Args,"@r",ArgsLoc,"@r"); // track if it is signed
 	  }
 	SealFree(ArgsLoc);
 	} while(_Seal_ZipFind(&z));
