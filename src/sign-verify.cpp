@@ -76,13 +76,150 @@ void	TaintPrint	(const char *Str)
 
 #pragma GCC visibility push(hidden)
 /********************************************************
+ _SealCmpRange(): Compare function for qsort() of the @embedbytes range.
+ ********************************************************/
+int	_SealCmpRange	(const void *va, const void *vb)
+{
+  uint64_t *a,*b;
+  a = (uint64_t *)va;
+  b = (uint64_t *)vb;
+
+  if (a[0] < b[0]) { return(-1); }
+  if (a[0] > b[0]) { return(+1); }
+  if (a[1] < b[1]) { return(-1); }
+  if (a[1] > b[1]) { return(+1); }
+  return(0);
+} /* _SealCmpRange() */
+
+/********************************************************
+ _SealVerifyShowRange(): Check the signed range.
+ ErrorMsg is set when the signature is invalid.
+ ********************************************************/
+void	_SealVerifyShowRange	(sealfield *Rec)
+{
+  char *Txt, *TxtEmbedName;
+  sealfield *vf;
+  unsigned int i;
+  size_t *rangeval, MaxRange, EmbedOffset;
+  size_t *Rr, *Ss; // for tracking the seal record range R~r, S~s
+  size_t LastScan=0, CountExclude=0, m1,m2;
+  bool ExcludeSealRecord = false; // does the exclusion cover the seal record (better not!)
+
+  vf = SealSearch(Rec,"@digestrange");
+  if (!vf || (vf->ValueLen <= 0)) { return; } // better always be defined!
+
+  EmbedOffset = SealGetU64index(Rec,"@embedbytes",0); // possible embedded offset
+
+  // Sort the digestrange into sortrange
+    { // Count excluded/skipped bytes
+
+    // Where is the signature located?
+    vf = SealSearch(Rec,"@r");
+    Rr = (size_t*)(vf->Value); // [0]=seal rec start, [1]=seal rec end
+    vf = SealSearch(Rec,"@s");
+    Ss = (size_t*)(vf->Value); // [0]=sig start, [1]=sig end
+
+    // Sort the range for scanning
+    Rec = SealCopy(Rec, "@sortrange", "@digestrange");
+    vf = SealSearch(Rec,"@sortrange");
+    rangeval = (size_t*)(vf->Value);
+    MaxRange = vf->ValueLen / sizeof(size_t);
+    qsort(rangeval,MaxRange/2,sizeof(size_t)*2,_SealCmpRange);
+
+    // Scan the range and count skipped bytes
+    LastScan = SealGetIindex(Rec,"@p",1); // Start at the end of the last signature
+    for(i=0; i < MaxRange; i+=2)
+      {
+      // Everything from rangeval[i] to rangeval[i+1] is included
+      //DEBUGPRINT("Range: %u ~ %u", (uint)(rangeval[i]), (uint)(rangeval[i+1]));
+
+      // Check if any part of the SEAL record is excluded
+      if (LastScan > rangeval[i]) { m1 = LastScan; } else { m1 = rangeval[i]; }
+      if (LastScan > rangeval[i+1]) { m2 = LastScan; } else { m2 = rangeval[i+1]; }
+
+      if ((m1 > Rr[0]) && (m1 < Ss[1])) { ExcludeSealRecord=true; }
+      else if ((m2 > Ss[0]) && (m2 < Rr[1])) { ExcludeSealRecord=true; }
+      //DEBUGPRINT("Range? %d ? %u < %u < %u", ExcludeSealRecord, (uint)(Rr[0]), (uint)LastScan, (uint)(Rr[1]));
+
+      // Any excluded before the start?
+      if (rangeval[i] > LastScan)
+        {
+	CountExclude += rangeval[i] - LastScan;
+	}
+
+      // Track the end; note: watch out for overlapping ranges
+      if (rangeval[i+1] > LastScan) { LastScan = rangeval[i+1]; }
+      } // foreach r=range set
+
+    // Check for ending bytes
+    if (LastScan < Rr[1]) { CountExclude += Rr[1] - LastScan; }
+
+    // How many bytes are permitted to be excluded?
+    size_t PermitExclude;
+    PermitExclude = SealGetU32index(Rec,"@MaxExclude",0); // file formats permits this
+    PermitExclude += SealGetSize(Rec,"s"); // signature permits this
+    if (PermitExclude <= CountExclude) { CountExclude -= PermitExclude; }
+    else { CountExclude=0; }
+    } // Count skipped bytes
+
+  if (Verbose) // if show span details
+    {
+    // How many bytes are skipped?
+    vf = SealSearch(Rec,"@digestrange");
+    printf("  Signed Bytes: ");
+    for(i=0; i < MaxRange; i+=2)
+      {
+      if (i > 0) { printf(", "); }
+      printf("%lu-%lu",
+	(unsigned long)(rangeval[i+0]+EmbedOffset),
+	(unsigned long)(rangeval[i+1]+EmbedOffset)
+	);
+      } // count bytes skipped
+    printf("\n");
+    } // Show span details
+
+  // Show span summary
+  Txt = SealGetText(Rec,"@sflags0");
+  if (Txt)
+	{
+	TxtEmbedName = SealGetText(Rec,"@embedname");
+	printf("  Signature Spans: ");
+	if (strchr(Txt,'F')) { printf("Start of %s",TxtEmbedName ? TxtEmbedName : "file"); }
+	else if (strchr(Txt,'P')) { printf("Start of previous signature"); }
+	else if (strchr(Txt,'p')) { printf("End of previous signature"); }
+	else if (strchr(Txt,'S')) { printf("Start of signature"); }
+	else if (strchr(Txt,'s')) { printf("End of signature"); }
+	else if (strchr(Txt,'f')) { printf("End of %s",TxtEmbedName ? TxtEmbedName : "file"); }
+	else { printf("Absolute offset"); }
+	printf(" to ");
+	Txt = SealGetText(Rec,"@sflags1");
+	if (strchr(Txt,'f')) { printf("end of %s",TxtEmbedName ? TxtEmbedName : "file"); }
+	else if (strchr(Txt,'s')) { printf("end of signature"); }
+	else if (strchr(Txt,'S')) { printf("start of signature"); }
+	else if (strchr(Txt,'p')) { printf("end of previous signature"); }
+	else if (strchr(Txt,'P')) { printf("start of previous signature"); }
+	else if (strchr(Txt,'F')) { printf("start of %s",TxtEmbedName ? TxtEmbedName : "file"); }
+	else { printf("absolute offset"); }
+	printf("\n");
+	} // Show span summary
+
+  // Show range warnings
+  if (ExcludeSealRecord)
+    {
+    printf("  Error: Part of the SEAL record is excluded from the signature.\n");
+    ReturnCode |= 0x01; // File is invalid
+    }
+  if (CountExclude) { printf("  Warning: Part of the file (%u bytes) is excluded from the signature.\n",(uint)CountExclude); }
+} /* _SealVerifyShowRange() */
+
+/********************************************************
  _SealVerifyShow(): Display results
  ErrorMsg is set when the signature is invalid.
  ********************************************************/
 void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 {
+  char *Txt;
   sealfield *vf;
-  char *Txt, *TxtEmbedName;
   unsigned int i;
   bool CheckWeak=true;
 
@@ -143,52 +280,10 @@ void	_SealVerifyShow	(sealfield *Rec, int rc, long signum, const char *Msg)
 	  for(i=0; i < vf->ValueLen; i++) { printf("%02x",vf->Value[i]); }
 	  printf("\n");
 	  }
-
-	vf = SealSearch(Rec,"@digestrange");
-	if (vf && (vf->ValueLen > 0)) // better always be defined!
-	  {
-	  size_t *rangeval, MaxRange, EmbedOffset;
-	  EmbedOffset = SealGetU64index(Rec,"@embedbytes",0); // possible embedded offset
-	  rangeval = (size_t*)(vf->Value);
-	  MaxRange = vf->ValueLen / sizeof(size_t);
-	  printf("  Signed Bytes: ");
-	  for(i=0; i < MaxRange; i++)
-	    {
-	    if (i%2) { printf("-%lu",(unsigned long)(rangeval[i])-1+EmbedOffset); } // end
-	    else // start
-	      {
-	      if (i > 0) { printf(", "); }
-	      printf("%lu",(unsigned long)(rangeval[i]+EmbedOffset));
-	      }
-	    }
-	  printf("\n");
-	  }
 	} // if Verbose
 
   // Show range
-  Txt = SealGetText(Rec,"@sflags0");
-  TxtEmbedName = SealGetText(Rec,"@embedname");
-  if (Txt)
-	{
-	printf("  Signature Spans: ");
-	if (strchr(Txt,'F')) { printf("Start of %s",TxtEmbedName ? TxtEmbedName : "file"); }
-	else if (strchr(Txt,'P')) { printf("Start of previous signature"); }
-	else if (strchr(Txt,'p')) { printf("End of previous signature"); }
-	else if (strchr(Txt,'S')) { printf("Start of signature"); }
-	else if (strchr(Txt,'s')) { printf("End of signature"); }
-	else if (strchr(Txt,'f')) { printf("End of %s",TxtEmbedName ? TxtEmbedName : "file"); }
-	else { printf("Absolute offset"); }
-	printf(" to ");
-	Txt = SealGetText(Rec,"@sflags1");
-	if (strchr(Txt,'f')) { printf("end of %s",TxtEmbedName ? TxtEmbedName : "file"); }
-	else if (strchr(Txt,'s')) { printf("end of signature"); }
-	else if (strchr(Txt,'S')) { printf("start of signature"); }
-	else if (strchr(Txt,'p')) { printf("end of previous signature"); }
-	else if (strchr(Txt,'P')) { printf("start of previous signature"); }
-	else if (strchr(Txt,'F')) { printf("start of %s",TxtEmbedName ? TxtEmbedName : "file"); }
-	else { printf("absolute offset"); }
-	printf("\n");
-	}
+   _SealVerifyShowRange(Rec);
 
   if (Verbose)
 	{
@@ -931,6 +1026,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args,
     // Range is used when doing subsets within a file (like an embedded zip)
     Rec = SealCopy2(Rec,"@embedname",Args,"@embedname");
     Rec = SealCopy2(Rec,"@embedbytes",Args,"@embedbytes");
+    Rec = SealCopy2(Rec,"@MaxExclude",Args,"@MaxExclude");
 
     // Found a signature!  Verify the data!
     Rec = SealVerify(Rec,Mmap,MmapPre);
@@ -944,6 +1040,7 @@ sealfield *	SealVerifyBlock	(sealfield *Args,
     // Retain state
     Args = SealCopy2(Args,"@s",Rec,"@s");
     Args = SealCopy2(Args,"@p",Rec,"@s");
+    Args = SealCopy2(Args,"@r",Rec,"@r");
     Args = SealAddText(Args,"@sflags",SealGetText(Rec,"@sflags"));
     Args = SealDel(Args,"@RecEnd");
 
