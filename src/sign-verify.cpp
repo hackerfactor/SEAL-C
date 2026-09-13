@@ -102,7 +102,7 @@ void	_SealVerifyShowRange	(sealfield *Rec)
   unsigned int i;
   size_t *rangeval, MaxRange, EmbedOffset;
   size_t *Rr, *Ss; // for tracking the seal record range R~r, S~s
-  size_t LastScan=0, CountExclude=0, m1,m2;
+  size_t LastScan=0, CountExclude=0, Mm[2];
   bool ExcludeSealRecord = false; // does the exclusion cover the seal record (better not!)
 
   vf = SealSearch(Rec,"@digestrange");
@@ -125,20 +125,54 @@ void	_SealVerifyShowRange	(sealfield *Rec)
     rangeval = (size_t*)(vf->Value);
     MaxRange = vf->ValueLen / sizeof(size_t);
     qsort(rangeval,MaxRange/2,sizeof(size_t)*2,_SealCmpRange);
+    /*****
+     qsort: Ranges are now sorted by start (asc) and then end (asc).
+     *****/
+    
+    /*****
+     The total file is: F R S s r f, with R~r being <seal ... >
+     The start of the first range better NOT be in the seal record (R~r).
+     *****/
+    if ((MaxRange > 0) && (rangeval[0] > Rr[0])) { ExcludeSealRecord=true; }
+
+    //DEBUGPRINT("Record:  R=%u S=%u s=%u r=%u", (uint)(Rr[0]), (uint)(Ss[0]), (uint)(Ss[1]), (uint)(Rr[1]));
 
     // Scan the range and count skipped bytes
     LastScan = SealGetIindex(Rec,"@p",1); // Start at the end of the last signature
     for(i=0; i < MaxRange; i+=2)
       {
       // Everything from rangeval[i] to rangeval[i+1] is included
-      //DEBUGPRINT("Range: %u ~ %u", (uint)(rangeval[i]), (uint)(rangeval[i+1]));
+      //DEBUGPRINT("Range: %u ~ %u; Last=%u", (uint)(rangeval[i]), (uint)(rangeval[i+1]), (uint)LastScan);
 
-      // Check if any part of the SEAL record is excluded
-      if (LastScan > rangeval[i]) { m1 = LastScan; } else { m1 = rangeval[i]; }
-      if (LastScan > rangeval[i+1]) { m2 = LastScan; } else { m2 = rangeval[i+1]; }
+      /*****
+       The total file is: F R S s r f, with R~r being <seal ... >
+       Check if any part of the SEAL record (R~r) is excluded.
+       I only care about where the range ends, not where it starts.
+       The range better not end within R~S,s~r.
+       Note: If the range is something like F~R,R~S,s~f
+       Then there is technically no gap.
 
-      if ((m1 > Rr[0]) && (m1 < Ss[1])) { ExcludeSealRecord=true; }
-      else if ((m2 > Ss[0]) && (m2 < Rr[1])) { ExcludeSealRecord=true; }
+       Sample permitted overlap:
+         PNG: 'F~S-5,S-5~S,s~s+3,s+7~f'
+	 Yes, they combine inside the record, but everything is covered.
+       Sample forbidden overlap:
+         PNG: 'F~S-5,S-4~S,s~s+3,s+7~f'
+	 One byte in the SEAL record is excluded. Everything marked as fail.
+         PNG: 'F~S,s+1~s+3,s+7~f'
+	 One bytte after the signature
+       *****/
+      if (LastScan > rangeval[i]) { Mm[0] = LastScan; } else { Mm[0] = rangeval[i]; }
+      if (LastScan > rangeval[i+1]) { Mm[1] = LastScan; } else { Mm[1] = rangeval[i+1]; }
+      if ( ((Mm[1] >= Rr[0]) && (Mm[1] < Ss[0])) || // Stops within R~S
+	   ((Mm[1] >= Ss[1]) && (Mm[1] < Rr[1])) || // Stops within s~r
+	   ((LastScan < Rr[1]) && (Mm[0] > Rr[1]))  // Ended at R and starts after r
+	 )
+	{
+        if ((i+2 >= MaxRange) || (rangeval[i+2] > rangeval[i+1])) // check for simple overlaps
+	  {
+	  ExcludeSealRecord=true;
+	  }
+	}
       //DEBUGPRINT("Range? %d ? %u < %u < %u", ExcludeSealRecord, (uint)(Rr[0]), (uint)LastScan, (uint)(Rr[1]));
 
       // Any excluded before the start?
@@ -211,7 +245,9 @@ void	_SealVerifyShowRange	(sealfield *Rec)
     }
   if (CountExclude)
     {
-    printf("  Warning: Part of the file (%u bytes) is excluded from the signature and cannot be authenticated.\n",(uint)CountExclude);
+    printf("  Warning: Part of the file (%u byte%s) is excluded from the signature and cannot be authenticated.\n",
+	(uint)CountExclude,
+    	(CountExclude == 1) ? "" : "s");
     ReturnCode |= 0x08; // File cannot be authenticated
     }
 } /* _SealVerifyShowRange() */
